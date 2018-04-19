@@ -7,7 +7,7 @@ import os
 from setuptools import setup
 
 here = os.path.abspath(os.path.dirname(__file__))
-readme = open(os.path.join(here, 'README.rst')).read()
+readme = open(os.path.join(here, 'README.md')).read()
 
 setup(
     name="codemetrics",
