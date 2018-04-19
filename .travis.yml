@@ -1,0 +1,16 @@
+language: python
+
+python:
+    - "3.6"
+    - "3.7"
+
+install:
+    - pip install -r requirements.txt coverage python-coveralls
+    - python setup.py --quiet install
+
+script:
+    - python setup.py test
+
+after_success:
+    - coverage run --source metrics tests.py
+    - coveralls

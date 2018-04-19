@@ -1,47 +1,57 @@
-# Windows image file caches
-Thumbs.db
-ehthumbs.db
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
 
-# Folder config file
-Desktop.ini
+# C extensions
+*.so
 
-# Recycle Bin used on file shares
-$RECYCLE.BIN/
+# Distribution / packaging
+.Python
+env/
+venv/
+bin/
+build/
+develop-eggs/
+dist/
+eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
 
-# Windows Installer files
-*.cab
-*.msi
-*.msm
-*.msp
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
 
-# Windows shortcuts
-*.lnk
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.cache
+nosetests.xml
+coverage.xml
 
-# =========================
-# Operating System Files
-# =========================
+# Translations
+*.mo
 
-# OSX
-# =========================
+# Mr Developer
+.mr.developer.cfg
+.project
+.pydevproject
 
-.DS_Store
-.AppleDouble
-.LSOverride
+# Rope
+.ropeproject
 
-# Thumbnails
-._*
+# Django stuff:
+*.log
+*.pot
 
-# Files that might appear in the root of a volume
-.DocumentRevisions-V100
-.fseventsd
-.Spotlight-V100
-.TemporaryItems
-.Trashes
-.VolumeIcon.icns
+# Sphinx documentation
+docs/_build/
 
-# Directories potentially created on remote AFP share
-.AppleDB
-.AppleDesktop
-Network Trash Folder
-Temporary Items
-.apdisk
+# Windows setup script
+setup.bat
