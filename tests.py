@@ -138,9 +138,9 @@ class BaseReportTest(unittest.TestCase):
 
     @mock.patch('codemetrics._run', return_value=textwrap.dedent('''\
     language,filename,blank,comment,code,"github.com/AlDanial/cloc..."
-    Python,.\\codemetrics.py,55,50,130
-    Python,.\\tests.py,29,92,109
-    Python,.\\setup.py,4,2,30
+    Python,codemetrics.py,55,50,130
+    Python,tests.py,29,92,109
+    Python,setup.py,4,2,30
     ''').split('\n'), autospec=True)
     def test_get_cloc(self, run):
         """Test handling of get_cloc output."""
