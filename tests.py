@@ -24,13 +24,19 @@ class CommandTest(unittest.TestCase):
 
     def test_can_run(self):
         """wrapper call to the command return output."""
-        output = cm._run('echo Hello world!')
+        output = cm._run('echo Hello world!'.split(), shell=True)
         self.assertEqual(output, ['Hello world!', ''])
 
     def test_failure_throws(self):
         """wrapper call will throw on error."""
-        with self.assertRaisesRegex(subprocess.CalledProcessError,
-                                    "Command 'badcall' returned non-zero.*"):
+        msg = "Command 'badcall' returned non-zero.*"
+        with self.assertRaisesRegex(subprocess.CalledProcessError, msg):
+            output = cm._run('badcall', stderr=subprocess.STDOUT, shell=True)
+
+    def test_failure_throws_without_shell(self):
+        """wrapper call will throw on error."""
+        msg = "cannot find the file"
+        with self.assertRaisesRegex(FileNotFoundError, msg):
             output = cm._run('badcall', stderr=subprocess.STDOUT)
 
 
@@ -236,9 +242,9 @@ class RepositoryTestCase(unittest.TestCase):
         get_cloc.assert_called_with(report)
         get_log.assert_called_with(report)
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
-        filename,complexity,changes
-        .\\stats.py,100,2
-        .\\requirements.txt,3,1
+        filename,complexity,changes,score
+        .\\stats.py,100,2,2.0
+        .\\requirements.txt,3,1,0.0
         ''')))
         self.assertEqual(actual, expected)
 

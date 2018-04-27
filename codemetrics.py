@@ -14,6 +14,7 @@ import csv
 import pathlib as pl
 
 import pandas as pd
+import numpy as np
 
 
 log = logging.getLogger(__name__)
@@ -28,21 +29,25 @@ def get_now():
     return pd.to_datetime(dt.datetime.now())
 
 
-def _run(command, **kwargs):
+def _run(command, errors=None, **kwargs):
     """Exceute command passed as argument and return output.
 
     If the command does not return 0, will throw subprocess.CalledProcessError.
 
+    :param list(str) command: command to execute.
+    :param str errors: error policy during bytes decoding. Defaults to ignore.
+    :param dict **kwargs: additional kwargs are passed to subprocess.run().
     :return: output of the command as iter(str)
 
     """
-    if 'shell' not in kwargs:
-        kwargs['shell'] = True
-    if 'universal_newlines' not in kwargs:
-        kwargs['universal_newlines'] = True
+    if errors is None:
+        errors = 'ignore'
     try:
         log.info(command)
-        return subprocess.check_output(command, **kwargs).split('\n')
+        proc = subprocess.run(command, check=True,
+                              stdout=subprocess.PIPE, errors=errors,
+                              **kwargs)
+        return proc.stdout.split('\n')
     except subprocess.CalledProcessError as err:
         log.warning(err)
         raise
@@ -189,6 +194,23 @@ class BaseReport:
             data[key] = func(self)
         return data
 
+    def compute_score(self, input_df):
+        """Compute score on the input dataframe for ranking.
+
+        :param pandas.DataFrame input_df: data frame containing input.
+
+        Scale each column accoding to min/max policy and compute a score
+        between 0 and 1 based on the product of each column scaled value.
+
+        :rtype: pandas.DataFrame
+
+        """
+        df = input_df.copy()
+        df -= df.min(axis=0)
+        df /= df.max(axis=0)
+        df = df ** 2
+        return df.sum(axis=1)
+
 
 class AgeReport(BaseReport):
     """Reports files or components age in days."""
@@ -256,7 +278,8 @@ class HotSpotReport(BaseReport):
             c_df = data['cloc'][['filename', 'code']]
             c_df = c_df.rename(columns={'code': 'complexity'})
         ch_df = log['path'].value_counts().to_frame('changes')
-        return pd.merge(c_df, ch_df, right_index=True, left_on='filename',
-                        how='outer')
-
+        df = pd.merge(c_df, ch_df, right_index=True, left_on='filename',
+                      how='outer')
+        df['score'] = self.compute_score(df[['complexity', 'changes']])
+        return df
 
