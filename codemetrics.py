@@ -201,8 +201,13 @@ class SvnLogCollector:
                 log.warning(f'{err} processing rev {rev}')
                 path = None
             def to_date(datestr):
-                """Convert str to datetime.datetime."""
-                return du.parser.parse(datestr)
+                """Convert str to datetime.datetime.
+
+                The date returned by Subversion is UTC according to git-svn man
+                page (FIXME). So we force the timezone to UTC as well.
+                
+                """
+                return du.parser.parse(datestr).replace(tzinfo=dt.timezone.utc)
 
             entry = LogEntry(rev, values['author'], to_date(values['date']),
                              other['text-mods'], other['kind'], other['action'],

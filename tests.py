@@ -25,7 +25,7 @@ class CommandTest(unittest.TestCase):
 
     def test_can_run(self):
         """wrapper call to the command return output."""
-        output = cm._run('echo Hello world!'.split(), shell=True)
+        output = cm._run('echo Hello world!'.split())
         self.assertEqual(output, ['Hello world!', ''])
 
     def test_failure_throws(self):
@@ -119,7 +119,8 @@ class BaseReportTest(unittest.TestCase):
 
     def test_get_files(self):
         """get_files return the list of files."""
-        actual = self.report.get_files('*.py')
+        actual = self.report.get_files('*.py').\
+                 sort_values(by='path').reset_index(drop=True)
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
         path
         codemetrics.py
