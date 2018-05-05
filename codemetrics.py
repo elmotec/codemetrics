@@ -12,13 +12,16 @@ import datetime as dt
 import logging
 import csv
 import pathlib as pl
+import collections
 
 import pandas as pd
 import numpy as np
+import dateutil as du
 
 
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
+
 
 def get_now():
     """Get current time stamp as pd.TimeStamp.
@@ -26,7 +29,7 @@ def get_now():
     This is also useful to patch retrieval of the current date/time.
 
     """
-    return pd.to_datetime(dt.datetime.now())
+    return pd.to_datetime(dt.datetime.now(dt.timezone.utc), utc=True)
 
 
 def _run(command, errors=None, **kwargs):
@@ -53,14 +56,108 @@ def _run(command, errors=None, **kwargs):
         raise
 
 
-class SvnLogCollector:
-    """Collect log from Subversion."""
+def filter_mass_changes(log, quantile=None):
+    """Filters out mass change from the SCM log.
 
-    def __init__(self, path, svn_program=None, after=None):
-        """Initialize."""
+    Calculate the number of files change by revision and the threshold on the
+    distribution. Split the log in 2 sets.
+
+    :param pandas.DataFrame log: SCM log data.
+    :param float quantile: quantile that determine the threshold of files per
+                           revisions that drives the filter.
+
+    :rtype: (pandas.DataFrame, pandas.DataFrame)
+    :return: revisions that had less files than the threeshold of files and
+             log of revision that are more.
+
+    """
+    if quantile is None:
+        quantile = .975
+    by_rev = log[['revision', 'path']].groupby('revision').count().reset_index()
+    threshold = by_rev['path'].quantile(quantile)
+    ignore = by_rev[by_rev['path'] > threshold]['revision'].unique()
+    ignore_mask = log['revision'].isin(ignore)
+    return log[~ignore_mask], log[ignore_mask]
+
+
+
+class ProgressBarAdapter:
+    """Adapts interface of tqdm.tqdm in the context of SCM log retrieval.
+
+    Also acts as a context manager.
+    """
+
+    def __init__(self, pbar=None, after=None):
+        """Creates adapter
+
+        If after is specified, calls reset(after).
+
+        """
+
+        self.pbar = pbar
+        if self.pbar is not None:
+            self.pbar.unit = 'day'
+        self.today = get_now().date()
+        self.count = 0
+        self.after = None
+        if after is not None:
+            self.after = after.date()
+            self.reset(self.after)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        if self.pbar is not None:
+            self.pbar.update(self.pbar.total - self.count)
+            self.pbar.close()
+
+    def reset(self, after):
+        """Reset the progress bar total iterations from after."""
+        if after is None or self.pbar is None:
+            return
+        self.pbar.total = (self.today - after).days
+
+    def update(self, entry_date):
+        """Update the progress bar."""
+        if self.pbar is None:
+            return
+        if hasattr(entry_date, 'hour'):
+            entry_date = entry_date.date()
+        count = (entry_date - self.after).days
+        diff = count - self.count
+        if diff > 0:
+            self.pbar.update(diff)
+            self.count = count
+
+
+LogEntry = collections.namedtuple('LogEntry',
+    'revision author date textmods kind action propmods path msg'.split())
+
+
+class SvnLogCollector:
+    """Collect log from Subversion.
+
+    :param datetime.datetime after: limits the log to entries after that date.
+
+    If after is not tz-aware, the date will automatically be assumed to be UTC
+    based.
+
+    """
+
+    def __init__(self, path, svn_program=None, after=None,
+                 progress_bar=None):
+        """Initialize.
+
+        :param tqdm.tqdm progress_bar: implements tqdm.tqdm interface.
+
+        """
         self.path = path
         self.svn_program = svn_program or 'svn'
         self.after = after
+        self.progress_bar = None
+        if progress_bar is not None:
+            self.progress_bar = progress_bar
 
     def get_relative_url(self):
         """Relative URL so we can generate local paths."""
@@ -80,9 +177,8 @@ class SvnLogCollector:
         :yield: one or more csv rows.
 
         """
-
         elem = ET.fromstring(log_entry)
-        revision = elem.attrib['revision']
+        rev = elem.attrib['revision']
         values = {}
         for sub in ['author', 'date', 'msg']:
             try:
@@ -102,18 +198,16 @@ class SvnLogCollector:
             try:
                 path = str(pl.Path(path_elem.text).relative_to(relative_url))
             except (AttributeError, SyntaxError, ValueError) as err:
-                log.warning(f'{err} processing revision {revision}')
+                log.warning(f'{err} processing rev {rev}')
                 path = None
-            row = (revision,
-                   values['author'],
-                   values['date'],
-                   other['text-mods'],
-                   other['kind'],
-                   other['action'],
-                   other['prop-mods'],
-                   path,
-                   values['msg'])
-            yield row
+            def to_date(datestr):
+                """Convert str to datetime.datetime."""
+                return du.parser.parse(datestr)
+
+            entry = LogEntry(rev, values['author'], to_date(values['date']),
+                             other['text-mods'], other['kind'], other['action'],
+                             other['prop-mods'], path, values['msg'])
+            yield entry
 
     def process(self, xml, relative_url):
         """Convert output of svn log --xml -v to a csv.
@@ -143,7 +237,11 @@ class SvnLogCollector:
         if self.after:
             command += '-r {' + self.after.strftime('%Y-%m-%d') + '}:HEAD '
         xml = _run(command + self.path)
-        records = [entry for entry in self.process(xml, relative_url)]
+        records = []
+        with ProgressBarAdapter(self.progress_bar, self.after) as progress_bar:
+            for entry in self.process(xml, relative_url):
+                records.append(entry)
+                progress_bar.update(entry.date)
         columns = ['revision', 'author', 'date', 'textmods', 'kind',
                    'action', 'propmods', 'path', 'message']
         result = pd.DataFrame.from_records(records, columns=columns)
@@ -154,24 +252,28 @@ class BaseReport:
     """Base classes for the reports."""
 
     def __init__(self, path, after=None,
-                 cloc_program=None, svn_program=None):
+                 cloc_program=None, svn_program=None,
+                 progress_bar=None):
         """Initialization.
 
         :param str path: local repository to work with
         :param datetime.datetime after: limit how far back to mine SCM log.
         :param str cloc_program: name of cloc program (e.g. cloc.pl)
         :param str svn_program: name and location of svn client program.
+        :param ProgressBar progress_bar: derived from tqdm.tqdm.
 
         """
         self.path = path
         self.after = after
         self.cloc_program = cloc_program or 'cloc'
         self.svn_program = svn_program or 'svn'
+        self.progress_bar = progress_bar
 
     def get_log(self):
         """Forwards to get_svn_log."""
         collector = SvnLogCollector(self.path, after=self.after,
-                                    svn_program=self.svn_program)
+                                    svn_program=self.svn_program,
+                                    progress_bar=self.progress_bar)
         return collector.get_log()
 
     def get_cloc(self):
@@ -184,15 +286,16 @@ class BaseReport:
                     record[1] = str(pl.Path(record[1]))
                     record[2:5] = [int(val) for val in record[2:5]]
                 records.append(record[:5])
-        columns = 'language,filename,blank,comment,code'.split(',')
+        columns = 'language,path,blank,comment,code'.split(',')
         return pd.DataFrame.from_records(records[1:], columns=columns)
 
-    def collect(self, **kwargs):
-        """Collect raw data from command line passed in kwargs."""
-        data = {}
-        for key, func in kwargs.items():
-            data[key] = func(self)
-        return data
+    def get_files(self, pattern=None):
+        """Retrieve the list of the files currently in the directory."""
+        if pattern is None:
+            pattern = '**/*'
+        fnames = pl.Path(self.path).glob(pattern)
+        files = [(str(fname),) for fname in fnames]
+        return pd.DataFrame.from_records(files, columns=['path'])
 
     def compute_score(self, input_df):
         """Compute score on the input dataframe for ranking.
@@ -205,7 +308,7 @@ class BaseReport:
         :rtype: pandas.DataFrame
 
         """
-        df = input_df.copy()
+        df = input_df.astype('float').copy()
         df -= df.min(axis=0)
         df /= df.max(axis=0)
         df = df ** 2
@@ -219,28 +322,45 @@ class AgeReport(BaseReport):
         """See `BaseReport.__init__`."""
         super().__init__(path, **kwargs)
 
-    def collect(self):
-        """Collect data needed for report."""
-        return super().collect(log=BaseReport.get_log)
+    def collect(self, **kwargs):
+        """Collect SCM log needed for the report.
 
-    def generate(self, data=None):
-        """Generate report from SCM data.
-
-        If data is not passed, calls self.get_log() to retrieve the raw
-        log from SCM.
-
-        :param pandas.DataFrame data: data overrides.
+        :param dict kwargs: passed as if to self.get_log().
+        :rtype: pandas.DataFrame
 
         """
-        columns = ['path', 'kind']
-        if data is None:
-            data = self.collect()
-        assert 'log' in data
-        df = data['log'][columns + ['date']].copy()
+        return self.get_log(**kwargs)
+
+    def generate(self, log_df=None, files_df=None, keys=None, **kwargs):
+        """Generate report from SCM data.
+
+        If data is not passed, calls:
+        - self.get_log_df() to retrieve the raw log_df from SCM.
+        - self.get_files_df() to retrieve the files currently in path.
+
+        The keys are used to group the data by that key before calculating the
+        minimum age (last change).
+
+        :param pandas.DataFrame log_df: log output from SCM.
+        :param pandas.DataFrame files_df: files found in path or cloc output.
+        :param iter(str) keys: Default to file name and kind.
+        :param dict kwargs: passed as if to self.collect() if log_df missing.
+
+        """
+        if log_df is None:
+            log_df = self.get_log(**kwargs)
+        if files_df is None:
+            files_df = self.get_files(**kwargs)
+        if keys is None:
+            excluded = {'revision', 'author', 'date', 'textmods',
+                        'action', 'propmods', 'message'}
+            keys = [col for col in log_df.columns if col not in excluded]
+        df = log_df.copy()
         now = get_now()
-        df['age'] = (now - pd.to_datetime(df['date']))
-        df = df[columns + ['age']].groupby(['path']).min().reset_index()
+        df['age'] = (now - pd.to_datetime(df['date'], utc=True))
+        df = df[keys + ['age']].groupby(['path']).min().reset_index()
         df['age'] /= pd.Timedelta(1, unit='D')
+        df = pd.merge(df, files_df)
         return df
 
 
@@ -254,31 +374,32 @@ class HotSpotReport(BaseReport):
     def collect(self):
         """Collect data necessary to the generation of the report.
 
-        :return: output of the SCM log and cloc identified by the keys log
-                 and cloc respectively
-        :rtype: dict(pandas.DataFrame)
+        :return: output of the SCM log and output of cloc.
+        :rtype: 2 pandas.DataFrame
 
         """
-        return super().collect(log=BaseReport.get_log,
-                               cloc=BaseReport.get_cloc)
+        return BaseReport.get_log(), BaseReport.get_cloc()
 
-    def generate(self, data=None):
+    def generate(self, log=None, cloc=None):
         """Generate report from SCM data.
 
-        If data is not passed, calls self.get_log() to retrieve the raw
-        log from SCM.
+        If log or cloc is not passed, calls self.get_log() and self.get_cloc()
+        to retrieve the raw log from SCM.
 
-        :param dict(pandas.DataFrame) data: data overrides.
+        :param pandas.DataFrame log: output log from SCM.
+        :param pandas.DataFrame cloc: output from cloc.
+
+        :rtype: pandas.DataFrame
 
         """
-        if not data:
-            data = self.collect()
-        log = data['log']
-        if 'cloc' in data:
-            c_df = data['cloc'][['filename', 'code']]
-            c_df = c_df.rename(columns={'code': 'complexity'})
+        if log is None:
+            log = self.get_log()
+        if cloc is None:
+            cloc = self.get_cloc()
+        c_df = cloc[['path', 'code']].copy()
+        c_df = c_df.rename(columns={'code': 'complexity'})
         ch_df = log['path'].value_counts().to_frame('changes')
-        df = pd.merge(c_df, ch_df, right_index=True, left_on='filename',
+        df = pd.merge(c_df, ch_df, right_index=True, left_on='path',
                       how='outer')
         df['score'] = self.compute_score(df[['complexity', 'changes']])
         return df
