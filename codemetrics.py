@@ -56,7 +56,7 @@ def _run(command, errors=None, **kwargs):
         raise
 
 
-def filter_mass_changes(log, quantile=None):
+def exclude_mass_changes(log, quantile=None):
     """Filters out mass change from the SCM log.
 
     Calculate the number of files change by revision and the threshold on the
@@ -66,9 +66,10 @@ def filter_mass_changes(log, quantile=None):
     :param float quantile: quantile that determine the threshold of files per
                            revisions that drives the filter.
 
-    :rtype: (pandas.DataFrame, pandas.DataFrame)
-    :return: revisions that had less files than the threeshold of files and
-             log of revision that are more.
+    :rtype: pandas.DataFrame
+    :return: revisions that had less files than the threeshold calculated 
+             from the quantile specified. That is if quantile is 1.0, the
+             output will be exactly the input.
 
     """
     if quantile is None:
@@ -77,7 +78,7 @@ def filter_mass_changes(log, quantile=None):
     threshold = by_rev['path'].quantile(quantile)
     ignore = by_rev[by_rev['path'] > threshold]['revision'].unique()
     ignore_mask = log['revision'].isin(ignore)
-    return log[~ignore_mask], log[ignore_mask]
+    return log[~ignore_mask]
 
 
 
@@ -385,7 +386,7 @@ class HotSpotReport(BaseReport):
         """
         return BaseReport.get_log(), BaseReport.get_cloc()
 
-    def generate(self, log=None, cloc=None):
+    def generate(self, log=None, cloc=None, by=None):
         """Generate report from SCM data.
 
         If log or cloc is not passed, calls self.get_log() and self.get_cloc()
@@ -393,6 +394,7 @@ class HotSpotReport(BaseReport):
 
         :param pandas.DataFrame log: output log from SCM.
         :param pandas.DataFrame cloc: output from cloc.
+        :param str by: aggregation level can be path (default), another column.
 
         :rtype: pandas.DataFrame
 
@@ -401,11 +403,12 @@ class HotSpotReport(BaseReport):
             log = self.get_log()
         if cloc is None:
             cloc = self.get_cloc()
-        c_df = cloc[['path', 'code']].copy()
+        if by is None:
+            by = 'path'
+        c_df = cloc.copy()
         c_df = c_df.rename(columns={'code': 'complexity'})
-        ch_df = log['path'].value_counts().to_frame('changes')
-        df = pd.merge(c_df, ch_df, right_index=True, left_on='path',
-                      how='outer')
+        ch_df = log[by].value_counts().to_frame('changes')
+        df = pd.merge(c_df, ch_df, right_index=True, left_on=by, how='outer')
         df['score'] = self.compute_score(df[['complexity', 'changes']])
         return df
 
