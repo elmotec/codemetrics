@@ -12,6 +12,7 @@ import logging
 import textwrap
 import io
 import datetime as dt
+import sys
 
 import pandas as pd
 import pandas.testing as pdt
@@ -25,7 +26,8 @@ class CommandTest(unittest.TestCase):
 
     def test_can_run(self):
         """wrapper call to the command return output."""
-        output = cm._run('echo Hello world!'.split())
+        is_windows = sys.platform.startswith('win')
+        output = cm._run('echo Hello world!'.split(), shell=is_windows)
         self.assertEqual(output, ['Hello world!', ''])
 
     def test_failure_throws(self):
@@ -252,7 +254,7 @@ class RepositoryTestCase(unittest.TestCase):
 
     def get_cloc_df():
         return pd.read_csv(io.StringIO(textwrap.dedent('''
-        language,path,blank,comment,code,"github.com/AlDanial/cloc"
+        language,path,blank,comment,code
         Python,stats.py,28,84,100
         Unknown,requirements.txt,0,0,3
         ''')))
@@ -378,9 +380,9 @@ class HotSpotReportTestCase(RepositoryTestCase):
         get_cloc.assert_called_with(self.report)
         get_log.assert_called_with(self.report)
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
-        path,complexity,changes,score
-        stats.py,100,2,2.0
-        requirements.txt,3,1,0.0
+        language,path,blank,comment,complexity,changes,score
+        Python,stats.py,28,84,100,2,2.0
+        Unknown,requirements.txt,0,0,3,1,0.0
         ''')))
         self.assertEqual(actual, expected)
 
