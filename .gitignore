@@ -55,3 +55,7 @@ docs/_build/
 
 # Windows setup script
 setup.bat
+
+*.exe
+*.html
+*.json
