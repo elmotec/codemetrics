@@ -81,7 +81,6 @@ def exclude_mass_changes(log, quantile=None):
     return log[~ignore_mask]
 
 
-
 class ProgressBarAdapter:
     """Adapts interface of tqdm.tqdm in the context of SCM log retrieval.
 
@@ -386,7 +385,7 @@ class HotSpotReport(BaseReport):
         """
         return BaseReport.get_log(), BaseReport.get_cloc()
 
-    def generate(self, log=None, cloc=None, by=None):
+    def generate(self, log=None, cloc=None, by=None, count_one_change_per=None):
         """Generate report from SCM data.
 
         If log or cloc is not passed, calls self.get_log() and self.get_cloc()
@@ -395,6 +394,8 @@ class HotSpotReport(BaseReport):
         :param pandas.DataFrame log: output log from SCM.
         :param pandas.DataFrame cloc: output from cloc.
         :param str by: aggregation level can be path (default), another column.
+        :param list(str) count_one_change_per: allows one to count one change
+            by day or one change per JIRA instead of one change by revision.
 
         :rtype: pandas.DataFrame
 
@@ -405,9 +406,13 @@ class HotSpotReport(BaseReport):
             cloc = self.get_cloc()
         if by is None:
             by = 'path'
+        if count_one_change_per is None:
+            count_one_change_per = ['revision']
         c_df = cloc.copy()
         c_df = c_df.rename(columns={'code': 'complexity'})
-        ch_df = log[by].value_counts().to_frame('changes')
+        columns = count_one_change_per + [by]
+        ch_df = log[columns].drop_duplicates()[by].\
+                value_counts().to_frame('changes')
         df = pd.merge(c_df, ch_df, right_index=True, left_on=by, how='outer')
         df['score'] = self.compute_score(df[['complexity', 'changes']])
         return df

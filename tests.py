@@ -386,6 +386,20 @@ class HotSpotReportTestCase(RepositoryTestCase):
         ''')))
         self.assertEqual(actual, expected)
 
+    @mock.patch('codemetrics.BaseReport.get_cloc', autospec=True,
+                return_value=RepositoryTestCase.get_cloc_df())
+    def test_hot_spot_with_custom_change_metric(self, get_cloc):
+        """Generate report with a different change metric than revision."""
+        log = RepositoryTestCase.get_log_df()
+        log['day'] = dt.date(2018, 2, 24)  # force all rows to the same date.
+        actual = self.report.generate(log=log, count_one_change_per=['day'])
+        expected = pd.read_csv(io.StringIO(textwrap.dedent('''
+        language,path,blank,comment,complexity,changes,score
+        Python,stats.py,28,84,100,1,1.0
+        Unknown,requirements.txt,0,0,3,1,0.0
+        ''')))
+        self.assertEqual(actual, expected)
+
 
 if __name__ == '__main__':
     unittest.main()
