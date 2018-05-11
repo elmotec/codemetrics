@@ -383,7 +383,7 @@ class HotSpotReport(BaseReport):
         return BaseReport.get_log(), BaseReport.get_cloc()
 
     def generate(self, log=None, cloc=None, by=None, count_one_change_per=None):
-        """Generate report from SCM data.
+        """Generate report from SCM and cloc data.
 
         If log or cloc is not passed, calls self.get_log() and self.get_cloc()
         to retrieve the raw log from SCM.
@@ -413,4 +413,53 @@ class HotSpotReport(BaseReport):
         df = pd.merge(c_df, ch_df, right_index=True, left_on=by, how='outer')
         df['score'] = self.compute_score(df[['complexity', 'changes']])
         return df
+
+
+class CoChangeReport(BaseReport):
+    """Identifies files or component that change together."""
+
+    def __init__(self, path, **kwargs):
+        """See `BaseReport.__init__`."""
+        super().__init__(path, **kwargs)
+
+    def collect(self):
+        """Collect data necessary to the generation of the report.
+
+        :return: output of the SCM log
+        :rtype: pandas.DataFrame
+
+        """
+        return BaseReport.get_log()
+
+    def generate(self, log=None, by=None, on=None):
+        """Generate report from SCM log data.
+
+        If log is not passed, calls self.get_log() to retrieve the raw log
+        from SCM.
+
+        :param pandas.DataFrame log: output log from SCM.
+        :param str by: aggregation level. Defaults to path.
+        :param str on: Field name to join/merge on. Defaults to revision.
+
+        :rtype: pandas.DataFrame
+
+        """
+        if log is None:
+            log = self.get_log()
+        if by is None:
+            by = 'path'
+        if on is None:
+            on = 'revision'
+        df = log[[on, by]]
+        sj = pd.merge(df, df, on=on)
+        sj = sj.rename(columns={by + '_x': 'primary', by + '_y': 'secondary'})
+        result = sj.groupby(['primary', 'secondary']).count().reset_index()
+        result = pd.merge(result, df.groupby('path').count(),
+                          right_index=True, left_on='primary')
+        result = result[result['primary'] != result['secondary']].\
+                    rename(columns={on + '_x': 'cochanges',
+                                    on + '_y': 'changes'}).\
+                                            reset_index(drop=True)
+        result['coupling'] = result['cochanges'] / result['changes']
+        return result
 

@@ -418,5 +418,23 @@ class HotSpotReportTestCase(SimpleRepositoryFixture):
         self.assertEqual(actual, expected)
 
 
+class CoChangeReportTestCase(SimpleRepositoryFixture):
+    """CoChangeReport test case."""
+
+    def setUp(self):
+        super().setUp()
+        self.report = cm.CoChangeReport(self.path)
+
+    def test_co_change_report(self):
+        """Simple CoChangeReport usage."""
+        actual = self.report.generate(log=SimpleRepositoryFixture.get_log_df())
+        expected = pd.read_csv(io.StringIO(textwrap.dedent('''
+        primary,secondary,cochanges,changes,coupling
+        requirements.txt,stats.py,1,1,1.0
+        stats.py,requirements.txt,1,2,0.5
+        ''')))
+        self.assertEqual(actual, expected)
+
+
 if __name__ == '__main__':
     unittest.main()

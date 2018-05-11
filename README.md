@@ -17,9 +17,8 @@ It can generate reports based on Adam Tornhill awesome books.
 Installation
 ============
 
-```
-pip install codemetrics
-```
+The package is not on https://pypi.org yet. Download the zip file from its
+home page and place it in a directory referenced by $PYTHONPATH
 
 
 Recipes
