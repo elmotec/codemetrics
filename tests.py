@@ -235,7 +235,7 @@ class BaseReportTest(unittest.TestCase):
         self.assertEqual(actual, expected)
 
 
-class RepositoryTestCase(unittest.TestCase):
+class SimpleRepositoryFixture(unittest.TestCase):
     """Given a repository of a few records."""
 
     def get_log_df():
@@ -264,7 +264,24 @@ class RepositoryTestCase(unittest.TestCase):
         self.path = '.'
 
 
-class AgeReportTestCase(RepositoryTestCase):
+class RepositoryTestCase(SimpleRepositoryFixture):
+    """Test non-report functionalities."""
+
+    def test_get_mass_changes(self):
+        """Retrieve mass changes easily."""
+        log = SimpleRepositoryFixture.get_log_df()
+        threshold = int(log[['revision', 'path']].groupby('revision').
+                        count().quantile(.5))
+        self.assertEqual(threshold, 1)
+        actual = cm.get_mass_changesets(log, threshold)
+        expected = pd.read_csv(io.StringIO(textwrap.dedent('''
+        revision,path_count,message
+        1018,2,modified
+        ''')))
+        self.assertEqual(actual, expected)
+
+
+class AgeReportTestCase(SimpleRepositoryFixture):
     """Extends the repository scaffholding with an age report."""
 
     def setUp(self):
@@ -272,16 +289,16 @@ class AgeReportTestCase(RepositoryTestCase):
         self.report = cm.AgeReport(self.path)
 
     @mock.patch('codemetrics.BaseReport.get_log', autospec=True,
-                return_value=RepositoryTestCase.get_log_df())
+                return_value=SimpleRepositoryFixture.get_log_df())
     def test_age_report_uses_get_log(self, get_log):
         """The age report uses get_log by default to get the raw SCM data."""
         self.report.generate()
         get_log.assert_called_with(self.report)
 
     @mock.patch('codemetrics.BaseReport.get_log', autospec=True,
-                return_value=RepositoryTestCase.get_log_df())
+                return_value=SimpleRepositoryFixture.get_log_df())
     @mock.patch('codemetrics.BaseReport.get_files', autospec=True,
-                return_value=RepositoryTestCase.get_files_df())
+                return_value=SimpleRepositoryFixture.get_files_df())
     def test_age_report_uses_get_files(self, get_files, get_logs):
         """The age report uses get_files by default to get the list of files."""
         self.report.generate()
@@ -291,7 +308,7 @@ class AgeReportTestCase(RepositoryTestCase):
                 return_value=pd.to_datetime(dt.datetime(2018, 2, 28), utc=True))
     def test_age_report_with_custom_raw_data(self, now):
         """The age report generates data based on the SCM log data"""
-        actual = self.report.generate(RepositoryTestCase.get_log_df())
+        actual = self.report.generate(SimpleRepositoryFixture.get_log_df())
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
         path,kind,age
         requirements.txt,file,3.531817
@@ -306,7 +323,7 @@ class AgeReportTestCase(RepositoryTestCase):
         path
         requirements.txt
         ''')))
-        actual = self.report.generate(RepositoryTestCase.get_log_df(), files_df)
+        actual = self.report.generate(SimpleRepositoryFixture.get_log_df(), files_df)
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
         path,kind,age
         requirements.txt,file,3.531817
@@ -314,7 +331,7 @@ class AgeReportTestCase(RepositoryTestCase):
         self.assertEqual(actual, expected)
 
     @mock.patch('codemetrics.BaseReport.get_files', autospec=True,
-                return_value=RepositoryTestCase.get_files_df())
+                return_value=SimpleRepositoryFixture.get_files_df())
     @mock.patch('codemetrics._run', side_effect=[
         ['Relative URL: ^/project/trunk'],
         textwrap.dedent('''
@@ -345,9 +362,9 @@ class AgeReportTestCase(RepositoryTestCase):
     @mock.patch('codemetrics.get_now', autospec=True,
                 return_value=pd.to_datetime(dt.datetime(2018, 2, 28), utc=True))
     @mock.patch('codemetrics.BaseReport.get_files', autospec=True,
-                return_value=RepositoryTestCase.get_files_df())
+                return_value=SimpleRepositoryFixture.get_files_df())
     @mock.patch('codemetrics.BaseReport.get_log', autospec=True,
-                return_value=RepositoryTestCase.get_log_df())
+                return_value=SimpleRepositoryFixture.get_log_df())
     def test_age_report_enriched_with_component(self, get_log, get_files,
                                                 get_now):
         """Allow one to enrich the log before generating the age report."""
@@ -362,7 +379,7 @@ class AgeReportTestCase(RepositoryTestCase):
         self.assertEqual(actual, expected)
 
 
-class HotSpotReportTestCase(RepositoryTestCase):
+class HotSpotReportTestCase(SimpleRepositoryFixture):
     """Extends the repository scaffholding with a hot spot report."""
 
     def setUp(self):
@@ -370,9 +387,9 @@ class HotSpotReportTestCase(RepositoryTestCase):
         self.report = cm.HotSpotReport(self.path)
 
     @mock.patch('codemetrics.BaseReport.get_log', autospec=True,
-                return_value=RepositoryTestCase.get_log_df())
+                return_value=SimpleRepositoryFixture.get_log_df())
     @mock.patch('codemetrics.BaseReport.get_cloc', autospec=True,
-                return_value=RepositoryTestCase.get_cloc_df())
+                return_value=SimpleRepositoryFixture.get_cloc_df())
     def test_hot_spot_report(self, get_cloc, get_log):
         """Generate a report to find hot spots."""
         self.report.after = dt.datetime(2018, 2, 26)
@@ -387,10 +404,10 @@ class HotSpotReportTestCase(RepositoryTestCase):
         self.assertEqual(actual, expected)
 
     @mock.patch('codemetrics.BaseReport.get_cloc', autospec=True,
-                return_value=RepositoryTestCase.get_cloc_df())
+                return_value=SimpleRepositoryFixture.get_cloc_df())
     def test_hot_spot_with_custom_change_metric(self, get_cloc):
         """Generate report with a different change metric than revision."""
-        log = RepositoryTestCase.get_log_df()
+        log = SimpleRepositoryFixture.get_log_df()
         log['day'] = dt.date(2018, 2, 24)  # force all rows to the same date.
         actual = self.report.generate(log=log, count_one_change_per=['day'])
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''

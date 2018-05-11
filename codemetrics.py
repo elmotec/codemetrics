@@ -56,29 +56,26 @@ def _run(command, errors=None, **kwargs):
         raise
 
 
-def exclude_mass_changes(log, quantile=None):
-    """Filters out mass change from the SCM log.
+def get_mass_changesets(log, min_changes):
+    """Extract mass change sets from the SCM log.
 
-    Calculate the number of files change by revision and the threshold on the
-    distribution. Split the log in 2 sets.
+    Calculate the number of files changed by each revision and extract that
+    list according to the threshold.
 
     :param pandas.DataFrame log: SCM log data.
-    :param float quantile: quantile that determine the threshold of files per
-                           revisions that drives the filter.
+    :param int min_changes: threshold of changes above which a revision is
+                            included in the output.
 
     :rtype: pandas.DataFrame
-    :return: revisions that had less files than the threeshold calculated 
-             from the quantile specified. That is if quantile is 1.0, the
-             output will be exactly the input.
+    :return: revisions that had more files changed than the threeshold.
 
     """
-    if quantile is None:
-        quantile = .975
-    by_rev = log[['revision', 'path']].groupby('revision').count().reset_index()
-    threshold = by_rev['path'].quantile(quantile)
-    ignore = by_rev[by_rev['path'] > threshold]['revision'].unique()
-    ignore_mask = log['revision'].isin(ignore)
-    return log[~ignore_mask]
+    by_rev = log[['revision', 'path']].groupby('revision').count()
+    by_rev.rename(columns={'path': 'path_count'}, inplace=True)
+    by_rev.reset_index(inplace=True)
+    massive = pd.merge(by_rev[by_rev['path_count'] > min_changes],
+                       log[['revision', 'message']].drop_duplicates())
+    return massive
 
 
 class ProgressBarAdapter:

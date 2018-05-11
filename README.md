@@ -55,3 +55,18 @@ hspots.set_index(['component']).sort_values(by='score', ascending=False)
 Will order hotspots at the component level in descending order based on the 
 complexity and the number of changes (see score column).
 
+Exclude massive changesets
+--------------------------
+
+```
+age_report = cm.AgeReport('.')
+log = age_report.get_log()
+threshold = int(log[['revision', 'path']].groupby('revision').
+                sum().quantile(.99))
+massive = get_massive_changesets(log, threshold)
+log_ex_massive = log[~log['revision'].isin(massive['revision'])]
+```
+
+Will exclude changesets with a number of path changed in excess of the 99%
+percentile.
+
