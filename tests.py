@@ -87,10 +87,11 @@ class BaseReportTest(unittest.TestCase):
         <?xml version="1.0" encoding="UTF-8"?>
         <log>''')
         for date in dates:
-            retval += textwrap.dedent(f'''
+            datestr = date.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+            retval += textwrap.dedent('''
             <logentry revision="1018">
             <author>jlecomte</author>
-            <date>{date.strftime('%Y-%m-%dT%H:%M:%S.%fZ')}</date>
+            <date>{}</date>
             <paths>
             <path text-mods="true" kind="file" action="M"
                prop-mods="false">/project/trunk/stats.py</path>
@@ -98,7 +99,7 @@ class BaseReportTest(unittest.TestCase):
                prop-mods="false">/project/trunk/requirements.txt</path>
             </paths>
             <msg>Added joblib to requirements.txt</msg>
-            </logentry>''')
+            </logentry>'''.format(datestr))
         retval += textwrap.dedent('''
         </log>
         ''')
