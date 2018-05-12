@@ -45,22 +45,27 @@ Source Control Management (SCM) repository and hopefully gain insight from it.
 
 The reports available for now are:
 
-- AgeReport: help see what files/component has not changed in a while or who
-             is most familiar with a particular set of files.
-- HotSpotReport: combines line count from cloc with SCM information to identify
-                 files/components that are complex (many lines of code) and that
-                 change often. There are ways to post process the SCM log so
-                 that you adjust for mass edits or intraday changes.
-- CoChangeReport: help identify what file/component changes when another part
-                  of the code base change. This is useful to identify hidden
-                  dependencies.
+- AgeReport: 
+    help see what files/component has not changed in a while or who is most
+    familiar with a particular set of files.
+
+- HotSpotReport:
+    combines line count from cloc with SCM information to identify
+    files/components that are complex (many lines of code) and that
+    change often. There are ways to post process the SCM log so
+    that you adjust for mass edits or intraday changes.
+
+- CoChangeReport:
+    help identify what file/component changes when another part
+    of the code base change. This is useful to identify hidden
+    dependencies.
 
 
 Recipes
 -------
 
 Derive components from path
----------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ::
 
@@ -74,7 +79,7 @@ For more advanced manipulation like extractions, see `Pandas documentation`_
 
 
 Aggregate hotspots by component
--------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ::
 
@@ -91,8 +96,9 @@ Aggregate hotspots by component
 Will order hotspots at the component level in descending order based on the 
 complexity and the number of changes (see score column).
 
+
 Exclude massive changesets
---------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ::
 
