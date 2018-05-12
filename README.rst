@@ -10,9 +10,6 @@
     :target: https://travis-ci.org/elmotec/codemetrics
     :alt: Build Status
 
-.. image:: https://img.shields.io/pypi/dm/codemetrics.svg
-    :alt: PyPi
-    :target: https://pypi.python.org/pypi/codemetrics
 
 ============
 Code Metrics

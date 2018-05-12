@@ -14,7 +14,7 @@ setup(
     description='SCM mining utility classes',
     long_description=readme,
     long_description_content_type='text/rst',
-    version="0.5",
+    version="0.5.1",
     author="Jérôme Lecomte",
     author_email="elmotec@gmx.com",
     license="MIT",

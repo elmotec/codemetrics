@@ -18,7 +18,7 @@ import pandas as pd
 import numpy as np
 import dateutil as du
 
-__version__ = 0.5
+__version__ = '0.5.1'
 
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
