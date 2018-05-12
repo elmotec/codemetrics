@@ -1,5 +1,3 @@
-This is a work in progress.
-
 Code Metrics
 ============
 
@@ -17,8 +15,28 @@ It can generate reports based on Adam Tornhill awesome books.
 Installation
 ============
 
-The package is not on https://pypi.org yet. Download the zip file from its
-home page and place it in a directory referenced by $PYTHONPATH
+To install codemetrics, simply use pip:
+
+```pip install codemetrics```
+
+
+Usage
+=====
+
+This is a simple tool that makes it easy to retrieve information from your
+Source Control Management (SCM) repository and hopefully gain insight from it.
+
+The reports available for now are:
+
+- AgeReport: help see what files/component has not changed in a while or who
+             is most familiar with a particular set of files.
+- HotSpotReport: combines line count from cloc with SCM information to identify
+                 files/components that are complex (many lines of code) and that
+                 change often. There are ways to post process the SCM log so
+                 that you adjust for mass edits or intraday changes.
+- CoChangeReport: help identify what file/component changes when another part
+                  of the code base change. This is useful to identify hidden
+                  dependencies.
 
 
 Recipes
