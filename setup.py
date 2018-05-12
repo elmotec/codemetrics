@@ -7,13 +7,13 @@ import os
 from setuptools import setup
 
 here = os.path.abspath(os.path.dirname(__file__))
-readme = open(os.path.join(here, 'README.md')).read()
+readme = open(os.path.join(here, 'README.rst')).read()
 
 setup(
     name="codemetrics",
     description='SCM mining utility classes',
     long_description=readme,
-    long_description_content_type='text/markdown',
+    long_description_content_type='text/rst',
     version="0.5",
     author="Jérôme Lecomte",
     author_email="elmotec@gmx.com",
