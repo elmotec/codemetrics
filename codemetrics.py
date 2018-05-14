@@ -75,7 +75,7 @@ def get_mass_changesets(log, min_changes):
     by_rev.rename(columns={'path': 'path_count'}, inplace=True)
     by_rev.reset_index(inplace=True)
     massive = pd.merge(by_rev[by_rev['path_count'] > min_changes],
-                       log[['revision', 'message']].drop_duplicates())
+                       log[['revision', 'message', 'author']].drop_duplicates())
     return massive
 
 
@@ -203,7 +203,7 @@ class SvnLogCollector:
 
                 The date returned by Subversion is UTC according to git-svn man
                 page (FIXME). So we force the timezone to UTC as well.
-                
+
                 """
                 return du.parser.parse(datestr).replace(tzinfo=dt.timezone.utc)
 
@@ -314,8 +314,8 @@ class BaseReport:
         df = input_df.astype('float').copy()
         df -= df.min(axis=0)
         df /= df.max(axis=0)
-        df = df ** 2
-        return df.sum(axis=1)
+        df = df.fillna(1.0) ** 2
+        return df
 
 
 class AgeReport(BaseReport):
@@ -412,7 +412,9 @@ class HotSpotReport(BaseReport):
         ch_df = log[columns].drop_duplicates()[by].\
                 value_counts().to_frame('changes')
         df = pd.merge(c_df, ch_df, right_index=True, left_on=by, how='outer')
-        df['score'] = self.compute_score(df[['complexity', 'changes']])
+        df[['complexity_score', 'changes_score']] = \
+                self.compute_score(df[['complexity', 'changes']])
+        df['score'] = df[['complexity_score', 'changes_score']].sum(axis=1)
         return df
 
 
@@ -451,16 +453,17 @@ class CoChangeReport(BaseReport):
             by = 'path'
         if on is None:
             on = 'revision'
-        df = log[[on, by]]
+        df = log[[on, by]].drop_duplicates()
         sj = pd.merge(df, df, on=on)
         sj = sj.rename(columns={by + '_x': 'primary', by + '_y': 'secondary'})
-        result = sj.groupby(['primary', 'secondary']).count().reset_index()
-        result = pd.merge(result, df.groupby('path').count(),
-                          right_index=True, left_on='primary')
-        result = result[result['primary'] != result['secondary']].\
-                    rename(columns={on + '_x': 'cochanges',
-                                    on + '_y': 'changes'}).\
-                                            reset_index(drop=True)
-        result['coupling'] = result['cochanges'] / result['changes']
-        return result
+        sj.drop_duplicates(inplace=True)  # FIXME: needs a test
+        sj = sj.groupby(['primary', 'secondary']).count().reset_index()
+        result = pd.merge(sj[sj['primary'] == sj['secondary']][['primary', on]],
+                          sj[sj['primary'] != sj['secondary']],
+                          on='primary', suffixes=['_changes', '_cochanges'])
+        result['coupling'] = result[on + '_cochanges'] / result[on + '_changes']
+        return result[['primary', 'secondary', on + '_cochanges',
+                       on + '_changes', 'coupling']].\
+                            sort_values(by='coupling', ascending=False)
+
 

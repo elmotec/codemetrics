@@ -64,6 +64,16 @@ The reports available for now are:
 Recipes
 -------
 
+Date from timestamp
+~~~~~~~~~~~~~~~~~~~
+
+::
+
+    df['day'] = df['date'].apply(lambda ts: pd.to_datetime(ts.date()))
+
+There is probably a better way. Seems pretty slow.
+
+
 Derive components from path
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -89,7 +89,7 @@ class BaseReportTest(unittest.TestCase):
         for date in dates:
             retval += textwrap.dedent(f'''
             <logentry revision="1018">
-            <author>jlecomte</author>
+            <author>elmotec</author>
             <date>{date.strftime('%Y-%m-%dT%H:%M:%S.%fZ')}</date>
             <paths>
             <path text-mods="true" kind="file" action="M"
@@ -140,8 +140,8 @@ class BaseReportTest(unittest.TestCase):
         call.assert_called_with('svn log --xml -v .')
         expected = BaseReportTest.read_svn_log(textwrap.dedent('''
         revision,author,date,textmods,kind,action,propmods,path,message
-        1018,jlecomte,2018-02-24T11:14:11.000000Z,true,file,M,false,stats.py,Added joblib to requirements.txt
-        1018,jlecomte,2018-02-24T11:14:11.000000Z,true,file,M,false,requirements.txt,Added joblib to requirements.txt
+        1018,elmotec,2018-02-24T11:14:11.000000Z,true,file,M,false,stats.py,Added joblib to requirements.txt
+        1018,elmotec,2018-02-24T11:14:11.000000Z,true,file,M,false,requirements.txt,Added joblib to requirements.txt
         '''))
         self.assertEqual(df, expected)
 
@@ -170,7 +170,7 @@ class BaseReportTest(unittest.TestCase):
     <?xml version="1.0" encoding="UTF-8"?>
     <log>
     <logentry revision="1018">
-    <author>jlecomte</author>
+    <author>elmotec</author>
     <date>2018-02-24T11:14:11.000000Z</date>
     <paths><path kind="file" action="M">/project/trunk/stats.py</path></paths>
     <msg/>
@@ -181,7 +181,7 @@ class BaseReportTest(unittest.TestCase):
         """Simple svn call returns pandas.DataFrame."""
         expected = BaseReportTest.read_svn_log(textwrap.dedent('''
         revision,author,date,textmods,kind,action,propmods,path,message
-        1018,jlecomte,2018-02-24T11:14:11.000000Z,,file,M,,stats.py,
+        1018,elmotec,2018-02-24T11:14:11.000000Z,,file,M,,stats.py,
         '''))
         df = self.report.get_log()
         call.assert_called_with('svn log --xml -v .')
@@ -241,9 +241,9 @@ class SimpleRepositoryFixture(unittest.TestCase):
     def get_log_df():
         return pd.read_csv(io.StringIO(textwrap.dedent('''
         revision,author,date,textmods,kind,action,propmods,path,message
-        1016,jlecomte,2018-02-26T10:28:00Z,true,file,M,false,stats.py,modified again
-        1018,jlecomte,2018-02-24T11:14:11Z,true,file,M,false,stats.py,modified
-        1018,jlecomte,2018-02-24T11:14:11Z,true,file,M,false,requirements.txt,modified''')))
+        1016,elmotec,2018-02-26T10:28:00Z,true,file,M,false,stats.py,modified again
+        1018,elmotec,2018-02-24T11:14:11Z,true,file,M,false,stats.py,modified
+        1018,elmotec,2018-02-24T11:14:11Z,true,file,M,false,requirements.txt,modified''')))
 
     def get_files_df():
         return pd.read_csv(io.StringIO(textwrap.dedent('''
@@ -275,8 +275,8 @@ class RepositoryTestCase(SimpleRepositoryFixture):
         self.assertEqual(threshold, 1)
         actual = cm.get_mass_changesets(log, threshold)
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
-        revision,path_count,message
-        1018,2,modified
+        revision,path_count,message,author
+        1018,2,modified,elmotec
         ''')))
         self.assertEqual(actual, expected)
 
@@ -397,9 +397,9 @@ class HotSpotReportTestCase(SimpleRepositoryFixture):
         get_cloc.assert_called_with(self.report)
         get_log.assert_called_with(self.report)
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
-        language,path,blank,comment,complexity,changes,score
-        Python,stats.py,28,84,100,2,2.0
-        Unknown,requirements.txt,0,0,3,1,0.0
+        language,path,blank,comment,complexity,changes,complexity_score,changes_score,score
+        Python,stats.py,28,84,100,2,1.0,1.0,2.0
+        Unknown,requirements.txt,0,0,3,1,0.0,0.0,0.0
         ''')))
         self.assertEqual(actual, expected)
 
@@ -411,9 +411,9 @@ class HotSpotReportTestCase(SimpleRepositoryFixture):
         log['day'] = dt.date(2018, 2, 24)  # force all rows to the same date.
         actual = self.report.generate(log=log, count_one_change_per=['day'])
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
-        language,path,blank,comment,complexity,changes,score
-        Python,stats.py,28,84,100,1,1.0
-        Unknown,requirements.txt,0,0,3,1,0.0
+        language,path,blank,comment,complexity,changes,complexity_score,changes_score,score
+        Python,stats.py,28,84,100,1,1.0,1.0,2.0
+        Unknown,requirements.txt,0,0,3,1,0.0,1.0,1.0
         ''')))
         self.assertEqual(actual, expected)
 
@@ -429,9 +429,22 @@ class CoChangeReportTestCase(SimpleRepositoryFixture):
         """Simple CoChangeReport usage."""
         actual = self.report.generate(log=SimpleRepositoryFixture.get_log_df())
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
-        primary,secondary,cochanges,changes,coupling
+        primary,secondary,revision_cochanges,revision_changes,coupling
         requirements.txt,stats.py,1,1,1.0
         stats.py,requirements.txt,1,2,0.5
+        ''')))
+        self.assertEqual(actual, expected)
+
+    def test_co_change_report_on_day(self):
+        """Check handling of on with the date as a day in argument."""
+        log = SimpleRepositoryFixture.get_log_df()
+        # Same day to force results different from test_co_change_report.
+        log['day'] = pd.to_datetime('2018-02-24')
+        actual = self.report.generate(log=log, on='day')
+        expected = pd.read_csv(io.StringIO(textwrap.dedent('''
+        primary,secondary,day_cochanges,day_changes,coupling
+        requirements.txt,stats.py,1,1,1.0
+        stats.py,requirements.txt,1,1,1.0
         ''')))
         self.assertEqual(actual, expected)
 
