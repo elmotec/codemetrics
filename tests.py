@@ -5,14 +5,15 @@
 """Tests for codemetrics."""
 
 
+import datetime as dt
+import io
+import logging
+import subprocess
+import sys
+import textwrap
 import unittest
 import unittest.mock as mock
-import subprocess
-import logging
-import textwrap
-import io
-import datetime as dt
-import sys
+import warnings
 
 import pandas as pd
 import pandas.testing as pdt
@@ -238,6 +239,7 @@ class BaseReportTest(unittest.TestCase):
 class SimpleRepositoryFixture(unittest.TestCase):
     """Given a repository of a few records."""
 
+    @staticmethod
     def get_log_df():
         return pd.read_csv(io.StringIO(textwrap.dedent('''
         revision,author,date,textmods,kind,action,propmods,path,message
@@ -245,6 +247,7 @@ class SimpleRepositoryFixture(unittest.TestCase):
         1018,elmotec,2018-02-24T11:14:11Z,true,file,M,false,stats.py,modified
         1018,elmotec,2018-02-24T11:14:11Z,true,file,M,false,requirements.txt,modified''')))
 
+    @staticmethod
     def get_files_df():
         return pd.read_csv(io.StringIO(textwrap.dedent('''
         path
@@ -252,6 +255,7 @@ class SimpleRepositoryFixture(unittest.TestCase):
         requirements.txt
         ''')))
 
+    @staticmethod
     def get_cloc_df():
         return pd.read_csv(io.StringIO(textwrap.dedent('''
         language,path,blank,comment,code
@@ -376,6 +380,20 @@ class AgeReportTestCase(SimpleRepositoryFixture):
         requirements.txt,file,blah,3.531817
         stats.py,file,blah,1.563889
         ''')))
+        self.assertEqual(actual, expected)
+
+    @mock.patch('codemetrics.get_now', autospec=True,
+                return_value=pd.to_datetime(dt.datetime(2018, 2, 28), utc=True))
+    @mock.patch('codemetrics.BaseReport.get_files', autospec=True,
+                return_value=pd.read_csv(io.StringIO('path\ndifferent.py\n')))
+    def test_irrelvant_files_df_is_ignored(self, files_df, get_now):
+        """Ignore files_df if nothing in it is relevant"""
+        log = SimpleRepositoryFixture.get_log_df()
+        actual = self.report.generate(log)
+        expected = pd.read_csv(io.StringIO(textwrap.dedent('''
+        path,kind,age
+        requirements.txt,file,3.531817
+        stats.py,file,1.563889''')))
         self.assertEqual(actual, expected)
 
 

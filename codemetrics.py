@@ -18,7 +18,7 @@ import pandas as pd
 import numpy as np
 import dateutil as du
 
-__version__ = '0.6'
+__version__ = '0.6.1'
 
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
@@ -363,8 +363,11 @@ class AgeReport(BaseReport):
         df['age'] = (now - pd.to_datetime(df['date'], utc=True))
         df = df[keys + ['age']].groupby(['path']).min().reset_index()
         df['age'] /= pd.Timedelta(1, unit='D')
-        df = pd.merge(df, files_df)
-        return df
+        rv = pd.merge(df, files_df)
+        if len(rv) == 0 and len(df) > 0 and len(files_df) > 0:
+            log.info('skipped merge: files_df argument is not relevant')
+            rv = df
+        return rv
 
 
 class HotSpotReport(BaseReport):
