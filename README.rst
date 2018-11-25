@@ -15,6 +15,8 @@
 Code Metrics
 ============
 
+Mine your SCM for insight on your software.
+
 Code metrics is a simple Python module that leverage the libraries below to 
 generate insight from a source control management (SCM) tool:
 
@@ -46,19 +48,18 @@ Source Control Management (SCM) repository and hopefully gain insight from it.
 The reports available for now are:
 
 - AgeReport: 
-    help see what files/component has not changed in a while or who is most
+    What files/component has not changed in a while or who is most
     familiar with a particular set of files.
 
 - HotSpotReport:
-    combines line count from cloc with SCM information to identify
+    Combines line count from cloc with SCM information to identify
     files/components that are complex (many lines of code) and that
     change often. There are ways to post process the SCM log so
     that you adjust for mass edits or intraday changes.
 
 - CoChangeReport:
-    help identify what file/component changes when another part
-    of the code base change. This is useful to identify hidden
-    dependencies.
+    Identify what file/component changes when another part
+    of the code base change. This is useful to identify dependencies.
 
 
 Recipes
@@ -88,7 +89,7 @@ folder exists, it will show N/A.
 For more advanced manipulation like extractions, see `Pandas documentation`_
 
 
-Aggregate hotspots by component
+Aggregate hot_spots by component
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 ::
@@ -103,7 +104,7 @@ Aggregate hotspots by component
     hspots.set_index(['component']).sort_values(by='score', ascending=False)
 
 
-Will order hotspots at the component level in descending order based on the 
+Will order hot_spots at the component level in descending order based on the
 complexity and the number of changes (see score column).
 
 
@@ -128,6 +129,17 @@ License
 
 Licensed under the term of `MIT License`_. See attached file LICENSE.txt.
 
+Features
+--------
+
+* TODO
+
+Credits
+-------
+
+This package was created with Cookiecutter_.
+
+.. _Cookiecutter: https://github.com/audreyr/cookiecutter
 .. _lizard: https://github.com/terryyin/lizard
 .. _pandas: https://pandas.pydata.org/
 .. _cloc: http://cloc.sourceforge.net/

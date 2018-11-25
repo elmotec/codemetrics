@@ -1,18 +1,28 @@
 #!/usr/bin/env python
-# encoding: utf-8
+# -*- coding: utf-8 -*-
 
-"""Packaging script."""
+"""The setup script."""
 
 import os
-from setuptools import setup
+import setuptools
 
 here = os.path.abspath(os.path.dirname(__file__))
-readme = open(os.path.join(here, 'README.rst')).read()
 
-setup(
+with open('README.rst') as readme_file:
+    readme = readme_file.read()
+with open('HISTORY.rst') as history_file:
+    history = history_file.read()
+
+requirements = ['Click>=6.0', 'pandas' ]
+
+setup_requirements = [ ]
+
+test_requirements = [ ]
+
+setuptools.setup(
     name="codemetrics",
     description='SCM mining utility classes',
-    long_description=readme,
+    long_description=readme + '\n\n' + history,
     long_description_content_type='text/x-rst',
     version="0.6.1",
     author="Jérôme Lecomte",
@@ -20,17 +30,20 @@ setup(
     license="MIT",
     keywords="code metrics mining scm subversion svn Adam Tornhill utilities",
     url="http://github.com/elmotec/codemetrics",
-    py_modules=['codemetrics'],
     entry_points={'console_scripts': ['codemetrics=codemetrics:main']},
+    install_requires=requirements,
+    include_package_data=True,
+    packages=setuptools.find_packages(include=['codemetrics']),
+    setup_requires=setup_requirements,
     test_suite='tests',
-    setup_requires=['pandas'],
-    tests_require=['tqdm'],
+    tests_require=test_requirements,
     python_requires='>=3.6',
     classifiers=["Development Status :: 4 - Beta",
                  "License :: OSI Approved :: MIT License",
                  "Environment :: Console",
                  "Natural Language :: English",
                  "Programming Language :: Python :: 3.6",
+                 "Programming Language :: Python :: 3.7",
                  "Topic :: Software Development",
                  "Topic :: Utilities",
                  "Topic :: Software Development :: Version Control",

@@ -1,10 +1,12 @@
-language: python
+# Config file for automatic testing at travis-ci.org
 
+language: python
 python:
+    - "3.7"
     - "3.6"
 
 install:
-    - pip install -r requirements.txt coverage python-coveralls
+    - pip install coverage python-coveralls
     - python setup.py --quiet install
 
 script:

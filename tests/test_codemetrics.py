@@ -1,13 +1,12 @@
 #!/usr/bin/env python
-# encoding: utf-8
+# -*- coding: utf-8 -*-
+
+"""Tests for `codemetrics` package."""
 
 
-"""Tests for codemetrics."""
-
-
+from codemetrics import cli
 import datetime as dt
 import io
-import logging
 import subprocess
 import sys
 import textwrap
@@ -18,31 +17,36 @@ import warnings
 import pandas as pd
 import pandas.testing as pdt
 import tqdm
+from click.testing import CliRunner
 
 import codemetrics as cm
+import codemetrics.pbar
+import codemetrics.svn
+import codemetrics.loc
 
 
-class CommandTest(unittest.TestCase):
-    """Given a console based tool."""
+class TestCodemetrics(unittest.TestCase):
+    """Tests for `codemetrics` package."""
 
-    def test_can_run(self):
-        """wrapper call to the command return output."""
-        is_windows = sys.platform.startswith('win')
-        output = cm._run('echo Hello world!'.split(), shell=is_windows)
-        self.assertEqual(output, ['Hello world!', ''])
+    def setUp(self):
+        """Set up test fixtures, if any."""
 
-    def test_failure_throws(self):
-        """wrapper call will throw on error."""
-        msg = "Command 'badcall' returned non-zero.*"
-        with self.assertRaisesRegex(subprocess.CalledProcessError, msg):
-            output = cm._run('badcall', stderr=subprocess.STDOUT, shell=True)
+    def tearDown(self):
+        """Tear down test fixtures, if any."""
 
-    def test_failure_throws_without_shell(self):
-        """wrapper call will throw on error."""
-        #msg = "cannot find the file" for Windows
-        #msg = "No such file or directory" for Linux
-        with self.assertRaises(FileNotFoundError):
-            output = cm._run('badcall', stderr=subprocess.STDOUT)
+    def test_000_something(self):
+        """Test something."""
+        pass
+
+    def test_command_line_interface(self):
+        """Test the CLI."""
+        runner = CliRunner()
+        result = runner.invoke(cli.main)
+        assert result.exit_code == 0
+        #assert 'codemetrics.cli.main' in result.output
+        help_result = runner.invoke(cli.main, ['--help'])
+        assert help_result.exit_code == 0
+        assert '--help  Show this message and exit.' in help_result.output
 
 
 def add_data_frame_equality_func(test):
@@ -70,40 +74,41 @@ class ProgressBarAdapterTest(unittest.TestCase):
     @mock.patch('tqdm.tqdm', autospec=True)
     def test_initialization(self, tqdm_, get_now):
         after = dt.datetime(2018, 2, 1)
-        with cm.ProgressBarAdapter(tqdm.tqdm(), after=after) as pbar:
-            pbar.update(pbar.today - dt.timedelta(3))
-            pbar.update(pbar.today - dt.timedelta(1))
+        with cm.pbar.ProgressBarAdapter(tqdm.tqdm(), after=after) as pb:
+            pb.update(pb.today - dt.timedelta(3))
+            pb.update(pb.today - dt.timedelta(1))
         expected = [mock.call(9), mock.call(2), mock.call(1)]
         self.assertEqual(tqdm_().update.mock_calls, expected)
 
 
-class BaseReportTest(unittest.TestCase):
-    """Given a BaseReport instance."""
+def get_svn_log(dates=None):
+    if dates is None:
+        dates = [dt.datetime(2018, 2, 24, 11, 14, 11,
+                             tzinfo=dt.timezone.utc)]
+    retval = textwrap.dedent('''
+    <?xml version="1.0" encoding="UTF-8"?>
+    <log>''')
+    for date in dates:
+        retval += textwrap.dedent(f'''
+        <logentry revision="1018">
+        <author>elmotec</author>
+        <date>{date.strftime('%Y-%m-%dT%H:%M:%S.%fZ')}</date>
+        <paths>
+        <path text-mods="true" kind="file" action="M"
+           prop-mods="false">/project/trunk/stats.py</path>
+        <path text-mods="true" kind="file" action="M"
+           prop-mods="false">/project/trunk/requirements.txt</path>
+        </paths>
+        <msg>Added joblib to requirements.txt</msg>
+        </logentry>''')
+    retval += textwrap.dedent('''
+    </log>
+    ''')
+    return retval.split('\n')
 
-    def get_svn_log(dates=None):
-        if dates is None:
-            dates = [dt.datetime(2018, 2, 24, 11, 14, 11,
-                                 tzinfo=dt.timezone.utc)]
-        retval = textwrap.dedent('''
-        <?xml version="1.0" encoding="UTF-8"?>
-        <log>''')
-        for date in dates:
-            retval += textwrap.dedent(f'''
-            <logentry revision="1018">
-            <author>elmotec</author>
-            <date>{date.strftime('%Y-%m-%dT%H:%M:%S.%fZ')}</date>
-            <paths>
-            <path text-mods="true" kind="file" action="M"
-               prop-mods="false">/project/trunk/stats.py</path>
-            <path text-mods="true" kind="file" action="M"
-               prop-mods="false">/project/trunk/requirements.txt</path>
-            </paths>
-            <msg>Added joblib to requirements.txt</msg>
-            </logentry>''')
-        retval += textwrap.dedent('''
-        </log>
-        ''')
-        return retval.split('\n')
+
+class SubversionTestCase(unittest.TestCase):
+    """Given a BaseReport instance."""
 
     def read_svn_log(svnlog):
         """Interprets a string as a pandas.DataFrame returned by get_svn_log.
@@ -112,34 +117,41 @@ class BaseReportTest(unittest.TestCase):
         a datet/time in UTC tz.
 
         """
-        df = pd.read_csv(io.StringIO(svnlog), dtype='object')
+        df = pd.read_csv(io.StringIO(svnlog), dtype={
+            'revision': 'object',
+            'author': 'object',
+            'textmods': 'object',
+            'kind': 'object',
+            'action': 'object',
+            'propmods': 'object',
+            'path': 'object',
+            'message': 'object',
+        }, parse_dates=['date'])
         df['date'] = pd.to_datetime(df['date'], utc=True)
         return df
 
     def setUp(self):
         add_data_frame_equality_func(self)
-        self.report = cm.BaseReport('.')
 
     def test_get_files(self):
         """get_files return the list of files."""
-        actual = self.report.get_files('*.py').\
-                 sort_values(by='path').reset_index(drop=True)
+        actual = cm.internals.get_files(pattern='*.py')
+        actual = actual.sort_values(by='path').reset_index(drop=True)
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
         path
-        internals.py
-        setup.py
-        tests.py
+        __init__.py
+        test_codemetrics.py
         ''')))
         self.assertEqual(actual, expected)
 
-    @mock.patch('codemetrics._run', side_effect=[
-        ['Relative URL: ^/project/trunk'],
-        get_svn_log()], autospec=True)
+    @mock.patch('codemetrics.internals._run',
+                side_effect=[['Relative URL: ^/project/trunk'],
+                             get_svn_log()], autospec=True)
     def test_get_log(self, call):
         """Simple svn call returns pandas.DataFrame."""
-        df = self.report.get_log()
+        df = cm.svn.get_svn_log('.')
         call.assert_called_with('svn log --xml -v .')
-        expected = BaseReportTest.read_svn_log(textwrap.dedent('''
+        expected = SubversionTestCase.read_svn_log(textwrap.dedent('''
         revision,author,date,textmods,kind,action,propmods,path,message
         1018,elmotec,2018-02-24T11:14:11.000000Z,true,file,M,false,stats.py,Added joblib to requirements.txt
         1018,elmotec,2018-02-24T11:14:11.000000Z,true,file,M,false,requirements.txt,Added joblib to requirements.txt
@@ -149,23 +161,22 @@ class BaseReportTest(unittest.TestCase):
     @mock.patch('codemetrics.get_now', autospec=True,
                 return_value = dt.datetime(2018, 2, 28))
     @mock.patch('tqdm.tqdm', autospec=True)
-    @mock.patch('codemetrics._run', side_effect=[
+    @mock.patch('codemetrics.internals._run', side_effect=[
         ['Relative URL: ^/project/trunk'],
         get_svn_log(dates=[dt.date(2018, 2, 25),
                            dt.date(2018, 2, 27),
                            dt.date(2018, 2, 28)])], autospec=True)
     def test_get_log_with_progress(self, call, tqdm_, today_):
         """Simple svn call returns pandas.DataFrame."""
-        self.report.after = dt.datetime(2018, 2, 24)
-        self.report.progress_bar = tqdm.tqdm()
-        _ = self.report.get_log()
+        pb = tqdm.tqdm()
+        _ = cm.svn.get_svn_log(after=dt.datetime(2018, 2, 24), progress_bar=pb)
         call.assert_called_with('svn log --xml -v -r {2018-02-24}:HEAD .')
-        self.assertEqual(self.report.progress_bar.total, 4)
+        self.assertEqual(pb.total, 4)
         calls = [mock.call(1), mock.call(2)]
-        self.report.progress_bar.update.assert_has_calls(calls)
-        self.report.progress_bar.close.assert_called_once()
+        pb.update.assert_has_calls(calls)
+        pb.close.assert_called_once()
 
-    @mock.patch('codemetrics._run', side_effect=[
+    @mock.patch('codemetrics.internals._run', side_effect=[
         ['Relative URL: ^/project/trunk'],
         textwrap.dedent('''
     <?xml version="1.0" encoding="UTF-8"?>
@@ -180,15 +191,16 @@ class BaseReportTest(unittest.TestCase):
     ''').split('\n')], autospec=True)
     def test_get_log_no_msg(self, call):
         """Simple svn call returns pandas.DataFrame."""
-        expected = BaseReportTest.read_svn_log(textwrap.dedent('''
-        revision,author,date,textmods,kind,action,propmods,path,message
-        1018,elmotec,2018-02-24T11:14:11.000000Z,,file,M,,stats.py,
-        '''))
-        df = self.report.get_log()
+        df = cm.svn.get_svn_log()
         call.assert_called_with('svn log --xml -v .')
+        expected = SubversionTestCase.read_svn_log(textwrap.dedent('''
+        revision,author,date,textmods,kind,action,propmods,path,message
+        1018,elmotec,2018-02-24T11:14:11.000000Z,None,file,M,None,stats.py,None
+        '''))
+        expected.replace({'None': None}, inplace=True)
         self.assertEqual(df, expected)
 
-    @mock.patch('codemetrics._run', side_effect=[
+    @mock.patch('codemetrics.internals._run', side_effect=[
         ['Relative URL: ^/project/trunk'],
         textwrap.dedent('''
     <?xml version="1.0" encoding="UTF-8"?>
@@ -202,22 +214,21 @@ class BaseReportTest(unittest.TestCase):
     ''').split('\n')], autospec=True)
     def test_get_log_no_author(self, call):
         """Simple svn call returns pandas.DataFrame."""
-        expected = BaseReportTest.read_svn_log(textwrap.dedent('''
+        expected = SubversionTestCase.read_svn_log(textwrap.dedent('''
         revision,author,date,textmods,kind,action,propmods,path,message
         1018,,2018-02-24T11:14:11.000000Z,,file,M,,stats.py,not much
         '''))
-        df = self.report.get_log()
+        df = cm.svn.get_svn_log()
         call.assert_called_with('svn log --xml -v .')
         self.assertEqual(df, expected)
 
-    @mock.patch('codemetrics._run', autospec=True)
+    @mock.patch('codemetrics.internals._run', autospec=True)
     def test_program_name(self, run):
         """Test program_name taken into account."""
-        self.report.svn_program='svn-1.7'
-        self.report.get_log()
+        cm.svn.get_svn_log(svn_program='svn-1.7')
         run.assert_called_with('svn-1.7 log --xml -v .')
 
-    @mock.patch('codemetrics._run', return_value=textwrap.dedent('''\
+    @mock.patch('codemetrics.internals._run', return_value=textwrap.dedent('''\
     language,filename,blank,comment,code,"github.com/AlDanial/cloc..."
     Python,internals.py,55,50,130
     Python,tests.py,29,92,109
@@ -225,7 +236,7 @@ class BaseReportTest(unittest.TestCase):
     ''').split('\n'), autospec=True)
     def test_get_cloc(self, run):
         """Test handling of get_cloc output."""
-        actual = self.report.get_cloc()
+        actual = cm.loc.get_cloc()
         run.assert_called_with('cloc --csv --by-file .')
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
         language,path,blank,comment,code
@@ -240,12 +251,13 @@ class SimpleRepositoryFixture(unittest.TestCase):
     """Given a repository of a few records."""
 
     @staticmethod
-    def get_log_df():
+    def  get_log_df():
         return pd.read_csv(io.StringIO(textwrap.dedent('''
         revision,author,date,textmods,kind,action,propmods,path,message
         1016,elmotec,2018-02-26T10:28:00Z,true,file,M,false,stats.py,modified again
         1018,elmotec,2018-02-24T11:14:11Z,true,file,M,false,stats.py,modified
-        1018,elmotec,2018-02-24T11:14:11Z,true,file,M,false,requirements.txt,modified''')))
+        1018,elmotec,2018-02-24T11:14:11Z,true,file,M,false,requirements.txt,modified''')),
+                           parse_dates=['date'])
 
     @staticmethod
     def get_files_df():
@@ -256,7 +268,7 @@ class SimpleRepositoryFixture(unittest.TestCase):
         ''')))
 
     @staticmethod
-    def get_cloc_df():
+    def get_loc_df():
         return pd.read_csv(io.StringIO(textwrap.dedent('''
         language,path,blank,comment,code
         Python,stats.py,28,84,100
@@ -265,7 +277,9 @@ class SimpleRepositoryFixture(unittest.TestCase):
 
     def setUp(self):
         add_data_frame_equality_func(self)
-        self.path = '.'
+        self.log = self.get_log_df()
+        self.loc = self.get_loc_df()
+        self.files = self.get_files_df()
 
 
 class RepositoryTestCase(SimpleRepositoryFixture):
@@ -290,91 +304,67 @@ class AgeReportTestCase(SimpleRepositoryFixture):
 
     def setUp(self):
         super().setUp()
-        self.report = cm.AgeReport(self.path)
-
-    @mock.patch('codemetrics.BaseReport.get_log', autospec=True,
-                return_value=SimpleRepositoryFixture.get_log_df())
-    def test_age_report_uses_get_log(self, get_log):
-        """The age report uses get_log by default to get the raw SCM data."""
-        self.report.generate()
-        get_log.assert_called_with(self.report)
-
-    @mock.patch('codemetrics.BaseReport.get_log', autospec=True,
-                return_value=SimpleRepositoryFixture.get_log_df())
-    @mock.patch('codemetrics.BaseReport.get_files', autospec=True,
-                return_value=SimpleRepositoryFixture.get_files_df())
-    def test_age_report_uses_get_files(self, get_files, get_logs):
-        """The age report uses get_files by default to get the list of files."""
-        self.report.generate()
-        get_files.assert_called_with(self.report)
 
     @mock.patch('codemetrics.get_now', autospec=True,
                 return_value=pd.to_datetime(dt.datetime(2018, 2, 28), utc=True))
-    def test_age_report_with_custom_raw_data(self, now):
+    def test_ages(self, now):
         """The age report generates data based on the SCM log data"""
-        actual = self.report.generate(SimpleRepositoryFixture.get_log_df())
+        actual = cm.ages(log=self.log)
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
         path,kind,age
         requirements.txt,file,3.531817
+        stats.py,file,1.563889
         ''')))
         self.assertEqual(actual, expected)
 
     @mock.patch('codemetrics.get_now', autospec=True,
                 return_value=pd.to_datetime(dt.datetime(2018, 2, 28), utc=True))
-    def test_age_report_skip_deleted_files(self, get_now):
+    def test_age_specific_files(self, get_now):
         """missing file today should not be part of the age report."""
-        files_df = pd.read_csv(io.StringIO(textwrap.dedent('''
+        files = pd.read_csv(io.StringIO(textwrap.dedent('''
         path
         requirements.txt
         ''')))
-        actual = self.report.generate(SimpleRepositoryFixture.get_log_df(), files_df)
+        actual = cm.ages(self.log, files)
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
         path,kind,age
         requirements.txt,file,3.531817
         ''')))
         self.assertEqual(actual, expected)
 
-    @mock.patch('codemetrics.BaseReport.get_files', autospec=True,
-                return_value=SimpleRepositoryFixture.get_files_df())
-    @mock.patch('codemetrics._run', side_effect=[
+    @mock.patch('codemetrics.internals._run', side_effect=[
         ['Relative URL: ^/project/trunk'],
         textwrap.dedent('''
-    <?xml version="1.0" encoding="UTF-8"?>
-    <log>
-    <logentry revision="1018">
-    <date>2018-02-26T10:28:00Z</date>
-    <paths><path kind="file" action="M">/project/trunk/stats.py</path></paths>
-    <msg>not much</msg>
-    </logentry>
-    </log>
-    ''').split('\n')], autospec=True)
+        <?xml version="1.0" encoding="UTF-8"?>
+        <log>
+        <logentry revision="1018">
+        <date>2018-02-26T10:28:00Z</date>
+        <paths><path kind="file" action="M">/project/trunk/stats.py</path></paths>
+        <msg>not much</msg>
+        </logentry>
+        </log>
+        ''').split('\n')], autospec=True)
     @mock.patch('codemetrics.get_now', autospec=True,
                 return_value=pd.to_datetime(dt.datetime(2018, 2, 28), utc=True))
-    def test_age_report_with_time_limit(self, now, run, get_files):
+    def test_age_report_with_time_limit(self, now, run):
         """Generate age by file report with a time limit on how far to go."""
-        self.report.after = dt.datetime(2018, 2, 26)
-        actual = self.report.generate()
+        after = dt.datetime(2018, 2, 26)
+        log = cm.svn.get_svn_log(after=after)
+        actual = cm.ages(log)
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
         path,kind,age
         stats.py,file,1.563889
         ''')))
         run.assert_called_with('svn log --xml -v -r {2018-02-26}:HEAD .')
-        now.assert_called_with()
-        get_files.assert_called_with(self.report)
         self.assertEqual(actual, expected)
 
     @mock.patch('codemetrics.get_now', autospec=True,
                 return_value=pd.to_datetime(dt.datetime(2018, 2, 28), utc=True))
-    @mock.patch('codemetrics.BaseReport.get_files', autospec=True,
-                return_value=SimpleRepositoryFixture.get_files_df())
-    @mock.patch('codemetrics.BaseReport.get_log', autospec=True,
-                return_value=SimpleRepositoryFixture.get_log_df())
-    def test_age_report_enriched_with_component(self, get_log, get_files,
-                                                get_now):
+    def test_age_report_enriched_with_component(self, get_now):
         """Allow one to enrich the log before generating the age report."""
-        log = self.report.collect()
+        log = self.log
         log['component'] = 'blah'
-        actual = self.report.generate(log)
+        actual = cm.ages(log)
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
         path,kind,component,age
         requirements.txt,file,blah,3.531817
@@ -384,12 +374,9 @@ class AgeReportTestCase(SimpleRepositoryFixture):
 
     @mock.patch('codemetrics.get_now', autospec=True,
                 return_value=pd.to_datetime(dt.datetime(2018, 2, 28), utc=True))
-    @mock.patch('codemetrics.BaseReport.get_files', autospec=True,
-                return_value=pd.read_csv(io.StringIO('path\ndifferent.py\n')))
-    def test_irrelvant_files_df_is_ignored(self, files_df, get_now):
+    def test_irrelvant_files_df_is_ignored(self, get_now):
         """Ignore files_df if nothing in it is relevant"""
-        log = SimpleRepositoryFixture.get_log_df()
-        actual = self.report.generate(log)
+        actual = cm.ages(self.log)
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
         path,kind,age
         requirements.txt,file,3.531817
@@ -402,50 +389,42 @@ class HotSpotReportTestCase(SimpleRepositoryFixture):
 
     def setUp(self):
         super().setUp()
-        self.report = cm.HotSpotReport(self.path)
 
-    @mock.patch('codemetrics.BaseReport.get_log', autospec=True,
-                return_value=SimpleRepositoryFixture.get_log_df())
-    @mock.patch('codemetrics.BaseReport.get_cloc', autospec=True,
-                return_value=SimpleRepositoryFixture.get_cloc_df())
-    def test_hot_spot_report(self, get_cloc, get_log):
+    def test_hot_spot_report(self):
         """Generate a report to find hot spots."""
-        self.report.after = dt.datetime(2018, 2, 26)
-        actual = self.report.generate()
-        get_cloc.assert_called_with(self.report)
-        get_log.assert_called_with(self.report)
+        after = dt.datetime(2018, 2, 26)
+        log = self.log.loc[self.log['date'] >= after, :]
+        actual = cm.hot_spots(log, self.loc)
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
         language,path,blank,comment,complexity,changes,complexity_score,changes_score,score
-        Python,stats.py,28,84,100,2,1.0,1.0,2.0
+        Python,stats.py,28,84,100,1.0,1.0,1.0,2.0
+        Unknown,requirements.txt,0,0,3,0,0.0,0.0,0.0
+        ''')))
+        expected[['complexity_score', 'changes_score', 'score']] = \
+            expected[['complexity_score', 'changes_score', 'score']].astype('float64')
+        self.assertEqual(actual, expected)
+
+    def test_hot_spot_with_custom_change_metric(self):
+        """Generate report with a different change metric than revision."""
+        self.log['day'] = dt.date(2018, 2, 24)  # force all rows to the same date.
+        actual = cm.hot_spots(self.log, self.loc, count_one_change_per=['day'])
+        expected = pd.read_csv(io.StringIO(textwrap.dedent('''
+        language,path,blank,comment,complexity,changes,complexity_score,changes_score,score
+        Python,stats.py,28,84,100,1,1.0,0.0,1.0
         Unknown,requirements.txt,0,0,3,1,0.0,0.0,0.0
         ''')))
         self.assertEqual(actual, expected)
 
-    @mock.patch('codemetrics.BaseReport.get_cloc', autospec=True,
-                return_value=SimpleRepositoryFixture.get_cloc_df())
-    def test_hot_spot_with_custom_change_metric(self, get_cloc):
-        """Generate report with a different change metric than revision."""
-        log = SimpleRepositoryFixture.get_log_df()
-        log['day'] = dt.date(2018, 2, 24)  # force all rows to the same date.
-        actual = self.report.generate(log=log, count_one_change_per=['day'])
-        expected = pd.read_csv(io.StringIO(textwrap.dedent('''
-        language,path,blank,comment,complexity,changes,complexity_score,changes_score,score
-        Python,stats.py,28,84,100,1,1.0,1.0,2.0
-        Unknown,requirements.txt,0,0,3,1,0.0,1.0,1.0
-        ''')))
-        self.assertEqual(actual, expected)
 
-
-class CoChangeReportTestCase(SimpleRepositoryFixture):
+class CoChangeTestCase(SimpleRepositoryFixture):
     """CoChangeReport test case."""
 
     def setUp(self):
         super().setUp()
-        self.report = cm.CoChangeReport(self.path)
 
     def test_co_change_report(self):
         """Simple CoChangeReport usage."""
-        actual = self.report.generate(log=SimpleRepositoryFixture.get_log_df())
+        actual = cm.co_changes(log=SimpleRepositoryFixture.get_log_df())
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
         primary,secondary,revision_cochanges,revision_changes,coupling
         requirements.txt,stats.py,1,1,1.0
@@ -458,7 +437,7 @@ class CoChangeReportTestCase(SimpleRepositoryFixture):
         log = SimpleRepositoryFixture.get_log_df()
         # Same day to force results different from test_co_change_report.
         log['day'] = pd.to_datetime('2018-02-24')
-        actual = self.report.generate(log=log, on='day')
+        actual = cm.co_changes(log=log, on='day')
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
         primary,secondary,day_cochanges,day_changes,coupling
         requirements.txt,stats.py,1,1,1.0
