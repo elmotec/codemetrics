@@ -6,7 +6,7 @@ python:
     - "3.6"
 
 install:
-    - pip install coverage python-coveralls
+    - pip install -r requirements.txt coverage python-coveralls
     - python setup.py --quiet install
 
 script:

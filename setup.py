@@ -13,7 +13,18 @@ with open('README.rst') as readme_file:
 with open('HISTORY.rst') as history_file:
     history = history_file.read()
 
-requirements = ['Click>=6.0', 'pandas' ]
+# Simple version to extract requirements from requirements files.
+def get_requirements(filename):
+    lines = list(val.strip() for val in open(filename))
+    filtered = []
+    for line in lines:
+        line = line.strip().split('#')[0]
+        if not line or line.startswith('-'):
+            continue
+        filtered.append(line)
+    return filtered
+
+requirements = get_requirements('requirements.txt')
 
 setup_requirements = [ ]
 
