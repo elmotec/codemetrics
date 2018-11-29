@@ -36,6 +36,8 @@ class SvnLogCollector:
         self.svn_program = svn_program or 'svn'
         self.after = after
         self.progress_bar = progress_bar
+        if self.progress_bar is not None and self.after is None:
+            raise ValueError("progress_bar requires 'after' parameter")
 
     def get_relative_url(self):
         """Relative URL so we can generate local paths."""

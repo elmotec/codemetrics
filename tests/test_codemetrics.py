@@ -63,24 +63,6 @@ def add_data_frame_equality_func(test):
     test.addTypeEqualityFunc(pd.DataFrame, frame_equal)
 
 
-class ProgressBarAdapterTest(unittest.TestCase):
-    """Test ProgressBarAdapter"""
-
-    def setUp(self):
-        pass
-
-    @mock.patch('codemetrics.get_now', autospec=True,
-                return_value = dt.datetime(2018, 2, 13))
-    @mock.patch('tqdm.tqdm', autospec=True)
-    def test_initialization(self, tqdm_, get_now):
-        after = dt.datetime(2018, 2, 1)
-        with cm.pbar.ProgressBarAdapter(tqdm.tqdm(), after=after) as pb:
-            pb.update(pb.today - dt.timedelta(3))
-            pb.update(pb.today - dt.timedelta(1))
-        expected = [mock.call(9), mock.call(2), mock.call(1)]
-        self.assertEqual(tqdm_().update.mock_calls, expected)
-
-
 def get_svn_log(dates=None):
     if dates is None:
         dates = [dt.datetime(2018, 2, 24, 11, 14, 11,
@@ -105,6 +87,24 @@ def get_svn_log(dates=None):
     </log>
     ''')
     return retval.split('\n')
+
+
+class ProgressBarAdapterTest(unittest.TestCase):
+    """Test ProgressBarAdapter"""
+
+    def setUp(self):
+        pass
+
+    @mock.patch('codemetrics.get_now', autospec=True,
+                return_value = dt.datetime(2018, 2, 13))
+    @mock.patch('tqdm.tqdm', autospec=True)
+    def test_initialization(self, tqdm_, get_now):
+        after = dt.datetime(2018, 2, 1)
+        with cm.pbar.ProgressBarAdapter(tqdm.tqdm(), after=after) as pb:
+            pb.update(pb.today - dt.timedelta(3))
+            pb.update(pb.today - dt.timedelta(1))
+        expected = [mock.call(9), mock.call(2), mock.call(1)]
+        self.assertEqual(tqdm_().update.mock_calls, expected)
 
 
 class SubversionTestCase(unittest.TestCase):
@@ -157,6 +157,16 @@ class SubversionTestCase(unittest.TestCase):
         1018,elmotec,2018-02-24T11:14:11.000000Z,true,file,M,false,requirements.txt,Added joblib to requirements.txt
         '''))
         self.assertEqual(df, expected)
+
+    @mock.patch('codemetrics.internals._run',
+                side_effect=[['Relative URL: ^/project/trunk'],
+                             get_svn_log()], autospec=True)
+    def test_fails_with_pbar_without_after(self, call):
+        """Check error when passing a progress bar without after parameter."""
+        with self.assertRaises(ValueError) as err:
+            pbar = tqdm.tqdm()
+            df = cm.svn.get_svn_log('.', progress_bar=pbar)
+        self.assertIn('progress_bar requires', str(err.exception))
 
     @mock.patch('codemetrics.get_now', autospec=True,
                 return_value = dt.datetime(2018, 2, 28))
@@ -309,53 +319,12 @@ class AgeReportTestCase(SimpleRepositoryFixture):
                 return_value=pd.to_datetime(dt.datetime(2018, 2, 28), utc=True))
     def test_ages(self, now):
         """The age report generates data based on the SCM log data"""
-        actual = cm.ages(log=self.log)
+        actual = cm.ages(self.log)[['path', 'kind', 'age']]
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
         path,kind,age
         requirements.txt,file,3.531817
         stats.py,file,1.563889
         ''')))
-        self.assertEqual(actual, expected)
-
-    @mock.patch('codemetrics.get_now', autospec=True,
-                return_value=pd.to_datetime(dt.datetime(2018, 2, 28), utc=True))
-    def test_age_specific_files(self, get_now):
-        """missing file today should not be part of the age report."""
-        files = pd.read_csv(io.StringIO(textwrap.dedent('''
-        path
-        requirements.txt
-        ''')))
-        actual = cm.ages(self.log, files)
-        expected = pd.read_csv(io.StringIO(textwrap.dedent('''
-        path,kind,age
-        requirements.txt,file,3.531817
-        ''')))
-        self.assertEqual(actual, expected)
-
-    @mock.patch('codemetrics.internals._run', side_effect=[
-        ['Relative URL: ^/project/trunk'],
-        textwrap.dedent('''
-        <?xml version="1.0" encoding="UTF-8"?>
-        <log>
-        <logentry revision="1018">
-        <date>2018-02-26T10:28:00Z</date>
-        <paths><path kind="file" action="M">/project/trunk/stats.py</path></paths>
-        <msg>not much</msg>
-        </logentry>
-        </log>
-        ''').split('\n')], autospec=True)
-    @mock.patch('codemetrics.get_now', autospec=True,
-                return_value=pd.to_datetime(dt.datetime(2018, 2, 28), utc=True))
-    def test_age_report_with_time_limit(self, now, run):
-        """Generate age by file report with a time limit on how far to go."""
-        after = dt.datetime(2018, 2, 26)
-        log = cm.svn.get_svn_log(after=after)
-        actual = cm.ages(log)
-        expected = pd.read_csv(io.StringIO(textwrap.dedent('''
-        path,kind,age
-        stats.py,file,1.563889
-        ''')))
-        run.assert_called_with('svn log --xml -v -r {2018-02-26}:HEAD .')
         self.assertEqual(actual, expected)
 
     @mock.patch('codemetrics.get_now', autospec=True,
@@ -364,24 +333,25 @@ class AgeReportTestCase(SimpleRepositoryFixture):
         """Allow one to enrich the log before generating the age report."""
         log = self.log
         log['component'] = 'blah'
-        actual = cm.ages(log)
+        actual = cm.ages(log, keys=['path', 'component'])
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
-        path,kind,component,age
-        requirements.txt,file,blah,3.531817
-        stats.py,file,blah,1.563889
+        path,component,age
+        requirements.txt,blah,3.531817
+        stats.py,blah,1.563889
         ''')))
         self.assertEqual(actual, expected)
 
     @mock.patch('codemetrics.get_now', autospec=True,
                 return_value=pd.to_datetime(dt.datetime(2018, 2, 28), utc=True))
-    def test_irrelvant_files_df_is_ignored(self, get_now):
+    def test_key_parameter(self, get_now):
         """Ignore files_df if nothing in it is relevant"""
-        actual = cm.ages(self.log)
+        self.log['component'] = 'kernel'
+        actual = cm.ages(self.log, keys=['component', 'kind'])
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
-        path,kind,age
-        requirements.txt,file,3.531817
-        stats.py,file,1.563889''')))
+        component,kind,age
+        kernel,file,1.563889''')))
         self.assertEqual(actual, expected)
+
 
 
 class HotSpotReportTestCase(SimpleRepositoryFixture):

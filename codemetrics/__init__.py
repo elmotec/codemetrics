@@ -52,36 +52,37 @@ def get_mass_changesets(log, min_changes):
     return massive
 
 
-def ages(log, files=None, keys=None, **kwargs):
-    """Generate report from SCM data.
+def ages(log, keys=None, utc=None, **kwargs):
+    """Generate age series from date series.
 
-    Group the log by the keys passed as argument and generates the age of each
-    group (last time the group was changed).
+    Takes the output of a SCM log or just the date column and retrun the series
+    of ages.
 
-    If files is passed, join results to files.
+    .. example::
+        ```ages = codemetrics.ages(log)```
 
-    :param pandas.DataFrame log: log output from SCM.
-    :param pandas.DataFrame files: files found in path or cloc output.
-    :param iter(str) keys: Default to file name and kind.
-    :param dict kwargs: passed as if to self.collect() if log_df missing.
+    :param pandas.Series or pandas.DataFrame log: log or date column of log.
+    :param list(str) keys: keys when grouping data before calculating the age.
+    :param bool utc: treat pandas.datetime as utc (defaults to True).
+    :rtype: pandas.DataFrame
+    :return: age of most recent modification.
 
-    :return pandas.DataFrame: log frame joined to files with the age column.
+    .. seealso::
+
+        :ref:`codemetrics.svn.get_svn_log`
 
     """
+    if utc is None:
+        utc = True
     if keys is None:
         excluded = {'revision', 'author', 'date', 'textmods',
                     'action', 'propmods', 'message'}
         keys = [col for col in log.columns if col not in excluded]
-    df = log.copy()
     now = get_now()
-    df['age'] = (now - pd.to_datetime(df['date'], utc=True))
-    df = df[keys + ['age']].groupby(['path']).min().reset_index()
-    df['age'] /= pd.Timedelta(1, unit='D')
-    if files is not None:
-        if not isinstance(files, pd.DataFrame):
-            raise TypeError('files should be a pandas.DataFrame')
-        df = pd.merge(df, files)
-    return df
+    rv = log[keys + ['date']].groupby(keys).max().reset_index()
+    rv['age'] = (now - pd.to_datetime(rv['date'], utc=utc))
+    rv['age'] /= pd.Timedelta(1, unit='D')
+    return rv.drop(columns=['date'])
 
 
 def hot_spots(log, loc, by=None, count_one_change_per=None):
