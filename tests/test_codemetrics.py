@@ -10,7 +10,6 @@ import io
 import textwrap
 import unittest
 import unittest.mock as mock
-import pathlib
 
 import pandas as pd
 import pandas.testing as pdt
@@ -93,7 +92,7 @@ class ProgressBarAdapterTest(unittest.TestCase):
     def setUp(self):
         pass
 
-    @mock.patch('codemetrics.get_now', autospec=True,
+    @mock.patch('codemetrics.internals.get_now', autospec=True,
                 return_value = dt.datetime(2018, 2, 13))
     @mock.patch('tqdm.tqdm', autospec=True)
     def test_initialization(self, tqdm_, get_now):
@@ -136,7 +135,7 @@ class SubversionTestCase(unittest.TestCase):
     def test_get_files(self, glob):
         """get_files return the list of files."""
         actual = cm.internals.get_files(pattern='*.py')
-        glob.assert_called_with(pathlib.WindowsPath('.'), '*.py')
+        glob.assert_called_with(mock.ANY, '*.py')
         actual = actual.sort_values(by='path').reset_index(drop=True)
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
         path
@@ -169,7 +168,7 @@ class SubversionTestCase(unittest.TestCase):
             df = cm.svn.get_svn_log('.', progress_bar=pbar)
         self.assertIn('progress_bar requires', str(err.exception))
 
-    @mock.patch('codemetrics.get_now', autospec=True,
+    @mock.patch('codemetrics.internals.get_now', autospec=True,
                 return_value = dt.datetime(2018, 2, 28))
     @mock.patch('tqdm.tqdm', autospec=True)
     @mock.patch('codemetrics.internals._run', side_effect=[
@@ -316,7 +315,7 @@ class AgeReportTestCase(SimpleRepositoryFixture):
     def setUp(self):
         super().setUp()
 
-    @mock.patch('codemetrics.get_now', autospec=True,
+    @mock.patch('codemetrics.internals.get_now', autospec=True,
                 return_value=pd.to_datetime(dt.datetime(2018, 2, 28), utc=True))
     def test_ages(self, now):
         """The age report generates data based on the SCM log data"""
@@ -328,7 +327,7 @@ class AgeReportTestCase(SimpleRepositoryFixture):
         ''')))
         self.assertEqual(actual, expected)
 
-    @mock.patch('codemetrics.get_now', autospec=True,
+    @mock.patch('codemetrics.internals.get_now', autospec=True,
                 return_value=pd.to_datetime(dt.datetime(2018, 2, 28), utc=True))
     def test_age_report_enriched_with_component(self, get_now):
         """Allow one to enrich the log before generating the age report."""
@@ -342,7 +341,7 @@ class AgeReportTestCase(SimpleRepositoryFixture):
         ''')))
         self.assertEqual(actual, expected)
 
-    @mock.patch('codemetrics.get_now', autospec=True,
+    @mock.patch('codemetrics.internals.get_now', autospec=True,
                 return_value=pd.to_datetime(dt.datetime(2018, 2, 28), utc=True))
     def test_key_parameter(self, get_now):
         """Ignore files_df if nothing in it is relevant"""

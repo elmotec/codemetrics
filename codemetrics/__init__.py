@@ -8,26 +8,10 @@ __author__ = """Jérôme Lecomte"""
 __email__ = 'elmotec@gmx.com'
 __version__ = '0.6.1'
 
-import datetime as dt
-import logging
-import collections
 
 import pandas as pd
 
-log = logging.getLogger(__name__)
-log.addHandler(logging.NullHandler())
-
-LogEntry = collections.namedtuple('LogEntry',
-                                  'revision author date textmods kind action propmods path msg'.split())
-
-
-def get_now():
-    """Get current time stamp as pd.TimeStamp.
-
-    This is also useful to patch retrieval of the current date/time.
-
-    """
-    return pd.to_datetime(dt.datetime.now(dt.timezone.utc), utc=True)
+from . import internals
 
 
 def get_mass_changesets(log, min_changes):
@@ -78,7 +62,7 @@ def ages(log, keys=None, utc=None, **kwargs):
         excluded = {'revision', 'author', 'date', 'textmods',
                     'action', 'propmods', 'message'}
         keys = [col for col in log.columns if col not in excluded]
-    now = get_now()
+    now = internals.get_now()
     rv = log[keys + ['date']].groupby(keys).max().reset_index()
     rv['age'] = (now - pd.to_datetime(rv['date'], utc=utc))
     rv['age'] /= pd.Timedelta(1, unit='D')

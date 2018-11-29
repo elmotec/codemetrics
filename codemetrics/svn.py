@@ -12,7 +12,7 @@ import dateutil as du
 
 from . import pbar
 from . import internals
-from . import log, LogEntry
+from .internals import log, LogEntry
 
 
 class SvnLogCollector:

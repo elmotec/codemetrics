@@ -4,6 +4,7 @@
 """Progress bar."""
 
 import codemetrics as cm
+import codemetrics.internals
 import tqdm
 
 
@@ -23,7 +24,7 @@ class ProgressBarAdapter:
         self.pbar = pbar
         if self.pbar is not None:
             self.pbar.unit = 'day'
-        self.today = cm.get_now().date()
+        self.today = cm.internals.get_now().date()
         self.count = 0
         self.after = None
         if after is not None:
