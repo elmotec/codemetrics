@@ -7,12 +7,10 @@
 from codemetrics import cli
 import datetime as dt
 import io
-import subprocess
-import sys
 import textwrap
 import unittest
 import unittest.mock as mock
-import warnings
+import pathlib
 
 import pandas as pd
 import pandas.testing as pdt
@@ -133,14 +131,17 @@ class SubversionTestCase(unittest.TestCase):
     def setUp(self):
         add_data_frame_equality_func(self)
 
-    def test_get_files(self):
+    @mock.patch('pathlib.Path.glob', autospec=True,
+                side_effect=[['first.py', 'second.py']])
+    def test_get_files(self, glob):
         """get_files return the list of files."""
         actual = cm.internals.get_files(pattern='*.py')
+        glob.assert_called_with(pathlib.WindowsPath('.'), '*.py')
         actual = actual.sort_values(by='path').reset_index(drop=True)
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
         path
-        __init__.py
-        test_codemetrics.py
+        first.py
+        second.py
         ''')))
         self.assertEqual(actual, expected)
 
