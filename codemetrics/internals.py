@@ -4,7 +4,6 @@
 
 """Metrics offer a bunch of function useful to analyze a code base."""
 
-
 import datetime as dt
 import pathlib as pl
 import subprocess
@@ -13,14 +12,12 @@ import collections
 
 import pandas as pd
 
-
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
 
-
 LogEntry = collections.namedtuple('LogEntry',
-                                  'revision author date textmods kind action propmods path msg'.split())
-
+                                  'revision author date textmods kind action '
+                                  'propmods path msg'.split())
 
 
 def get_now():
@@ -61,8 +58,8 @@ def _run(command, errors=None, **kwargs):
     try:
         log.info(command)
         result = subprocess.run(command, check=True,
-                              stdout=subprocess.PIPE, errors=errors,
-                              **kwargs)
+                                stdout=subprocess.PIPE, errors=errors,
+                                **kwargs)
         return result.stdout.split('\n')
     except subprocess.CalledProcessError as err:
         log.warning(err)

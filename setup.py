@@ -13,6 +13,7 @@ with open('README.rst') as readme_file:
 with open('HISTORY.rst') as history_file:
     history = history_file.read()
 
+
 # Simple version to extract requirements from requirements files.
 def get_requirements(filename):
     lines = list(val.strip() for val in open(filename))
@@ -24,11 +25,12 @@ def get_requirements(filename):
         filtered.append(line)
     return filtered
 
+
 requirements = get_requirements('requirements.txt')
 
-setup_requirements = [ ]
+setup_requirements = []
 
-test_requirements = [ ]
+test_requirements = []
 
 setuptools.setup(
     name="codemetrics",
@@ -59,5 +61,5 @@ setuptools.setup(
                  "Topic :: Utilities",
                  "Topic :: Software Development :: Version Control",
                  "Intended Audience :: Developers",
-                ],
+                 ],
 )

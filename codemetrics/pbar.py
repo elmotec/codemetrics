@@ -4,8 +4,6 @@
 """Progress bar."""
 
 import codemetrics as cm
-import codemetrics.internals
-import tqdm
 
 
 class ProgressBarAdapter:

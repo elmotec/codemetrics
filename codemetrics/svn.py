@@ -80,6 +80,7 @@ class SvnLogCollector:
             except (AttributeError, SyntaxError, ValueError) as err:
                 log.warning(f'{err} processing rev {rev}')
                 path = None
+
             def to_date(datestr):
                 """Convert str to datetime.datetime.
 

@@ -18,11 +18,13 @@
 # relative to the documentation root, use os.path.abspath to make it
 # absolute, like shown here.
 #
+
 import os
 import sys
+import codemetrics
+
 sys.path.insert(0, os.path.abspath('..'))
 
-import codemetrics
 
 # -- General configuration ---------------------------------------------
 
@@ -48,8 +50,8 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'codemetrics'
-copyright = u"2018, JÃ©rÃ´me Lecomte"
-author = u"JÃ©rÃ´me Lecomte"
+copyright = u"2018, Jérôme Lecomte"
+author = u"Jérôme Lecomte"
 
 # The version info for the project you're documenting, acts as replacement
 # for |version| and |release|, also used in various other places throughout
@@ -78,7 +80,6 @@ pygments_style = 'sphinx'
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = False
 
-
 # -- Options for HTML output -------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
@@ -97,12 +98,10 @@ html_theme = 'alabaster'
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
 
-
 # -- Options for HTMLHelp output ---------------------------------------
 
 # Output file base name for HTML help builder.
 htmlhelp_basename = 'codemetricsdoc'
-
 
 # -- Options for LaTeX output ------------------------------------------
 
@@ -130,9 +129,8 @@ latex_elements = {
 latex_documents = [
     (master_doc, 'codemetrics.tex',
      u'codemetrics Documentation',
-     u'JÃ©rÃ´me Lecomte', 'manual'),
+     u'Jérôme Lecomte', 'manual'),
 ]
-
 
 # -- Options for manual page output ------------------------------------
 
@@ -143,7 +141,6 @@ man_pages = [
      u'codemetrics Documentation',
      [author], 1)
 ]
-
 
 # -- Options for Texinfo output ----------------------------------------
 
@@ -158,6 +155,3 @@ texinfo_documents = [
      'One line description of project.',
      'Miscellaneous'),
 ]
-
-
-
