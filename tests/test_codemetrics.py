@@ -9,7 +9,9 @@ import textwrap
 import unittest
 import unittest.mock as mock
 
+import numpy as np
 import pandas as pd
+import sklearn.cluster
 from click.testing import CliRunner
 
 import codemetrics as cm
@@ -19,16 +21,6 @@ from tests.utils import add_data_frame_equality_func
 
 class TestCodemetrics(unittest.TestCase):
     """Tests for `codemetrics` package."""
-
-    def setUp(self):
-        """Set up test fixtures, if any."""
-
-    def tearDown(self):
-        """Tear down test fixtures, if any."""
-
-    def test_000_something(self):
-        """Test something."""
-        pass
 
     def test_command_line_interface(self):
         """Test the CLI."""
@@ -90,7 +82,7 @@ class RepositoryTestCase(SimpleRepositoryFixture):
         revision,path_count,message,author
         1018,2,modified,elmotec
         ''')))
-        self.assertEqual(actual, expected)
+        self.assertEqual(expected, actual)
 
 
 class AgeReportTestCase(SimpleRepositoryFixture):
@@ -109,7 +101,7 @@ class AgeReportTestCase(SimpleRepositoryFixture):
         requirements.txt,file,3.531817
         stats.py,file,1.563889
         ''')))
-        self.assertEqual(actual, expected)
+        self.assertEqual(expected, actual)
 
     @mock.patch('codemetrics.internals.get_now', autospec=True,
                 return_value=pd.to_datetime(dt.datetime(2018, 2, 28), utc=True))
@@ -123,7 +115,7 @@ class AgeReportTestCase(SimpleRepositoryFixture):
         requirements.txt,blah,3.531817
         stats.py,blah,1.563889
         ''')))
-        self.assertEqual(actual, expected)
+        self.assertEqual(expected, actual)
 
     @mock.patch('codemetrics.internals.get_now', autospec=True,
                 return_value=pd.to_datetime(dt.datetime(2018, 2, 28), utc=True))
@@ -134,7 +126,7 @@ class AgeReportTestCase(SimpleRepositoryFixture):
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
         component,kind,age
         kernel,file,1.563889''')))
-        self.assertEqual(actual, expected)
+        self.assertEqual(expected, actual)
 
 
 class HotSpotReportTestCase(SimpleRepositoryFixture):
@@ -156,7 +148,7 @@ class HotSpotReportTestCase(SimpleRepositoryFixture):
         expected[['complexity_score', 'changes_score', 'score']] = \
             expected[['complexity_score', 'changes_score', 'score']].astype(
                 'float64')
-        self.assertEqual(actual, expected)
+        self.assertEqual(expected, actual)
 
     def test_hot_spot_with_custom_change_metric(self):
         """Generate report with a different change metric than revision."""
@@ -168,7 +160,7 @@ class HotSpotReportTestCase(SimpleRepositoryFixture):
         Python,stats.py,28,84,100,1,1.0,0.0,1.0
         Unknown,requirements.txt,0,0,3,1,0.0,0.0,0.0
         ''')))
-        self.assertEqual(actual, expected)
+        self.assertEqual(expected, actual)
 
 
 class CoChangeTestCase(SimpleRepositoryFixture):
@@ -185,7 +177,7 @@ class CoChangeTestCase(SimpleRepositoryFixture):
         requirements.txt,stats.py,1,1,1.0
         stats.py,requirements.txt,1,2,0.5
         ''')))
-        self.assertEqual(actual, expected)
+        self.assertEqual(expected, actual)
 
     def test_co_change_report_on_day(self):
         """Check handling of on with the date as a day in argument."""
@@ -198,7 +190,107 @@ class CoChangeTestCase(SimpleRepositoryFixture):
         requirements.txt,stats.py,1,1,1.0
         stats.py,requirements.txt,1,1,1.0
         ''')))
-        self.assertEqual(actual, expected)
+        self.assertEqual(expected, actual)
+
+
+code_maat_dataset = pd.read_csv(io.StringIO(textwrap.dedent(r'''
+path,component
+.\.travis.yml,
+.\project.clj,
+.\src\code_maat\analysis\authors.clj,analysis.src
+.\src\code_maat\analysis\churn.clj,analysis.src
+.\src\code_maat\analysis\code_age.clj,analysis.src
+.\src\code_maat\analysis\commit_messages.clj,analysis.src
+.\src\code_maat\analysis\communication.clj,analysis.src
+.\src\code_maat\analysis\coupling_algos.clj,analysis.src
+.\src\code_maat\analysis\effort.clj,analysis.src
+.\src\code_maat\analysis\entities.clj,analysis.src
+.\src\code_maat\analysis\logical_coupling.clj,analysis.src
+.\src\code_maat\analysis\math.clj,analysis.src
+.\src\code_maat\analysis\sum_of_coupling.clj,analysis.src
+.\src\code_maat\analysis\summary.clj,analysis.src
+.\src\code_maat\analysis\workarounds.clj,analysis.src
+.\src\code_maat\app\app.clj,app.src
+.\src\code_maat\app\grouper.clj,app.src
+.\src\code_maat\app\team_mapper.clj,app.src
+.\src\code_maat\app\time_based_grouper.clj,app.src
+.\src\code_maat\cmd_line.clj,analysis.src
+.\src\code_maat\dataset\dataset.clj,dataset
+.\src\code_maat\output\csv.clj,output
+.\src\code_maat\output\filters.clj,output
+.\src\code_maat\parsers\git.clj,parsers.src
+.\src\code_maat\parsers\git2.clj,parsers.src
+.\src\code_maat\parsers\hiccup_based_parser.clj,parsers.src
+.\src\code_maat\parsers\limitters.clj,parsers.src
+.\src\code_maat\parsers\mercurial.clj,parsers.src
+.\src\code_maat\parsers\perforce.clj,parsers.src
+.\src\code_maat\parsers\svn.clj,parsers.src
+.\src\code_maat\parsers\tfs.clj,parsers.src
+.\src\code_maat\parsers\time_parser.clj,parsers.src
+.\src\code_maat\parsers\xml.clj,parsers.src
+.\test\code_maat\analysis\authors_test.clj,analysis.test
+.\test\code_maat\analysis\churn_test.clj,analysis.test
+.\test\code_maat\analysis\code_age_test.clj,analysis.test
+.\test\code_maat\analysis\commit_messages_test.clj,analysis.test
+.\test\code_maat\analysis\communication_test.clj,analysis.test
+.\test\code_maat\analysis\coupling_algos_test.clj,analysis.test
+.\test\code_maat\analysis\effort_test.clj,analysis.test
+.\test\code_maat\analysis\entities_test.clj,analysis.test
+.\test\code_maat\analysis\logical_coupling_test.clj,analysis.test
+.\test\code_maat\analysis\math_test.clj,analysis.test
+.\test\code_maat\analysis\sum_of_coupling_test.clj,analysis.test
+.\test\code_maat\analysis\test_data.clj,analysis.test
+.\test\code_maat\app\cmd_line_test.clj,app.test
+.\test\code_maat\app\grouper_test.clj,app.test
+.\test\code_maat\app\team_mapper_test.clj,app.test
+.\test\code_maat\app\time_based_grouper_test.clj,app.test
+.\test\code_maat\dataset\dataset_test.clj,dataset
+.\test\code_maat\end_to_end\churn_scenario_test.clj,end_to_end.test
+.\test\code_maat\end_to_end\empty.xml,end_to_end.test
+.\test\code_maat\end_to_end\git_live_data_test.clj,end_to_end.test
+.\test\code_maat\end_to_end\mercurial_live_data_test.clj,end_to_end.test
+.\test\code_maat\end_to_end\perforce_live_data_test.clj,end_to_end.test
+.\test\code_maat\end_to_end\scenario_tests.clj,end_to_end.test
+.\test\code_maat\end_to_end\simple.xml,end_to_end.test
+.\test\code_maat\end_to_end\svn_live_data_test.clj,end_to_end.test
+.\test\code_maat\end_to_end\team_level_analyses_test.clj,end_to_end.test
+.\test\code_maat\end_to_end\tfs_live_data_test.clj,end_to_end.test
+.\test\code_maat\parsers\git_test.clj,parsers.test
+.\test\code_maat\parsers\mercurial_test.clj,parsers.test
+.\test\code_maat\parsers\perforce_test.clj,parsers.test
+.\test\code_maat\parsers\svn_test.clj,parsers.test
+.\test\code_maat\parsers\tfs_test.clj,parsers.test
+.\test\code_maat\parsers\time_parser_test.clj,parsers.test
+.\test\code_maat\tools\test_tools.clj,
+'''))).fillna('')
+
+
+class ComponentTestCase(SimpleRepositoryFixture):
+    """Test guess_components function."""
+
+    def setUp(self):
+        """Given a list of paths."""
+        super().setUp()
+        self.paths = code_maat_dataset['path']
+        # keeps random generated sequences consistent over runs.
+        np.random.seed(0)
+
+    def test_can_guess_components(self):
+        """Cluster paths in components."""
+        actual = cm.guess_components(self.paths, stop_words={'code_maat'},
+                                     n_clusters=10)
+        actual = actual.sort_values(by='path').reset_index(drop=True)
+        expected = code_maat_dataset
+        self.assertEqual(expected, actual)
+
+    def test_guess_components_for_specific_n_clusters(self):
+        """Cluster paths to a specific number of components"""
+        n_clusters = 3
+        comps = cm.guess_components(self.paths, stop_words={'code_maat'},
+                                    n_clusters=n_clusters)
+        actual = comps[['component']].drop_duplicates().reset_index(drop=True)
+        expected = pd.DataFrame(data={'component': ['parsers', 'src.analysis', 'test']})
+        self.assertEqual(expected, actual)
 
 
 if __name__ == '__main__':

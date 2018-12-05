@@ -1,7 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import os.path
+
 import pandas as pd
+import sklearn
+import sklearn.feature_extraction.text
 
 from . import internals
 
@@ -144,3 +148,43 @@ def co_changes(log=None, by=None, on=None):
     return result[['primary', 'secondary', on + '_cochanges',
                    on + '_changes', 'coupling']]. \
         sort_values(by='coupling', ascending=False)
+
+
+def guess_components(paths, stop_words=None, n_clusters=8):
+    """Guess components from an iterable of paths.
+
+    :param iter(str) paths: list of string containing file paths in the project.
+    :param set(str) stop_words: stop words. Passed to TfidfVectorizer.
+    :param int n_clusters: number of clusters. Passed to MiniBatchKMeans.
+
+    :rtype: pandas.DataFrame
+
+    .. seealso::
+
+      sklearn.feature_extraction.text.TfidfVectorizer
+      sklearn.cluster.MiniBatchKMeans
+
+    """
+    data = list([p for p in paths])
+    dirs = [os.path.dirname(p) for p in data]
+    vectorizer = sklearn.feature_extraction.text.TfidfVectorizer(
+        stop_words=stop_words)
+    X = vectorizer.fit_transform(dirs)
+    algo = sklearn.cluster.MiniBatchKMeans
+    clustering = algo(compute_labels=True, n_clusters=n_clusters)
+    clustering.fit(X)
+    def __cluster_name(center, vectorizer, n_clusters, threshold):
+        df = pd.DataFrame(data={'feature': vectorizer.get_feature_names(),
+                                'weight': center})
+        df.sort_values(by=['weight', 'feature'], ascending=False, inplace=True)
+        if (df['weight'] <= threshold).all():
+            return ''
+        df = df[df['weight'] > threshold]
+        return '.'.join(df['feature'].tolist())
+    cluster_names = [__cluster_name(center, vectorizer, n_clusters, 0.4)
+                     for center in clustering.cluster_centers_]
+    components = [cluster_names[lbl] for lbl in clustering.labels_]
+    rv = pd.DataFrame(data={'path': data, 'component': components})
+    rv.sort_values(by='component', inplace=True)
+    rv.to_clipboard()
+    return rv

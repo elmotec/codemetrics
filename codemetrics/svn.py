@@ -16,14 +16,7 @@ from .internals import log, LogEntry
 
 
 class SvnLogCollector:
-    """Collect log from Subversion.
-
-    :param datetime.datetime after: limits the log to entries after that date.
-
-    If after is not tz-aware, the date will automatically be assumed to be UTC
-    based.
-
-    """
+    """Collect log from Subversion."""
 
     def __init__(self, path=None, svn_program=None, after=None,
                  progress_bar=None):
