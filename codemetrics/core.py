@@ -186,5 +186,4 @@ def guess_components(paths, stop_words=None, n_clusters=8):
     components = [cluster_names[lbl] for lbl in clustering.labels_]
     rv = pd.DataFrame(data={'path': data, 'component': components})
     rv.sort_values(by='component', inplace=True)
-    rv.to_clipboard()
     return rv
