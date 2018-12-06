@@ -166,7 +166,7 @@ def guess_components(paths, stop_words=None, n_clusters=8):
 
     """
     data = list([p for p in paths])
-    dirs = [os.path.dirname(p) for p in data]
+    dirs = [os.path.dirname(p.replace('\\', '/')) for p in data]
     vectorizer = sklearn.feature_extraction.text.TfidfVectorizer(
         stop_words=stop_words)
     X = vectorizer.fit_transform(dirs)
