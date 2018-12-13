@@ -7,47 +7,49 @@ import pathlib as pl
 import xml.etree.ElementTree as ET
 import datetime as dt
 
-import pandas as pd
 import dateutil as du
+import tqdm
 
-from . import pbar
+from . import scm
 from . import internals
-from .internals import log, LogEntry
+from .internals import log
 
 
-class SvnLogCollector:
+log_args = 'log --xml -v'
+
+class _SvnLogCollector(scm._ScmLogCollector):
     """Collect log from Subversion."""
 
-    def __init__(self, path=None, svn_program=None, after=None,
-                 progress_bar=None):
+    def __init__(self, svn_program='svn', **kwargs):
         """Initialize.
 
-        :param tqdm.tqdm progress_bar: implements tqdm.tqdm interface.
-
+        Args:
+            svn_program: name of svn client.
+            **kwargs: passed to :class:`scm._ScmLogCollector`
+`
         """
-        self.path = path or '.'
+        super().__init__(**kwargs)
         self.svn_program = svn_program or 'svn'
-        self.after = after
-        self.progress_bar = progress_bar
-        if self.progress_bar is not None and self.after is None:
-            raise ValueError("progress_bar requires 'after' parameter")
+        self._relative_url = None
 
-    def get_relative_url(self):
+    @property
+    def relative_url(self):
         """Relative URL so we can generate local paths."""
-        relative_url = None
-        for line in internals._run(f'{self.svn_program} info {self.path}'):
-            if line.startswith('Relative URL'):
-                relative_url = pl.Path(line.split(': ^')[1])
-                break
-        return relative_url
+        if self._relative_url is None:
+            for line in internals._run(f'{self.svn_program} info {self.path}'):
+                if line.startswith('Relative URL'):
+                    self._relative_url = pl.Path(line.split(': ^')[1])
+                    break
+        return self._relative_url
 
-    def process_entry(self, log_entry, relative_url):
+    def process_entry(self, log_entry):
         """Convert a single xml <logentry/> element to csv rows.
 
-        :param str log_entry: <logentry/> element.
-        :param str relative_url: relative url for path elements.
+        Args:
+            log_entry: <logentry/> element.
 
-        :yield: one or more csv rows.
+        Yields:
+            One or more csv rows.
 
         """
         elem = ET.fromstring(log_entry)
@@ -69,7 +71,7 @@ class SvnLogCollector:
                 except (AttributeError, SyntaxError, KeyError):
                     other[sub] = None
             try:
-                path = str(pl.Path(path_elem.text).relative_to(relative_url))
+                path = str(pl.Path(path_elem.text).relative_to(self.relative_url))
             except (AttributeError, SyntaxError, ValueError) as err:
                 log.warning(f'{err} processing rev {rev}')
                 path = None
@@ -83,20 +85,14 @@ class SvnLogCollector:
                 """
                 return du.parser.parse(datestr).replace(tzinfo=dt.timezone.utc)
 
-            entry = LogEntry(rev, values['author'], to_date(values['date']),
-                             other['text-mods'], other['kind'], other['action'],
-                             other['prop-mods'], path, values['msg'])
+            entry = scm.LogEntry(rev, values['author'], to_date(values['date']),
+                                 other['text-mods'], other['kind'],
+                                 other['action'], other['prop-mods'], path,
+                                 values['msg'], None, None)
             yield entry
 
-    def process(self, xml, relative_url):
-        """Convert output of svn log --xml -v to a csv.
-
-        :param iter(str) xml: iterable of string (one for each line)
-        :param str relative_url: relative url for path elements.
-
-        :return: iter(tuple) containing the parsed entries.
-
-        """
+    def get_log_entries(self, xml):
+        # See parent.
         log_entry = ''
         for line in xml:
             if line.startswith('<logentry'):
@@ -107,40 +103,51 @@ class SvnLogCollector:
             log_entry += line
             if not line.startswith('</logentry>'):
                 continue
-            yield from self.process_entry(log_entry, relative_url)
+            yield from self.process_entry(log_entry)
             log_entry = ''
 
     def get_log(self):
         """Call svn log --xml -v and return the output as a DataFrame."""
-        relative_url = self.get_relative_url()
-        command = f'{self.svn_program} log --xml -v '
-        if self.after:
-            command += '-r {' + self.after.strftime('%Y-%m-%d') + '}:HEAD '
-        xml = internals._run(command + self.path)
-        records = []
-        with pbar.ProgressBarAdapter(self.progress_bar,
-                                     self.after) as progress_bar:
-            for entry in self.process(xml, relative_url):
-                records.append(entry)
-                progress_bar.update(entry.date)
-        columns = ['revision', 'author', 'date', 'textmods', 'kind',
-                   'action', 'propmods', 'path', 'message']
-        result = pd.DataFrame.from_records(records, columns=columns)
-        result['date'] = pd.to_datetime(result['date'], utc=True)
-        # FIXME categorize columns that should be categorized.
-        return result
+        relative_url = self.relative_url
+        if self.before is None:
+            before = 'HEAD'
+        else:
+            before = '{' + f'{self.before:%Y-%m-%d}' + '}'
+        after = '{' + f'{self.after:%Y-%m-%d}' + '}'
+        command = f'{self.svn_program} {log_args} -r {after}:{before}'
+        command_with_path = f'{command} {self.path}'
+        results = internals._run(command_with_path)
+        return self.process_output_to_df(results)
 
 
-def get_svn_log(path=None, after=None, svn_program=None, progress_bar=None):
+def get_svn_log(
+    after: dt.datetime=None,
+    before: dt.datetime=None,
+    path: str='.',
+    svn_program: str='svn',
+    progress_bar: tqdm.tqdm=None):
     """Entry point to retrieve Subversion log.
 
-    :param str path: location of checked out subversion repository.
-    :param datetime.datetime after: only get the log after a certain time stamp.
-    :param str svn_program: svn client (defaults to svn).
-    :param progress_bar: tqdm.tqdm progress bar.
+    Args:
+        after: only get the log after time stamp
+               (defaults to one year ago).
+        before: only get the log before time stamp
+                (defaults to now).
+        path: location of checked out subversion repository.
+        svn_program: svn client (defaults to svn).
+        progress_bar: tqdm.tqdm progress bar.
+
+    Returns:
+        pandas.DataFrame with columns matching the fields of
+        :class:`codemetrics.scm.LogEntry`.
+
+    Example::
+
+        >>> last_year = datetime.datetime.now() - datetime.timedelta(365)
+        >>> log_df = cm.svn.get_svn_log(path='src', after=last_year)
 
     """
-    collector = SvnLogCollector(path=path, after=after,
-                                svn_program=svn_program,
-                                progress_bar=progress_bar)
+    collector = _SvnLogCollector(after=after, before=before, path=path,
+                                 svn_program=svn_program,
+                                 progress_bar=progress_bar)
     return collector.get_log()

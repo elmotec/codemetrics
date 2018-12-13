@@ -7,5 +7,6 @@ tox
 coverage
 Sphinx
 twine
-
-
+# for the doc
+sphinx_rtd_theme
+sphinx-autodoc-typehints

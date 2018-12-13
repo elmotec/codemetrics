@@ -9,6 +9,13 @@ import sklearn.feature_extraction.text
 
 from . import internals
 
+__all__ = [
+    'get_mass_changesets',
+    'ages',
+    'hot_spots',
+    'co_changes',
+    'guess_components'
+]
 
 def get_mass_changesets(log, min_changes):
     """Extract mass change sets from the SCM log dataframe.
@@ -16,12 +23,12 @@ def get_mass_changesets(log, min_changes):
     Calculate the number of files changed by each revision and extract that
     list according to the threshold.
 
-    :param pandas.DataFrame log: SCM log data.
-    :param int min_changes: threshold of changes above which a revision is
-                            included in the output.
+    Args:
+        log: SCM log data.
+        min_changes: threshold of changes above which a revision is included in the output.
 
-    :rtype: pandas.DataFrame
-    :return: revisions that had more files changed than the threshold.
+    Returns:
+        revisions that had more files changed than the threshold.
 
     """
     by_rev = log[['revision', 'path']].groupby('revision').count()
@@ -32,24 +39,23 @@ def get_mass_changesets(log, min_changes):
     return massive
 
 
-def ages(log, keys=None, utc=None, **kwargs):
+def ages(log: pd.DataFrame, keys: str=None, utc: bool=None, **kwargs) -> pd.DataFrame:
     """Generate age series from date series.
 
     Takes the output of a SCM log or just the date column and retrun the series
     of ages.
 
-    .. example::
-        ```ages = codemetrics.ages(log)```
+    Args:
+        log: log or date column of log.
+        keys: keys when grouping data before calculating the age.
+        utc: treat pandas.datetime as utc (defaults to True).
 
-    :param pandas.Series or pandas.DataFrame log: log or date column of log.
-    :param list(str) keys: keys when grouping data before calculating the age.
-    :param bool utc: treat pandas.datetime as utc (defaults to True).
-    :rtype: pandas.DataFrame
-    :return: age of most recent modification.
+    Returns:
+        age of most recent modification.
 
-    .. seealso::
+    Example::
 
-        :ref:`codemetrics.svn.get_svn_log`
+        ages = codemetrics.ages(log_df)
 
     """
     if utc is None:
@@ -71,25 +77,29 @@ def hot_spots(log, loc, by=None, count_one_change_per=None):
     Cross SCM log and loc as an approximation of complexity to determine paths
     that are complex and change often.
 
-    :param pandas.DataFrame log: output log from SCM.
-    :param pandas.DataFrame loc: output from cloc.
-    :param str by: aggregation level can be path (default), another column.
-    :param list(str) count_one_change_per: allows one to count one change
-        by day or one change per JIRA instead of one change by revision.
+    Args:
+        log: output log from SCM.
+        loc: output from cloc.
+        by: aggregation level can be path (default), another column.
+        count_one_change_per: allows one to count one change by day or one
+                              change per JIRA instead of one change by revision.
 
-    :rtype: pandas.DataFrame
+    Returns:
+        pandas.DataFrame
 
     """
 
     def compute_score(input_df):
         """Compute score on the input dataframe for ranking.
 
-        :param pandas.DataFrame input_df: data frame containing input.
-
         Scale each column accoding to min/max policy and compute a score
         between 0 and 1 based on the product of each column scaled value.
 
-        :rtype: pandas.DataFrame
+        Args:
+            input_df: data frame containing input.
+
+        Returns:
+            pandas.DataFrame
 
         """
         df = input_df.astype('float').copy()
@@ -120,16 +130,18 @@ def hot_spots(log, loc, by=None, count_one_change_per=None):
 def co_changes(log=None, by=None, on=None):
     """Generate co-changes report.
 
-    Returns a pandas.DataFrame with the following columns:
+    Returns a DataFrame with the following columns:
     - primary: first path changed.
     - secondary: second path changed.
     - coupling: how often do the path change together.
 
-    :param pandas.DataFrame log: output log from SCM.
-    :param str by: aggregation level. Defaults to path.
-    :param str on: Field name to join/merge on. Defaults to revision.
+    Args:
+        log: output log from SCM.
+        by: aggregation level. Defaults to path.
+        on: Field name to join/merge on. Defaults to revision.
 
-    :rtype: pandas.DataFrame
+    Returns:
+        pandas.DataFrame
 
     """
     if by is None:
@@ -153,16 +165,17 @@ def co_changes(log=None, by=None, on=None):
 def guess_components(paths, stop_words=None, n_clusters=8):
     """Guess components from an iterable of paths.
 
-    :param iter(str) paths: list of string containing file paths in the project.
-    :param set(str) stop_words: stop words. Passed to TfidfVectorizer.
-    :param int n_clusters: number of clusters. Passed to MiniBatchKMeans.
+    Args:
+        paths: list of string containing file paths in the project.
+        stop_words: stop words. Passed to TfidfVectorizer.
+        n_clusters: number of clusters. Passed to MiniBatchKMeans.
 
-    :rtype: pandas.DataFrame
+    Returns:
+        pandas.DataFrame
 
-    .. seealso::
-
-      sklearn.feature_extraction.text.TfidfVectorizer
-      sklearn.cluster.MiniBatchKMeans
+    See Also:
+        sklearn.feature_extraction.text.TfidfVectorizer
+        sklearn.cluster.MiniBatchKMeans
 
     """
     data = list([p for p in paths])

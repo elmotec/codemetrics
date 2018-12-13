@@ -1,5 +1,5 @@
 Welcome to codemetrics's documentation!
-======================================
+=======================================
 
 .. toctree::
    :maxdepth: 2
@@ -7,8 +7,7 @@ Welcome to codemetrics's documentation!
 
    readme
    installation
-   usage
-   modules
+   codemetrics
    contributing
    authors
    history

@@ -15,18 +15,16 @@
 Code Metrics
 ============
 
-Mine your SCM for insight on your software. This package was inspired by
-`Adam Torhill`_'s books.
+Mine your SCM for insight on your software. A work of love
+inspired by `Adam Tornhill`_'s books.
 
-Code metrics is a simple Python module that leverage the libraries below to 
-generate insight from a source control management (SCM) tool:
+Code metrics is a simple Python module that leverage your source control
+management (SCM) tool to generate insight on your code base.
 
 - pandas_: for data munching.
 - lizard_: for code complexity calculation.
 - cloc.pl (script): for line counts from cloc_
-- and your SCM: for now, only Subversion is supported. Looking to add git.
-
-It can generate reports based on Adam Tornhill awesome books.
+- For now, only Subversion and git are supported.
 
 
 Installation
@@ -46,21 +44,16 @@ Usage
 This is a simple tool that makes it easy to retrieve information from your
 Source Control Management (SCM) repository and hopefully gain insight from it.
 
-The reports available for now are:
+::
 
-- AgeReport: 
-    What files/component has not changed in a while or who is most
-    familiar with a particular set of files.
+  import codemetrics as cm
+  import cm.git
 
-- HotSpotReport:
-    Combines line count from cloc with SCM information to identify
-    files/components that are complex (many lines of code) and that
-    change often. There are ways to post process the SCM log so
-    that you adjust for mass edits or intraday changes.
+  log_df = cm.git.get_git_log()
+  ages_df = cm.ages(log_df)
 
-- CoChangeReport:
-    Identify what file/component changes when another part
-    of the code base change. This is useful to identify dependencies.
+
+See `module documentation`_ for more advanced functions.
 
 
 License
@@ -68,15 +61,13 @@ License
 
 Licensed under the term of `MIT License`_. See attached file LICENSE.txt.
 
-Features
---------
-
-* TODO
 
 Credits
 -------
 
-This package was created with Cookiecutter_.
+- This package was inspired by `Adam Tornhill`_'s books.
+- This package was created with Cookiecutter_.
+
 
 .. _Cookiecutter: https://github.com/audreyr/cookiecutter
 .. _lizard: https://github.com/terryyin/lizard
@@ -84,4 +75,5 @@ This package was created with Cookiecutter_.
 .. _cloc: http://cloc.sourceforge.net/
 .. _Pandas documentation: https://pandas.pydata.org/pandas-docs/stable/text.html
 .. _MIT License: https://en.wikipedia.org/wiki/MIT_License
-.. _Adam Torhill: https://www.adamtornhill.com/
+.. _Adam Tornhill: https://www.adamtornhill.com/
+.. _module documentation: https://codemetrics.readthedocs.org/codemetrics.html

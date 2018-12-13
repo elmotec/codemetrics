@@ -21,10 +21,13 @@
 
 import os
 import sys
-import codemetrics
 
 sys.path.insert(0, os.path.abspath('..'))
 
+import codemetrics
+import codemetrics.scm
+import codemetrics.svn
+import codemetrics.git
 
 # -- General configuration ---------------------------------------------
 
@@ -34,7 +37,13 @@ sys.path.insert(0, os.path.abspath('..'))
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinx.ext.autodoc', 'sphinx.ext.viewcode']
+extensions = [
+    'sphinx.ext.autodoc',
+    'sphinx.ext.viewcode',
+    'sphinx.ext.napoleon',
+    'sphinx_autodoc_typehints',
+    'sphinx.ext.todo'
+]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -85,7 +94,7 @@ todo_include_todos = False
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'alabaster'
+html_theme = 'sphinx_rtd_theme'
 
 # Theme options are theme-specific and customize the look and feel of a
 # theme further.  For a list of options available for each theme, see the
@@ -155,3 +164,5 @@ texinfo_documents = [
      'One line description of project.',
      'Miscellaneous'),
 ]
+
+todo_include_todos = True

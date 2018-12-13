@@ -67,10 +67,12 @@ class SubversionTestCase(unittest.TestCase):
             'message': 'object',
         }, parse_dates=['date'])
         df['date'] = pd.to_datetime(df['date'], utc=True)
+        df = df.where(pd.notnull(df), None)
         return df
 
     def setUp(self):
         add_data_frame_equality_func(self)
+        self.after = dt.datetime(2018, 2, 24, tzinfo=dt.timezone.utc)
 
     @mock.patch('pathlib.Path.glob', autospec=True,
                 side_effect=[['first.py', 'second.py']])
@@ -91,27 +93,17 @@ class SubversionTestCase(unittest.TestCase):
                              get_svn_log()], autospec=True)
     def test_get_log(self, call):
         """Simple svn call returns pandas.DataFrame."""
-        df = cm.svn.get_svn_log('.')
-        call.assert_called_with('svn log --xml -v .')
+        df = cm.svn.get_svn_log(self.after)
+        call.assert_called_with('svn log --xml -v -r {2018-02-24}:HEAD .')
         expected = SubversionTestCase.read_svn_log(textwrap.dedent('''
-        revision,author,date,textmods,kind,action,propmods,path,message
-        1018,elmotec,2018-02-24T11:14:11.000000Z,true,file,M,false,stats.py,Added joblib to requirements.txt
-        1018,elmotec,2018-02-24T11:14:11.000000Z,true,file,M,false,requirements.txt,Added joblib to requirements.txt
+        revision,author,date,textmods,kind,action,propmods,path,message,added,removed
+        1018,elmotec,2018-02-24T11:14:11.000000Z,true,file,M,false,stats.py,Added joblib to requirements.txt,,
+        1018,elmotec,2018-02-24T11:14:11.000000Z,true,file,M,false,requirements.txt,Added joblib to requirements.txt,,
         '''))
         self.assertEqual(df, expected)
 
-    @mock.patch('codemetrics.internals._run',
-                side_effect=[['Relative URL: ^/project/trunk'],
-                             get_svn_log()], autospec=True)
-    def test_fails_with_pbar_without_after(self, call):
-        """Check error when passing a progress bar without after parameter."""
-        with self.assertRaises(ValueError) as err:
-            pbar = tqdm.tqdm()
-            df = cm.svn.get_svn_log('.', progress_bar=pbar)
-        self.assertIn('progress_bar requires', str(err.exception))
-
     @mock.patch('codemetrics.internals.get_now', autospec=True,
-                return_value=dt.datetime(2018, 2, 28))
+                return_value=dt.datetime(2018, 2, 28, tzinfo=dt.timezone.utc))
     @mock.patch('tqdm.tqdm', autospec=True)
     @mock.patch('codemetrics.internals._run', side_effect=[
         ['Relative URL: ^/project/trunk'],
@@ -121,8 +113,7 @@ class SubversionTestCase(unittest.TestCase):
     def test_get_log_with_progress(self, call, tqdm_, today_):
         """Simple svn call returns pandas.DataFrame."""
         pb = tqdm.tqdm()
-        _ = cm.svn.get_svn_log(after=dt.datetime(2018, 2, 24), progress_bar=pb)
-        call.assert_called_with('svn log --xml -v -r {2018-02-24}:HEAD .')
+        _ = cm.svn.get_svn_log(self.after, progress_bar=pb)
         self.assertEqual(pb.total, 4)
         calls = [mock.call(1), mock.call(2)]
         pb.update.assert_has_calls(calls)
@@ -143,13 +134,11 @@ class SubversionTestCase(unittest.TestCase):
     ''').split('\n')], autospec=True)
     def test_get_log_no_msg(self, call):
         """Simple svn call returns pandas.DataFrame."""
-        df = cm.svn.get_svn_log()
-        call.assert_called_with('svn log --xml -v .')
+        df = cm.svn.get_svn_log(self.after)
         expected = SubversionTestCase.read_svn_log(textwrap.dedent('''
-        revision,author,date,textmods,kind,action,propmods,path,message
-        1018,elmotec,2018-02-24T11:14:11.000000Z,None,file,M,None,stats.py,None
+        revision,author,date,textmods,kind,action,propmods,path,message,added,removed
+        1018,elmotec,2018-02-24T11:14:11.000000Z,,file,M,,stats.py,,
         '''))
-        expected.replace({'None': None}, inplace=True)
         self.assertEqual(df, expected)
 
     @mock.patch('codemetrics.internals._run', side_effect=[
@@ -167,18 +156,18 @@ class SubversionTestCase(unittest.TestCase):
     def test_get_log_no_author(self, call):
         """Simple svn call returns pandas.DataFrame."""
         expected = SubversionTestCase.read_svn_log(textwrap.dedent('''
-        revision,author,date,textmods,kind,action,propmods,path,message
-        1018,,2018-02-24T11:14:11.000000Z,,file,M,,stats.py,not much
+        revision,author,date,textmods,kind,action,propmods,path,message,added,removed
+        1018,,2018-02-24T11:14:11.000000Z,,file,M,,stats.py,not much,,
         '''))
-        df = cm.svn.get_svn_log()
-        call.assert_called_with('svn log --xml -v .')
+        df = cm.svn.get_svn_log(self.after)
+        call.assert_called_with('svn log --xml -v -r {2018-02-24}:HEAD .')
         self.assertEqual(df, expected)
 
     @mock.patch('codemetrics.internals._run', autospec=True)
     def test_program_name(self, run):
         """Test program_name taken into account."""
-        cm.svn.get_svn_log(svn_program='svn-1.7')
-        run.assert_called_with('svn-1.7 log --xml -v .')
+        cm.svn.get_svn_log(self.after, svn_program='svn-1.7')
+        run.assert_called_with('svn-1.7 log --xml -v -r {2018-02-24}:HEAD .')
 
     @mock.patch('codemetrics.internals._run', return_value=textwrap.dedent('''\
     language,filename,blank,comment,code,"github.com/AlDanial/cloc..."

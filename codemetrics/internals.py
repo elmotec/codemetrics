@@ -1,23 +1,17 @@
 #!/usr/bin/env python
 # encoding: utf-8
 
-
 """Metrics offer a bunch of function useful to analyze a code base."""
 
 import datetime as dt
 import pathlib as pl
 import subprocess
 import logging
-import collections
 
 import pandas as pd
 
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
-
-LogEntry = collections.namedtuple('LogEntry',
-                                  'revision author date textmods kind action '
-                                  'propmods path msg'.split())
 
 
 def get_now():
@@ -26,7 +20,7 @@ def get_now():
     This is also useful to patch retrieval of the current date/time.
 
     """
-    return pd.to_datetime(dt.datetime.now(dt.timezone.utc), utc=True)
+    return dt.datetime.now(dt.timezone.utc)
 
 
 # noinspection SpellCheckingInspection
