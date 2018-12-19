@@ -2,12 +2,14 @@
 # -*- coding: utf-8 -*-
 
 import os.path
+import typing
 
 import pandas as pd
 import sklearn
 import sklearn.feature_extraction.text
 
 from . import internals
+from . import scm
 
 __all__ = [
     'get_mass_changesets',
@@ -39,34 +41,32 @@ def get_mass_changesets(log, min_changes):
     return massive
 
 
-def ages(log: pd.DataFrame, keys: str=None, utc: bool=None, **kwargs) -> pd.DataFrame:
-    """Generate age series from date series.
+def ages(log: pd.DataFrame,
+         by: typing.Sequence[str]=None
+         ) -> pd.DataFrame:
+    """Generate age of each file based on last change.
 
-    Takes the output of a SCM log or just the date column and retrun the series
-    of ages.
+    Takes the output of a SCM log or just the date column and return ages.
 
     Args:
         log: log or date column of log.
-        keys: keys when grouping data before calculating the age.
-        utc: treat pandas.datetime as utc (defaults to True).
+        by: keys used to group data before calculating the age.
+            See pandas.DataFrame.groupby. Defaults to ['path'].
 
     Returns:
-        age of most recent modification.
+        age of most recent modification as pandas.DataFrame.
 
     Example::
 
         ages = codemetrics.ages(log_df)
 
     """
-    if utc is None:
-        utc = True
-    if keys is None:
-        excluded = {'revision', 'author', 'date', 'textmods',
-                    'action', 'propmods', 'message'}
-        keys = [col for col in log.columns if col not in excluded]
-    now = internals.get_now()
-    rv = log[keys + ['date']].groupby(keys).max().reset_index()
-    rv['age'] = (now - pd.to_datetime(rv['date'], utc=utc))
+    if by is None:
+        excluded = {fd for fd in scm.LogEntry._fields} - {'path'}
+        by = [col for col in log.columns if col not in excluded]
+    now = pd.to_datetime(internals.get_now(), utc=True)
+    rv = log[by + ['date']].groupby(by).max().reset_index()
+    rv['age'] = (now - pd.to_datetime(rv['date'], utc=True))
     rv['age'] /= pd.Timedelta(1, unit='D')
     return rv.drop(columns=['date'])
 

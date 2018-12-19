@@ -9,16 +9,17 @@ import datetime as dt
 
 import dateutil as du
 import tqdm
+import numpy as np
 
 from . import scm
 from . import internals
 from .internals import log
 
 
-log_args = 'log --xml -v'
-
 class _SvnLogCollector(scm._ScmLogCollector):
     """Collect log from Subversion."""
+
+    _args = 'log --xml -v'
 
     def __init__(self, svn_program='svn', **kwargs):
         """Initialize.
@@ -80,7 +81,9 @@ class _SvnLogCollector(scm._ScmLogCollector):
                 """Convert str to datetime.datetime.
 
                 The date returned by Subversion is UTC according to git-svn man
-                page (FIXME). So we force the timezone to UTC as well.
+                page. Date tzinfo is set to UTC.
+
+                added and removed columns are set to np.nan for now.
 
                 """
                 return du.parser.parse(datestr).replace(tzinfo=dt.timezone.utc)
@@ -88,7 +91,7 @@ class _SvnLogCollector(scm._ScmLogCollector):
             entry = scm.LogEntry(rev, values['author'], to_date(values['date']),
                                  other['text-mods'], other['kind'],
                                  other['action'], other['prop-mods'], path,
-                                 values['msg'], None, None)
+                                 values['msg'], np.nan, np.nan)
             yield entry
 
     def get_log_entries(self, xml):
@@ -114,7 +117,7 @@ class _SvnLogCollector(scm._ScmLogCollector):
         else:
             before = '{' + f'{self.before:%Y-%m-%d}' + '}'
         after = '{' + f'{self.after:%Y-%m-%d}' + '}'
-        command = f'{self.svn_program} {log_args} -r {after}:{before}'
+        command = f'{self.svn_program} {_SvnLogCollector._args} -r {after}:{before}'
         command_with_path = f'{command} {self.path}'
         results = internals._run(command_with_path)
         return self.process_output_to_df(results)

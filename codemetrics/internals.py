@@ -15,7 +15,7 @@ log.addHandler(logging.NullHandler())
 
 
 def get_now():
-    """Get current time stamp as pd.TimeStamp.
+    """Get current time stamp as pd.TimeStamp (UTC).
 
     This is also useful to patch retrieval of the current date/time.
 
@@ -39,12 +39,17 @@ def get_files(path=None, pattern=None):
 def _run(command, errors=None, **kwargs):
     """Execute command passed as argument and return output.
 
+    Forwards the call to subprocess.run.
+
     If the command does not return 0, will throw subprocess.CalledProcessError.
 
-    :param list(str) command: command to execute.
-    :param str errors: error policy during bytes decoding. Defaults to ignore.
-    :param dict **kwargs: additional kwargs are passed to subprocess.run().
-    :return: output of the command as iter(str)
+    Args:
+        command: command to execute.
+        errors: error policy during bytes decoding. Defaults to ignore.
+        **kwargs: additional kwargs are passed to subprocess.run().
+
+    Returns:
+        Output of the command as iter(str).
 
     """
     if errors is None:

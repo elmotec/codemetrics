@@ -90,12 +90,17 @@ class AgeReportTestCase(SimpleRepositoryFixture):
 
     def setUp(self):
         super().setUp()
+        self.now = dt.datetime(2018, 2, 28, tzinfo=dt.timezone.utc)
+        self.get_now_patcher = mock.patch('codemetrics.internals.get_now',
+                                          autospec=True, return_value=self.now)
+        self.get_now = self.get_now_patcher.start()
 
-    @mock.patch('codemetrics.internals.get_now', autospec=True,
-                return_value=pd.to_datetime(dt.datetime(2018, 2, 28), utc=True))
-    def test_ages(self, now):
+    def tearDown(self):
+        self.get_now_patcher.stop()
+
+    def test_ages(self):
         """The age report generates data based on the SCM log data"""
-        actual = cm.ages(self.log)[['path', 'kind', 'age']]
+        actual = cm.ages(self.log, by=['path', 'kind'])[['path', 'kind', 'age']]
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
         path,kind,age
         requirements.txt,file,3.531817
@@ -103,13 +108,11 @@ class AgeReportTestCase(SimpleRepositoryFixture):
         ''')))
         self.assertEqual(expected, actual)
 
-    @mock.patch('codemetrics.internals.get_now', autospec=True,
-                return_value=pd.to_datetime(dt.datetime(2018, 2, 28), utc=True))
-    def test_age_report_enriched_with_component(self, get_now):
+    def test_age_report_enriched_with_component(self):
         """Allow one to enrich the log before generating the age report."""
         log = self.log
         log['component'] = 'blah'
-        actual = cm.ages(log, keys=['path', 'component'])
+        actual = cm.ages(log, by=['path', 'component'])
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
         path,component,age
         requirements.txt,blah,3.531817
@@ -117,12 +120,10 @@ class AgeReportTestCase(SimpleRepositoryFixture):
         ''')))
         self.assertEqual(expected, actual)
 
-    @mock.patch('codemetrics.internals.get_now', autospec=True,
-                return_value=pd.to_datetime(dt.datetime(2018, 2, 28), utc=True))
-    def test_key_parameter(self, get_now):
+    def test_key_parameter(self):
         """Ignore files_df if nothing in it is relevant"""
         self.log['component'] = 'kernel'
-        actual = cm.ages(self.log, keys=['component', 'kind'])
+        actual = cm.ages(self.log, by=['component', 'kind'])
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
         component,kind,age
         kernel,file,1.563889''')))

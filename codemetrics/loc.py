@@ -9,27 +9,39 @@ import pathlib as pl
 import pandas as pd
 
 from . import internals
+from . import log
 
 
-def get_cloc(path=None, cloc_program=None):
-    """Retrieve lines of code (LOC)
+__all__ = ['get_cloc']
 
-    TODO
+def get_cloc(path='.', cloc_program='cloc'):
+    """Retrieve lines of code (LOC) using cloc.pl
+
+    For more information about cloc.pl, see http://cloc.sourceforge.net/.
+
+    Args:
+        path: path from which to gather statistics.
+        cloc_program: name of the program.
+
+    Returns:
+        pandas.DataFrame.
 
     """
-    if path is None:
-        path = '.'
-    if cloc_program is None:
-        cloc_program = 'cloc'
     cmdline = f'{cloc_program} --csv --by-file {path}'
     records = []
-    reader = csv.reader(internals._run(cmdline))
+    try:
+        output = internals._run(cmdline)
+    except FileNotFoundError as err:
+        msg = f'{err}. Is {cloc_program} available? Please pass ' \
+              'cloc_program=<cloc location> to get_cloc'
+        raise FileNotFoundError(msg)
+    reader = csv.reader(output)
     for record in reader:
         if len(record) >= 5 and record[0]:
-            if record[0] != 'language':
+            if record[0].strip() != 'language':
                 record[1] = str(pl.Path(record[1]))
                 record[2:5] = [int(val) for val in record[2:5]]
             records.append(record[:5])
-    columns = 'language,path,blank,comment,code'.split(',')
+    columns = records[0]
     return pd.DataFrame.from_records(records[1:], columns=columns)
 

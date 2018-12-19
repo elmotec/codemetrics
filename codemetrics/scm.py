@@ -10,7 +10,7 @@ import datetime as dt
 import pandas as pd
 
 from . import pbar
-from .internals import get_now
+from . import internals
 
 
 LogEntry = collections.namedtuple('LogEntry',
@@ -51,7 +51,7 @@ class _ScmLogCollector(abc.ABC):
         """
         self.path = path
         assert after is None or after.tzinfo is not None
-        self.after = after or get_now() - dt.timedelta(365)
+        self.after = after or internals.get_now() - dt.timedelta(365)
         assert before is None or before.tzinfo is not None
         self.before = before
         self.progress_bar = progress_bar
@@ -68,6 +68,7 @@ class _ScmLogCollector(abc.ABC):
               pandas.DataFrame
 
         """
+        assert not isinstance(cmd_output, str)  # FIXME: better way to check.
         log_entries = []
         with pbar.ProgressBarAdapter(self.progress_bar,
                                      self.after) as progress_bar:

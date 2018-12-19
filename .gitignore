@@ -73,3 +73,6 @@ setup.bat
 
 # Pycharm
 .idea/
+
+# ipython notebooks
+*.ipynb

@@ -67,7 +67,6 @@ class SubversionTestCase(unittest.TestCase):
             'message': 'object',
         }, parse_dates=['date'])
         df['date'] = pd.to_datetime(df['date'], utc=True)
-        df = df.where(pd.notnull(df), None)
         return df
 
     def setUp(self):
@@ -168,24 +167,6 @@ class SubversionTestCase(unittest.TestCase):
         """Test program_name taken into account."""
         cm.svn.get_svn_log(self.after, svn_program='svn-1.7')
         run.assert_called_with('svn-1.7 log --xml -v -r {2018-02-24}:HEAD .')
-
-    @mock.patch('codemetrics.internals._run', return_value=textwrap.dedent('''\
-    language,filename,blank,comment,code,"github.com/AlDanial/cloc..."
-    Python,internals.py,55,50,130
-    Python,tests.py,29,92,109
-    Python,setup.py,4,2,30
-    ''').split('\n'), autospec=True)
-    def test_get_cloc(self, run):
-        """Test handling of get_cloc output."""
-        actual = cm.loc.get_cloc()
-        run.assert_called_with('cloc --csv --by-file .')
-        expected = pd.read_csv(io.StringIO(textwrap.dedent('''
-        language,path,blank,comment,code
-        Python,internals.py,55,50,130
-        Python,tests.py,29,92,109
-        Python,setup.py,4,2,30
-        ''')))
-        self.assertEqual(actual, expected)
 
 
 if __name__ == '__main__':
