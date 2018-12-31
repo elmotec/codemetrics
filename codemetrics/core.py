@@ -6,6 +6,7 @@ import typing
 
 import pandas as pd
 import sklearn
+import sklearn.cluster
 import sklearn.feature_extraction.text
 
 from . import internals
@@ -89,27 +90,6 @@ def hot_spots(log, loc, by=None, count_one_change_per=None):
 
     """
 
-    def compute_score(input_df):
-        """Compute score on the input dataframe for ranking.
-
-        Scale each column accoding to min/max policy and compute a score
-        between 0 and 1 based on the product of each column scaled value.
-
-        Args:
-            input_df: data frame containing input.
-
-        Returns:
-            pandas.DataFrame
-
-        """
-        df = input_df.astype('float').copy()
-        df.fillna(0.0, inplace=True)
-        df -= df.min(axis=0)
-        df /= df.max(axis=0)
-        df.fillna(0.0, inplace=True)
-        df = df ** 2
-        return df
-
     if by is None:
         by = 'path'
     if count_one_change_per is None:
@@ -121,9 +101,6 @@ def hot_spots(log, loc, by=None, count_one_change_per=None):
         value_counts().to_frame('changes')
     df = pd.merge(c_df, ch_df, right_index=True, left_on=by, how='outer'). \
         fillna(0.0)
-    df[['complexity_score', 'changes_score']] = \
-        compute_score(df[['complexity', 'changes']])
-    df['score'] = df[['complexity_score', 'changes_score']].sum(axis=1)
     return df
 
 
@@ -150,15 +127,14 @@ def co_changes(log=None, by=None, on=None):
         on = 'revision'
     df = log[[on, by]].drop_duplicates()
     sj = pd.merge(df, df, on=on)
-    sj = sj.rename(columns={by + '_x': 'primary', by + '_y': 'secondary'})
+    sj = sj.rename(columns={by + '_x': by, by + '_y': 'dependency'})
     sj.drop_duplicates(inplace=True)  # FIXME: needs a test
-    sj = sj.groupby(['primary', 'secondary']).count().reset_index()
-    result = pd.merge(sj[sj['primary'] == sj['secondary']][['primary', on]],
-                      sj[sj['primary'] != sj['secondary']],
-                      on='primary', suffixes=['_changes', '_cochanges'])
-    result['coupling'] = result[on + '_cochanges'] / result[on + '_changes']
-    return result[['primary', 'secondary', on + '_cochanges',
-                   on + '_changes', 'coupling']]. \
+    sj = sj.groupby([by, 'dependency']).count().reset_index()
+    result = pd.merge(sj[sj[by] == sj['dependency']][[by, on]],
+                      sj[sj[by] != sj['dependency']], on=by).\
+        rename(columns={on + '_x': 'changes', on + '_y': 'cochanges'})
+    result['coupling'] = result['cochanges'] / result['changes']
+    return result[[by, 'dependency', 'changes', 'cochanges', 'coupling']].\
         sort_values(by='coupling', ascending=False)
 
 

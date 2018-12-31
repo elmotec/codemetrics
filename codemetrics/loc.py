@@ -14,6 +14,7 @@ from . import log
 
 __all__ = ['get_cloc']
 
+
 def get_cloc(path='.', cloc_program='cloc'):
     """Retrieve lines of code (LOC) using cloc.pl
 
@@ -27,6 +28,7 @@ def get_cloc(path='.', cloc_program='cloc'):
         pandas.DataFrame.
 
     """
+    internals._check_run_in_root(path)
     cmdline = f'{cloc_program} --csv --by-file {path}'
     records = []
     try:
@@ -43,5 +45,7 @@ def get_cloc(path='.', cloc_program='cloc'):
                 record[2:5] = [int(val) for val in record[2:5]]
             records.append(record[:5])
     columns = records[0]
-    return pd.DataFrame.from_records(records[1:], columns=columns)
-
+    loc = pd.DataFrame.from_records(records[1:], columns=columns).\
+        rename(columns={'filename': 'path'})
+    loc.loc[:, 'path'] = loc['path'].str.replace('\\', '/')
+    return loc

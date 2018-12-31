@@ -136,7 +136,7 @@ def get_svn_log(
                (defaults to one year ago).
         before: only get the log before time stamp
                 (defaults to now).
-        path: location of checked out subversion repository.
+        path: location of checked out subversion repository root.
         svn_program: svn client (defaults to svn).
         progress_bar: tqdm.tqdm progress bar.
 
@@ -150,6 +150,7 @@ def get_svn_log(
         >>> log_df = cm.svn.get_svn_log(path='src', after=last_year)
 
     """
+    internals._check_run_in_root(path)
     collector = _SvnLogCollector(after=after, before=before, path=path,
                                  svn_program=svn_program,
                                  progress_bar=progress_bar)

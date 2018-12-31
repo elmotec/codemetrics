@@ -26,22 +26,25 @@ class SimpleDirectory(unittest.TestCase):
         Python,tests.py,29,92,109
         Python,setup.py,4,2,30
         """)
-        self.run_patcher = mock.patch('codemetrics.internals._run',
-                                      autospec=True,
+        cmi = 'codemetrics.internals.'
+        self.run_patcher = mock.patch(cmi + '_run', autospec=True,
                                       return_value=self.run_output.split('\n'))
+        self.check_patcher = mock.patch(cmi + '_check_run_in_root',
+                                        autospec=True)
         self.run_ = self.run_patcher.start()
+        self.check_run_from_root = self.check_patcher.start()
 
     def tearDown(self):
         """Turn off patches"""
-        self.run_patcher.stop()
+        mock.patch.stopall()
 
     def test_cloc_reads_files(self):
         """cloc is called and reads the output csv file."""
         actual = loc.get_cloc()
         self.run_.assert_called_with('cloc --csv --by-file .')
         usecols = 'language,filename,blank,comment,code'.split(',')
-        expected = pd.read_csv(io.StringIO(self.run_output), usecols=usecols)
-        expected.rename(columns={'filename': 'path'})
+        expected = pd.read_csv(io.StringIO(self.run_output), usecols=usecols).\
+            rename(columns={'filename': 'path'})
         self.assertEqual(expected, actual)
 
     def test_cloc_not_found(self):
@@ -50,3 +53,10 @@ class SimpleDirectory(unittest.TestCase):
         with self.assertRaises(FileNotFoundError) as context:
             _ = loc.get_cloc()
         self.assertIn('cloc', str(context.exception))
+
+    def test_cloc_runs_from_root(self):
+        """Make sure that command line call checks it is run from the root."""
+        self.check_patcher.stop()
+        with self.assertRaises(ValueError) as context:
+            loc.get_cloc()
+        self.assertIn('git or svn root', str(context.exception))

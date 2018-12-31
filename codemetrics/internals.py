@@ -36,6 +36,16 @@ def get_files(path=None, pattern=None):
     return pd.DataFrame.from_records(files, columns=['path'])
 
 
+def _check_run_in_root(path):
+    """Throw an exception if path is not a root directory."""
+    candidate = pl.Path.cwd() / path
+    for _ in candidate.glob(pattern='.gitattributes'):
+        return
+    for _ in candidate.glob(pattern='.svn'):
+        return
+    raise ValueError(f'{candidate} does not appear to be a git or svn root')
+
+
 def _run(command, errors=None, **kwargs):
     """Execute command passed as argument and return output.
 

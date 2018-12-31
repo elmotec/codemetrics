@@ -72,10 +72,13 @@ class GitTestCase(unittest.TestCase):
         self.get_now_patcher = mock.patch('codemetrics.internals.get_now',
                                           autospec=True, return_value=self.now)
         self.get_now = self.get_now_patcher.start()
+        self.get_check_patcher = mock.patch('codemetrics.internals._check_run_in_root',
+                                            autospec=True)
+        self.check_run_in_root = self.get_check_patcher.start()
 
     def tearDown(self):
         """Clean up."""
-        self.get_now_patcher.stop()
+        mock.patch.stopall()
 
     @mock.patch('codemetrics.internals._run',
                 side_effect=[get_git_log()], autospec=True)

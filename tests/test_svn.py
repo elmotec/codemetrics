@@ -72,6 +72,12 @@ class SubversionTestCase(unittest.TestCase):
     def setUp(self):
         add_data_frame_equality_func(self)
         self.after = dt.datetime(2018, 2, 24, tzinfo=dt.timezone.utc)
+        self.get_check_patcher = mock.patch('codemetrics.internals._check_run_in_root',
+                                            autospec=True)
+        self.check_run_in_root = self.get_check_patcher.start()
+
+    def tearDown(self):
+        mock.patch.stopall()
 
     @mock.patch('pathlib.Path.glob', autospec=True,
                 side_effect=[['first.py', 'second.py']])

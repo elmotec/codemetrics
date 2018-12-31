@@ -142,13 +142,10 @@ class HotSpotReportTestCase(SimpleRepositoryFixture):
         log = self.log.loc[self.log['date'] >= after, :]
         actual = cm.hot_spots(log, self.loc)
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
-        language,path,blank,comment,complexity,changes,complexity_score,changes_score,score
-        Python,stats.py,28,84,100,1.0,1.0,1.0,2.0
-        Unknown,requirements.txt,0,0,3,0,0.0,0.0,0.0
+        language,path,blank,comment,complexity,changes
+        Python,stats.py,28,84,100,1.0
+        Unknown,requirements.txt,0,0,3,0
         ''')))
-        expected[['complexity_score', 'changes_score', 'score']] = \
-            expected[['complexity_score', 'changes_score', 'score']].astype(
-                'float64')
         self.assertEqual(expected, actual)
 
     def test_hot_spot_with_custom_change_metric(self):
@@ -157,9 +154,9 @@ class HotSpotReportTestCase(SimpleRepositoryFixture):
                                   24)  # force all rows to the same date.
         actual = cm.hot_spots(self.log, self.loc, count_one_change_per=['day'])
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
-        language,path,blank,comment,complexity,changes,complexity_score,changes_score,score
-        Python,stats.py,28,84,100,1,1.0,0.0,1.0
-        Unknown,requirements.txt,0,0,3,1,0.0,0.0,0.0
+        language,path,blank,comment,complexity,changes
+        Python,stats.py,28,84,100,1
+        Unknown,requirements.txt,0,0,3,1
         ''')))
         self.assertEqual(expected, actual)
 
@@ -174,9 +171,9 @@ class CoChangeTestCase(SimpleRepositoryFixture):
         """Simple CoChangeReport usage."""
         actual = cm.co_changes(log=SimpleRepositoryFixture.get_log_df())
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
-        primary,secondary,revision_cochanges,revision_changes,coupling
+        path,dependency,changes,cochanges,coupling
         requirements.txt,stats.py,1,1,1.0
-        stats.py,requirements.txt,1,2,0.5
+        stats.py,requirements.txt,2,1,0.5
         ''')))
         self.assertEqual(expected, actual)
 
@@ -187,7 +184,7 @@ class CoChangeTestCase(SimpleRepositoryFixture):
         log['day'] = pd.to_datetime('2018-02-24')
         actual = cm.co_changes(log=log, on='day')
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
-        primary,secondary,day_cochanges,day_changes,coupling
+        path,dependency,changes,cochanges,coupling
         requirements.txt,stats.py,1,1,1.0
         stats.py,requirements.txt,1,1,1.0
         ''')))
