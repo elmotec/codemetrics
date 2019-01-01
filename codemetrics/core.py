@@ -63,7 +63,7 @@ def ages(log: pd.DataFrame,
 
     """
     if by is None:
-        excluded = {fd for fd in scm.LogEntry._fields} - {'path'}
+        excluded = {fd for fd in scm.LogEntry.__slots__} - {'path'}
         by = [col for col in log.columns if col not in excluded]
     now = pd.to_datetime(internals.get_now(), utc=True)
     rv = log[by + ['date']].groupby(by).max().reset_index()

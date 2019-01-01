@@ -100,6 +100,16 @@ class AgeReportTestCase(SimpleRepositoryFixture):
 
     def test_ages(self):
         """The age report generates data based on the SCM log data"""
+        actual = cm.ages(self.log)
+        expected = pd.read_csv(io.StringIO(textwrap.dedent('''
+        path,age
+        requirements.txt,3.531817
+        stats.py,1.563889
+        ''')))
+        self.assertEqual(expected, actual)
+
+    def test_ages_enriched_with_kind(self):
+        """Allow to use additional columns in age report."""
         actual = cm.ages(self.log, by=['path', 'kind'])[['path', 'kind', 'age']]
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
         path,kind,age

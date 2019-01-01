@@ -31,7 +31,7 @@ def get_git_log(dates=None):
     44      0       codemetrics/core.py
     1       8       codemetrics/svn.py
     1       0       requirements.txt
-    110     18      tests/test_codemetrics.py
+    110     18      tests/test_core.py
     ''')
     return retval.split('\n')
 
@@ -93,7 +93,7 @@ revision,author,date,textmods,kind,action,propmods,path,message,added,removed
 b9fe5a6,elmotec,2018-12-04 21:49:55+00:00,,f,,,codemetrics/core.py,Added guess_components,44,0
 b9fe5a6,elmotec,2018-12-04 21:49:55+00:00,,f,,,codemetrics/svn.py,Added guess_components,1,8
 b9fe5a6,elmotec,2018-12-04 21:49:55+00:00,,f,,,requirements.txt,Added guess_components,1,0
-b9fe5a6,elmotec,2018-12-04 21:49:55+00:00,,f,,,tests/test_codemetrics.py,Added guess_components,110,18
+b9fe5a6,elmotec,2018-12-04 21:49:55+00:00,,f,,,tests/test_core.py,Added guess_components,110,18
 '''))
         self.assertEqual(df, expected)
 
