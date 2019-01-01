@@ -10,7 +10,7 @@ import io
 
 import pandas as pd
 
-import codemetrics.loc as loc
+import codemetrics.cloc as loc
 from tests.utils import add_data_frame_equality_func
 
 
@@ -54,9 +54,11 @@ class SimpleDirectory(unittest.TestCase):
             _ = loc.get_cloc()
         self.assertIn('cloc', str(context.exception))
 
-    def test_cloc_runs_from_root(self):
+    @mock.patch('pathlib.Path.glob', autospect=True, return_value=[])
+    def test_cloc_runs_from_root(self, path_glob):
         """Make sure that command line call checks it is run from the root."""
         self.check_patcher.stop()
         with self.assertRaises(ValueError) as context:
             loc.get_cloc()
+        path_glob.assert_called()
         self.assertIn('git or svn root', str(context.exception))

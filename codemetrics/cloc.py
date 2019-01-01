@@ -9,7 +9,6 @@ import pathlib as pl
 import pandas as pd
 
 from . import internals
-from . import log
 
 
 __all__ = ['get_cloc']
@@ -45,7 +44,7 @@ def get_cloc(path='.', cloc_program='cloc'):
                 record[2:5] = [int(val) for val in record[2:5]]
             records.append(record[:5])
     columns = records[0]
-    loc = pd.DataFrame.from_records(records[1:], columns=columns).\
+    cloc = pd.DataFrame.from_records(records[1:], columns=columns).\
         rename(columns={'filename': 'path'})
-    loc.loc[:, 'path'] = loc['path'].str.replace('\\', '/')
-    return loc
+    cloc.loc[:, 'path'] = cloc['path'].str.replace('\\', '/')
+    return cloc

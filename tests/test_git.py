@@ -16,7 +16,7 @@ from tests.utils import add_data_frame_equality_func
 
 import codemetrics as cm
 import codemetrics.git as git
-import codemetrics.loc
+import codemetrics.cloc
 
 
 def get_git_log(dates=None):
