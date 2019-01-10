@@ -61,5 +61,6 @@ setuptools.setup(
                  "Topic :: Utilities",
                  "Topic :: Software Development :: Version Control",
                  "Intended Audience :: Developers",
+                 "Intended Audience :: Education",
                  ],
 )

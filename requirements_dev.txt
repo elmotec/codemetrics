@@ -1,5 +1,5 @@
 pip
-bumpversion
+bump2version
 wheel
 watchdog
 flake8
@@ -7,6 +7,3 @@ tox
 coverage
 Sphinx
 twine
-# for the doc
-sphinx_rtd_theme
-sphinx-autodoc-typehints
