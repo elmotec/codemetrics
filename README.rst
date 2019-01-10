@@ -10,6 +10,9 @@
     :target: https://travis-ci.org/elmotec/codemetrics
     :alt: Build Status
 
+.. image:: https://img.shields.io/readthedocs/:packageName.svg
+    :target: https://codemetrics.readthedocs.org/
+    :alt: Documentation
 
 ============
 Code Metrics
@@ -76,4 +79,4 @@ Credits
 .. _Pandas documentation: https://pandas.pydata.org/pandas-docs/stable/text.html
 .. _MIT License: https://en.wikipedia.org/wiki/MIT_License
 .. _Adam Tornhill: https://www.adamtornhill.com/
-.. _module documentation: https://codemetrics.readthedocs.org/codemetrics.html
+.. _module documentation: https://codemetrics.readthedocs.org/
