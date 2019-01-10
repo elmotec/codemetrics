@@ -3,11 +3,9 @@
 
 import json
 import os
-import textwrap
 
 import pandas as pd
 
-from . import core
 from . import internals
 
 
@@ -98,6 +96,11 @@ def vis_hot_spots(df: pd.DataFrame,
     >>> hspots = cm.get_hot_spots(loc_df, log_df)
     >>> desc = cm.vega.vis_hot_spots(hspots)
     >>> Vega(desc)  # display the visualization inline in you notebook.
+
+    See also:
+        `Vega circle pack example`_
+
+    .. _Vega circle pack example: https://vega.github.io/editor/#/examples/vega/circle-packing
 
     """
     max_changes = df['changes'].max()

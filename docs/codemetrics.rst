@@ -1,5 +1,5 @@
-Package interface
-=================
+Interface
+=========
 
 Getting useful data from your source control management tool is really a 2 steps process: first
 you need to get the log entries (e.g. ``svn log`` or ``git log``) as a pandas.DataFrame, then process
@@ -11,22 +11,26 @@ fields of :class:`codemetrics.scm.LogEntry`:
 .. autoclass:: codemetrics.scm.LogEntry
 
 
-Getting your data from Subversion
----------------------------------
+codemetrics.svn
+---------------
+
+Getting your data from Subversion.
 
 .. automodule:: codemetrics.svn
     :members:
 
 
-Getting your data from Git
---------------------------
+codemetrics.git
+---------------
+
+Getting your data from git.
 
 .. automodule:: codemetrics.git
     :members:
 
 
-Main functions
---------------
+codemetrics.core
+----------------
 
 The main functions are located in core but can be accessed directly from the main module.
 
@@ -38,13 +42,20 @@ For instance::
     >>>ages_df = cm.get_ages(log_df)
 
 
-.. toctree::
-   :maxdepth: 2
-
-
 .. automodule:: codemetrics.core
     :members:
 
+codemetrics.vega
+----------------
+
+Brdges visualization in Jupyter_ notebooks with Vega_ and Altair_.
+
+.. automodule:: codemetrics.vega
+    :members:
+
+.. _Jupyter: https://jupyter.org/
+.. _Vega: https://vega.github.io/
+.. _Altair: https://altair-viz.github.io/
 
 Indices and tables
 ==================
