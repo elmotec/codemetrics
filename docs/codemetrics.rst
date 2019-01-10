@@ -35,7 +35,7 @@ For instance::
     >>>import codemetrics as cm
     >>>import cm.svn
     >>>log_df = cm.svn.get_svn_log()
-    >>>ages_df = cm.ages(log_df)
+    >>>ages_df = cm.get_ages(log_df)
 
 
 .. toctree::

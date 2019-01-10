@@ -14,9 +14,9 @@ from . import scm
 
 __all__ = [
     'get_mass_changesets',
-    'ages',
-    'hot_spots',
-    'co_changes',
+    'get_ages',
+    'get_hot_spots',
+    'get_co_changes',
     'guess_components'
 ]
 
@@ -42,12 +42,12 @@ def get_mass_changesets(log, min_changes):
     return massive
 
 
-def ages(log: pd.DataFrame,
-         by: typing.Sequence[str]=None
-         ) -> pd.DataFrame:
+def get_ages(log: pd.DataFrame,
+             by: typing.Sequence[str]=None
+             ) -> pd.DataFrame:
     """Generate age of each file based on last change.
 
-    Takes the output of a SCM log or just the date column and return ages.
+    Takes the output of a SCM log or just the date column and return get_ages.
 
     Args:
         log: log or date column of log.
@@ -59,7 +59,7 @@ def ages(log: pd.DataFrame,
 
     Example::
 
-        ages = codemetrics.ages(log_df)
+        get_ages = codemetrics.get_ages(log_df)
 
     """
     if by is None:
@@ -72,7 +72,7 @@ def ages(log: pd.DataFrame,
     return rv.drop(columns=['date'])
 
 
-def hot_spots(log, loc, by=None, count_one_change_per=None):
+def get_hot_spots(log, loc, by=None, count_one_change_per=None):
     """Generate hot spots from SCM and loc data.
 
     Cross SCM log and loc as an approximation of complexity to determine paths
@@ -104,7 +104,7 @@ def hot_spots(log, loc, by=None, count_one_change_per=None):
     return df
 
 
-def co_changes(log=None, by=None, on=None):
+def get_co_changes(log=None, by=None, on=None):
     """Generate co-changes report.
 
     Returns a DataFrame with the following columns:

@@ -101,7 +101,7 @@ class AgeReportTestCase(SimpleRepositoryFixture):
 
     def test_ages(self):
         """The age report generates data based on the SCM log data"""
-        actual = cm.ages(self.log)
+        actual = cm.get_ages(self.log)
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
         path,age
         requirements.txt,3.531817
@@ -111,7 +111,7 @@ class AgeReportTestCase(SimpleRepositoryFixture):
 
     def test_ages_enriched_with_kind(self):
         """Allow to use additional columns in age report."""
-        actual = cm.ages(self.log, by=['path', 'kind'])[['path', 'kind', 'age']]
+        actual = cm.get_ages(self.log, by=['path', 'kind'])[['path', 'kind', 'age']]
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
         path,kind,age
         requirements.txt,file,3.531817
@@ -123,7 +123,7 @@ class AgeReportTestCase(SimpleRepositoryFixture):
         """Allow one to enrich the log before generating the age report."""
         log = self.log
         log['component'] = 'blah'
-        actual = cm.ages(log, by=['path', 'component'])
+        actual = cm.get_ages(log, by=['path', 'component'])
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
         path,component,age
         requirements.txt,blah,3.531817
@@ -134,7 +134,7 @@ class AgeReportTestCase(SimpleRepositoryFixture):
     def test_key_parameter(self):
         """Ignore files_df if nothing in it is relevant"""
         self.log['component'] = 'kernel'
-        actual = cm.ages(self.log, by=['component', 'kind'])
+        actual = cm.get_ages(self.log, by=['component', 'kind'])
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
         component,kind,age
         kernel,file,1.563889''')))
@@ -151,7 +151,7 @@ class HotSpotReportTestCase(SimpleRepositoryFixture):
         """Generate a report to find hot spots."""
         after = dt.datetime(2018, 2, 26)
         log = self.log.loc[self.log['date'] >= after, :]
-        actual = cm.hot_spots(log, self.loc)
+        actual = cm.get_hot_spots(log, self.loc)
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
         language,path,blank,comment,complexity,changes
         Python,stats.py,28,84,100,1.0
@@ -163,7 +163,7 @@ class HotSpotReportTestCase(SimpleRepositoryFixture):
         """Generate report with a different change metric than revision."""
         self.log['day'] = dt.date(2018, 2,
                                   24)  # force all rows to the same date.
-        actual = cm.hot_spots(self.log, self.loc, count_one_change_per=['day'])
+        actual = cm.get_hot_spots(self.log, self.loc, count_one_change_per=['day'])
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
         language,path,blank,comment,complexity,changes
         Python,stats.py,28,84,100,1
@@ -180,7 +180,7 @@ class CoChangeTestCase(SimpleRepositoryFixture):
 
     def test_co_change_report(self):
         """Simple CoChangeReport usage."""
-        actual = cm.co_changes(log=SimpleRepositoryFixture.get_log_df())
+        actual = cm.get_co_changes(log=SimpleRepositoryFixture.get_log_df())
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
         path,dependency,changes,cochanges,coupling
         requirements.txt,stats.py,1,1,1.0
@@ -193,7 +193,7 @@ class CoChangeTestCase(SimpleRepositoryFixture):
         log = SimpleRepositoryFixture.get_log_df()
         # Same day to force results different from test_co_change_report.
         log['day'] = pd.to_datetime('2018-02-24')
-        actual = cm.co_changes(log=log, on='day')
+        actual = cm.get_co_changes(log=log, on='day')
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
         path,dependency,changes,cochanges,coupling
         requirements.txt,stats.py,1,1,1.0

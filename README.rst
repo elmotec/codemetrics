@@ -50,7 +50,7 @@ Source Control Management (SCM) repository and hopefully gain insight from it.
   import cm.git
 
   log_df = cm.git.get_git_log()
-  ages_df = cm.ages(log_df)
+  ages_df = cm.get_ages(log_df)
 
 
 See `module documentation`_ for more advanced functions.
