@@ -5,6 +5,8 @@
 """Test utility functions and wrappers."""
 
 
+import unittest
+
 import pandas as pd
 import pandas.testing as pdt
 
@@ -21,5 +23,13 @@ def add_data_frame_equality_func(test):
         else:
             pdt.assert_frame_equal(lhs, rhs)
     test.addTypeEqualityFunc(pd.DataFrame, frame_equal)
+
+
+class DataFrameTestCase(unittest.TestCase):
+    """Adds pandas.DataFrame to unittest framework."""
+
+    def setUp(self):
+        """Calls add_data_frame_equality_func"""
+        add_data_frame_equality_func(self)
 
 

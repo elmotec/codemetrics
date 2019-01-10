@@ -8,15 +8,16 @@ import io
 import textwrap
 import unittest
 import unittest.mock as mock
+import re
+import os.path
 
 import numpy as np
 import pandas as pd
-import sklearn.cluster
 from click.testing import CliRunner
 
 import codemetrics as cm
 from codemetrics import cli
-from tests.utils import add_data_frame_equality_func
+from tests.utils import DataFrameTestCase
 
 
 class TestCodemetrics(unittest.TestCase):
@@ -33,7 +34,7 @@ class TestCodemetrics(unittest.TestCase):
         assert '--help  Show this message and exit.' in help_result.output
 
 
-class SimpleRepositoryFixture(unittest.TestCase):
+class SimpleRepositoryFixture(DataFrameTestCase):
     """Given a repository of a few records."""
 
     @staticmethod
@@ -62,7 +63,7 @@ class SimpleRepositoryFixture(unittest.TestCase):
         ''')))
 
     def setUp(self):
-        add_data_frame_equality_func(self)
+        super().setUp()
         self.log = self.get_log_df()
         self.loc = self.get_loc_df()
         self.files = self.get_files_df()
@@ -303,3 +304,6 @@ class ComponentTestCase(SimpleRepositoryFixture):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+

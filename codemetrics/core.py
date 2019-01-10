@@ -176,3 +176,4 @@ def guess_components(paths, stop_words=None, n_clusters=8):
     rv = pd.DataFrame(data={'path': data, 'component': components})
     rv.sort_values(by='component', inplace=True)
     return rv
+

@@ -76,3 +76,4 @@ setup.bat
 
 # ipython notebooks
 *.ipynb
+*.json
