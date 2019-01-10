@@ -5,7 +5,7 @@ Credits
 Development Lead
 ----------------
 
-* Jérôme Lecomte <elmotec@gmx.com>
+* Elmotec
 
 Contributors
 ------------

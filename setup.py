@@ -38,7 +38,7 @@ setuptools.setup(
     long_description=readme + '\n\n' + history,
     long_description_content_type='text/x-rst',
     version='0.7.0',
-    author="Jérôme Lecomte",
+    author="Elmotec",
     author_email="elmotec@gmx.com",
     license="MIT",
     keywords="code metrics mining scm subversion svn Adam Tornhill utilities",

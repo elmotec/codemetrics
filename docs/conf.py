@@ -59,8 +59,8 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'codemetrics'
-copyright = u"2018, Jérôme Lecomte"
-author = u"Jérôme Lecomte"
+copyright = u"2018, Elmotec"
+author = u"Elmotec"
 
 # The version info for the project you're documenting, acts as replacement
 # for |version| and |release|, also used in various other places throughout
@@ -138,7 +138,7 @@ latex_elements = {
 latex_documents = [
     (master_doc, 'codemetrics.tex',
      u'codemetrics Documentation',
-     u'Jérôme Lecomte', 'manual'),
+     u'Elmotec', 'manual'),
 ]
 
 # -- Options for manual page output ------------------------------------

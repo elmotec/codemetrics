@@ -4,7 +4,7 @@
 """Top-level module for codemetrics package."""
 
 # noinspection SpellCheckingInspection
-__author__ = """Jérôme Lecomte"""
+__author__ = """Elmotec"""
 __email__ = 'elmotec@gmx.com'
 __version__ = '0.7.0'
 
