@@ -4,6 +4,7 @@
 import unittest
 import textwrap
 import io
+import sys
 
 import pandas as pd
 
@@ -31,6 +32,7 @@ class BuildHierarchyTest(DataFrameTestCase):
         _ = vega.build_hierarchy(self.input_df)
         self.assertEqual(self.input_df, backup)
 
+    @unittest.skipUnless(sys.platform.startswith('win'), 'requires Windows')
     def test_path_hierarchy(self):
         """Main case where we build a hierarchy of paths"""
         actual = vega.build_hierarchy(self.input_df[['path']])
