@@ -13,15 +13,16 @@ from . import internals
 from . import scm
 
 __all__ = [
-    'get_mass_changesets',
+    'get_mass_change_sets',
     'get_ages',
     'get_hot_spots',
     'get_co_changes',
     'guess_components'
 ]
 
-def get_mass_changesets(log, min_changes):
-    """Extract mass change sets from the SCM log dataframe.
+
+def get_mass_change_sets(log, min_changes):
+    """Extract mass change sets from the SCM log data frame.
 
     Calculate the number of files changed by each revision and extract that
     list according to the threshold.
@@ -43,7 +44,7 @@ def get_mass_changesets(log, min_changes):
 
 
 def get_ages(log: pd.DataFrame,
-             by: typing.Sequence[str]=None
+             by: typing.Sequence[str] = None
              ) -> pd.DataFrame:
     """Generate age of each file based on last change.
 
@@ -75,8 +76,8 @@ def get_ages(log: pd.DataFrame,
 def get_hot_spots(log, loc, by=None, count_one_change_per=None):
     """Generate hot spots from SCM and loc data.
 
-    Cross SCM log and loc as an approximation of complexity to determine paths
-    that are complex and change often.
+    Cross SCM log and lines of code as an approximation of complexity to
+    determine paths that are complex and change often.
 
     Args:
         log: output log from SCM.
@@ -95,7 +96,7 @@ def get_hot_spots(log, loc, by=None, count_one_change_per=None):
     if count_one_change_per is None:
         count_one_change_per = ['revision']
     c_df = loc.copy()
-    c_df = c_df.rename(columns={'code': 'complexity'})
+    c_df = c_df.rename(columns={'code': 'lines'})
     columns = count_one_change_per + [by]
     ch_df = log[columns].drop_duplicates()[by]. \
         value_counts().to_frame('changes')
@@ -131,10 +132,10 @@ def get_co_changes(log=None, by=None, on=None):
     sj.drop_duplicates(inplace=True)  # FIXME: needs a test
     sj = sj.groupby([by, 'dependency']).count().reset_index()
     result = pd.merge(sj[sj[by] == sj['dependency']][[by, on]],
-                      sj[sj[by] != sj['dependency']], on=by).\
+                      sj[sj[by] != sj['dependency']], on=by). \
         rename(columns={on + '_x': 'changes', on + '_y': 'cochanges'})
     result['coupling'] = result['cochanges'] / result['changes']
-    return result[[by, 'dependency', 'changes', 'cochanges', 'coupling']].\
+    return result[[by, 'dependency', 'changes', 'cochanges', 'coupling']]. \
         sort_values(by='coupling', ascending=False)
 
 
@@ -158,11 +159,12 @@ def guess_components(paths, stop_words=None, n_clusters=8):
     dirs = [os.path.dirname(p.replace('\\', '/')) for p in data]
     vectorizer = sklearn.feature_extraction.text.TfidfVectorizer(
         stop_words=stop_words)
-    X = vectorizer.fit_transform(dirs)
+    transformed_dirs = vectorizer.fit_transform(dirs)
     algo = sklearn.cluster.MiniBatchKMeans
     clustering = algo(compute_labels=True, n_clusters=n_clusters)
-    clustering.fit(X)
-    def __cluster_name(center, vectorizer, n_clusters, threshold):
+    clustering.fit(transformed_dirs)
+
+    def __cluster_name(center, threshold):
         df = pd.DataFrame(data={'feature': vectorizer.get_feature_names(),
                                 'weight': center})
         df.sort_values(by=['weight', 'feature'], ascending=False, inplace=True)
@@ -170,10 +172,10 @@ def guess_components(paths, stop_words=None, n_clusters=8):
             return ''
         df = df[df['weight'] > threshold]
         return '.'.join(df['feature'].tolist())
-    cluster_names = [__cluster_name(center, vectorizer, n_clusters, 0.4)
+
+    cluster_names = [__cluster_name(center, 0.4)
                      for center in clustering.cluster_centers_]
     components = [cluster_names[lbl] for lbl in clustering.labels_]
     rv = pd.DataFrame(data={'path': data, 'component': components})
     rv.sort_values(by='component', inplace=True)
     return rv
-

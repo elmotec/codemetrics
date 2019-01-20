@@ -11,9 +11,9 @@ from . import internals
 
 def build_hierarchy(data: pd.DataFrame,
                     get_parent=os.path.dirname,
-                    root: str='',
-                    max_iter: int=100,
-                    col_name: str=None) -> pd.DataFrame:
+                    root: str = '',
+                    max_iter: int = 100,
+                    col_name: str = None) -> pd.DataFrame:
     """Build a hierarchy from a data set and a get_parent relationship.
 
     The output frame adds 2 columns in front: id and parent. Both are numerical
@@ -51,8 +51,8 @@ def build_hierarchy(data: pd.DataFrame,
         df['id'] = range(count, count + len(df))
         count += len(df)
         frames.append(df)
-        df = df.loc[~df[parent].isin(seen), [parent]].\
-            drop_duplicates().\
+        df = df.loc[~df[parent].isin(seen), [parent]]. \
+            drop_duplicates(). \
             rename(columns={parent: col_name})
         seen.update(df[col_name])
         if len(df) == 0:
@@ -67,16 +67,16 @@ def build_hierarchy(data: pd.DataFrame,
     df['id'] = len(df) - df['id'] - 1
     y_name = col_name + '_y'
     merged = pd.merge(df, df, left_on=col_name,
-                  right_on=parent, how='right')[[y_name, 'id_y', 'id_x']].\
+                      right_on=parent, how='right')[[y_name, 'id_y', 'id_x']]. \
         rename(columns={y_name: col_name, 'id_y': 'id', 'id_x': 'parent'})
-    return merged[['id', 'parent', col_name]].sort_values(by='id').\
+    return merged[['id', 'parent', col_name]].sort_values(by='id'). \
         reset_index(drop=True)
 
 
 def vis_hot_spots(df: pd.DataFrame,
-                  changes_threshold: float=0.1,
-                  height: int=300,
-                  width: int=400) -> dict:
+                  changes_threshold: float = 0.1,
+                  height: int = 300,
+                  width: int = 400) -> dict:
     """Convert get_hot_spots output to a json vega dict.
 
     Args:
@@ -92,6 +92,7 @@ def vis_hot_spots(df: pd.DataFrame,
 
     Example::
 
+    >>> import codemetrics as cm
     >>> from altair.vega.v4 import Vega
     >>> hspots = cm.get_hot_spots(loc_df, log_df)
     >>> desc = cm.vega.vis_hot_spots(hspots)
@@ -105,107 +106,107 @@ def vis_hot_spots(df: pd.DataFrame,
     """
     max_changes = df['changes'].max()
     df = df.loc[df['changes'] > changes_threshold * max_changes,
-                ['path', 'complexity', 'changes']]
+                ['path', 'lines', 'changes']]
     hierarchy = build_hierarchy(df[['path']], root='')
     hierarchy = pd.merge(hierarchy, df,
-                         left_on='path', right_on='path', how='left').\
-                         sort_values(by='id')
-    hierarchy.loc[:, ['complexity', 'changes']] = \
-        hierarchy[['complexity', 'changes']].fillna(0)
+                         left_on='path', right_on='path', how='left'). \
+        sort_values(by='id')
+    hierarchy.loc[:, ['lines', 'changes']] = \
+        hierarchy[['lines', 'changes']].fillna(0)
     json_values = hierarchy.to_json(orient='records')
     desc = {
-      "$schema": "https://vega.github.io/schema/vega/v4.json",
-      "width": width,
-      "height": height,
-      "padding": 5,
-      "autosize": "none",
-      "data": [
-        {
-          "name": "tree",
-          #"values":  ...,
-          "transform": [
+        '$schema': 'https://vega.github.io/schema/vega/v4.json',
+        'width': width,
+        'height': height,
+        'padding': 5,
+        'autosize': 'none',
+        'data': [
             {
-              "type": "stratify",
-              "key": "id",
-              "parentKey": "parent"
-            },
+                'name': 'tree',
+                # 'values':  ...,
+                'transform': [
+                    {
+                        'type': 'stratify',
+                        'key': 'id',
+                        'parentKey': 'parent'
+                    },
+                    {
+                        'type': 'pack',
+                        'field': 'lines',
+                        'sort': {
+                            'field': 'value',
+                            'order': 'descending'
+                        },
+                        'size': [
+                            {
+                                'signal': 'width'
+                            },
+                            {
+                                'signal': 'height'
+                            }
+                        ]
+                    }
+                ]
+            }
+        ],
+        'scales': [
             {
-              "type": "pack",
-              "field": "changes",
-              "sort": {
-                "field": "value",
-                "order": "descending"  
-              },
-              "size": [
-                {
-                  "signal": "width"
+                'name': 'color',
+                'type': 'linear',
+                'domain': {'data': 'tree', 'field': 'changes'},
+                'range': {
+                    'scheme': 'yelloworangered'
                 },
-                {
-                  "signal": "height"
+                'domainMin': 0
+            }
+        ],
+        'marks': [
+            {
+                'type': 'symbol',
+                'from': {
+                    'data': 'tree'
+                },
+                'encode': {
+                    'enter': {
+                        'shape': {
+                            'value': 'circle'
+                        },
+                        'fill': {
+                            'scale': 'color',
+                            'field': 'changes'
+                        },
+                        'tooltip': {
+                            'signal': "datum.path + (datum.changes ? ', ' + datum.changes + ' changes' : '') + (datum.lines ? ', ' + datum.lines + ' lines': '')"
+                        }
+                    },
+                    'update': {
+                        'x': {
+                            'field': 'x'
+                        },
+                        'y': {
+                            'field': 'y'
+                        },
+                        'size': {
+                            'signal': '4 * datum.r * datum.r'
+                        },
+                        'stroke': {
+                            'value': 'white'
+                        },
+                        'strokeWidth': {
+                            'value': 0.5
+                        }
+                    },
+                    'hover': {
+                        'stroke': {
+                            'value': 'black'
+                        },
+                        'strokeWidth': {
+                            'value': 2
+                        }
+                    }
                 }
-              ]
             }
-          ]
-        }
-      ],
-      "scales": [
-        {
-          "name": "color",
-          "type": "linear",
-          "domain": {"data": "tree", "field": "complexity"},
-          "range": {
-            "scheme": "yelloworangered" 
-            },
-          "domainMin": 0
-        }
-      ],
-      "marks": [
-        {
-          "type": "symbol",
-          "from": {
-            "data": "tree"
-          },
-          "encode": {
-            "enter": {
-              "shape": {
-                "value": "circle"
-              },
-              "fill": {
-                "scale": "color",
-                "field": "complexity"
-              },
-              "tooltip": {
-                "signal": "datum.path + (datum.changes ? ', ' + datum.changes + ' changes' : '') + (datum.complexity ? ', ' + datum.complexity + ' complexity': '')"
-               }
-            },
-            "update": {
-              "x": {
-                "field": "x"
-              },
-              "y": {
-                "field": "y"
-              },
-              "size": {
-                "signal": "4 * datum.r * datum.r"
-              },
-              "stroke": {
-                "value": "white"
-              },
-              "strokeWidth": {
-                "value": 0.5
-              }
-            },
-            "hover": {
-              "stroke": {
-                "value": "black"
-              },
-              "strokeWidth": {
-                "value": 2
-              }
-            }
-          }
-        }
-      ]
+        ]
     }
     desc["data"][0]["values"] = json.loads(json_values)
     return desc

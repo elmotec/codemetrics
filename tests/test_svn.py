@@ -4,19 +4,15 @@
 """Tests for `codemetrics.svn`"""
 
 import datetime as dt
-import textwrap
 import io
+import textwrap
 import unittest
 from unittest import mock
 
-import tqdm
 import pandas as pd
 
-from tests.utils import add_data_frame_equality_func
-
 import codemetrics as cm
-import codemetrics.svn
-import codemetrics.cloc
+from tests.utils import add_data_frame_equality_func
 
 
 def get_svn_log(dates=None):
@@ -72,8 +68,9 @@ class SubversionTestCase(unittest.TestCase):
     def setUp(self):
         add_data_frame_equality_func(self)
         self.after = dt.datetime(2018, 2, 24, tzinfo=dt.timezone.utc)
-        self.get_check_patcher = mock.patch('codemetrics.internals._check_run_in_root',
-                                            autospec=True)
+        self.get_check_patcher = mock.patch(
+            'codemetrics.internals._check_run_in_root',
+            autospec=True)
         self.check_run_in_root = self.get_check_patcher.start()
 
     def tearDown(self):
@@ -115,12 +112,13 @@ class SubversionTestCase(unittest.TestCase):
         get_svn_log(dates=[dt.date(2018, 2, 25),
                            dt.date(2018, 2, 27),
                            dt.date(2018, 2, 28)])], autospec=True)
-    def test_get_log_with_progress(self, call, tqdm_, today_):
+    def test_get_log_with_progress(self, _, new_tqdm, run_):
         """Simple svn call returns pandas.DataFrame."""
-        pb = tqdm.tqdm()
+        pb = new_tqdm()
         _ = cm.svn.get_svn_log(self.after, progress_bar=pb)
         self.assertEqual(pb.total, 4)
         calls = [mock.call(1), mock.call(2)]
+        run_.assert_called()
         pb.update.assert_has_calls(calls)
         pb.close.assert_called_once()
 
@@ -137,7 +135,7 @@ class SubversionTestCase(unittest.TestCase):
     </logentry>
     </log>
     ''').split('\n')], autospec=True)
-    def test_get_log_no_msg(self, call):
+    def test_get_log_no_msg(self, _):
         """Simple svn call returns pandas.DataFrame."""
         df = cm.svn.get_svn_log(self.after)
         expected = SubversionTestCase.read_svn_log(textwrap.dedent('''
@@ -173,6 +171,13 @@ class SubversionTestCase(unittest.TestCase):
         """Test program_name taken into account."""
         cm.svn.get_svn_log(self.after, svn_program='svn-1.7')
         run.assert_called_with('svn-1.7 log --xml -v -r {2018-02-24}:HEAD .')
+
+    def test_assert_when_no_tzinfo(self):
+        """Test we get a proper message when the start date is not tz-aware."""
+        after_no_tzinfo = self.after.replace(tzinfo=None)
+        with self.assertRaises(ValueError) as context:
+            cm.svn.get_svn_log(after_no_tzinfo)
+        self.assertIn('tzinfo-aware', str(context.exception))
 
 
 if __name__ == '__main__':

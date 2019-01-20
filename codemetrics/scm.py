@@ -4,13 +4,12 @@
 """Factor things common to git and svn."""
 
 import abc
-import collections
 import datetime as dt
 
 import pandas as pd
 
-from . import pbar
 from . import internals
+from . import pbar
 
 
 class LogEntry:
@@ -77,9 +76,10 @@ class _ScmLogCollector(abc.ABC):
 
         """
         self.path = path
-        assert after is None or after.tzinfo is not None
+        for date in [before, after]:
+            if date and date.tzinfo is None:
+                raise ValueError('dates are expected to be tzinfo-aware')
         self.after = after or internals.get_now() - dt.timedelta(365)
-        assert before is None or before.tzinfo is not None
         self.before = before
         self.progress_bar = progress_bar
         if self.progress_bar is not None and self.after is None:
@@ -120,7 +120,7 @@ class _ScmLogCollector(abc.ABC):
         """Convert output of git log --xml -v to a csv.
 
         Args:
-            text: iterable of string (one for each line).
+            cmd_output: iterable of string (one for each line).
 
         Yields:
             tuple of :class:`codemetrics.scm.LogEntry`.

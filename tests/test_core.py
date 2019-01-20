@@ -8,8 +8,6 @@ import io
 import textwrap
 import unittest
 import unittest.mock as mock
-import re
-import os.path
 
 import numpy as np
 import pandas as pd
@@ -78,7 +76,7 @@ class RepositoryTestCase(SimpleRepositoryFixture):
         threshold = int(log[['revision', 'path']].groupby('revision').
                         count().quantile(.5))
         self.assertEqual(threshold, 1)
-        actual = cm.get_mass_changesets(log, threshold)
+        actual = cm.get_mass_change_sets(log, threshold)
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
         revision,path_count,message,author
         1018,2,modified,elmotec
@@ -153,7 +151,7 @@ class HotSpotReportTestCase(SimpleRepositoryFixture):
         log = self.log.loc[self.log['date'] >= after, :]
         actual = cm.get_hot_spots(log, self.loc)
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
-        language,path,blank,comment,complexity,changes
+        language,path,blank,comment,lines,changes
         Python,stats.py,28,84,100,1.0
         Unknown,requirements.txt,0,0,3,0
         ''')))
@@ -165,7 +163,7 @@ class HotSpotReportTestCase(SimpleRepositoryFixture):
                                   24)  # force all rows to the same date.
         actual = cm.get_hot_spots(self.log, self.loc, count_one_change_per=['day'])
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
-        language,path,blank,comment,complexity,changes
+        language,path,blank,comment,lines,changes
         Python,stats.py,28,84,100,1
         Unknown,requirements.txt,0,0,3,1
         ''')))
