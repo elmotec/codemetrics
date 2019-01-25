@@ -64,6 +64,9 @@ instance/
 # Scrapy stuff:
 .scrapy
 
+# Jupyter checkpoints
+.ipynb_checkpoints
+
 # Sphinx documentation
 docs/_build/
 
@@ -73,7 +76,3 @@ setup.bat
 
 # Pycharm
 .idea/
-
-# ipython notebooks
-*.ipynb
-*.json
