@@ -73,47 +73,34 @@ def build_hierarchy(data: pd.DataFrame,
         reset_index(drop=True)
 
 
-def vis_hot_spots(df: pd.DataFrame,
-                  changes_threshold: float = 0.1,
-                  height: int = 300,
-                  width: int = 400) -> dict:
-    """Convert get_hot_spots output to a json vega dict.
+def vis_generic(df: pd.DataFrame,
+                size_column: str,
+                color_column: str,
+                colorscheme: str = 'yelloworangered',
+                height: int = 300,
+                width: int = 400) -> dict:
+    """Factors common parts of vis_xxx functions.
 
     Args:
-        df: input data returned by :func:`codemetrics.get_hot_spots`
-        changes_threshold: records whose ratio of changes to the maximum number
-            of changes (biggest circle) is below changes_threshold will not be
-            displayed. Defaults to 0.1.
-        height: vertical size of the figure.
-        width: horizontal size of the figure.
-
-    Returns:
-        Vega description suitable to be use with Altair.
-
-    Example::
-
-    >>> import codemetrics as cm
-    >>> from altair.vega.v4 import Vega
-    >>> hspots = cm.get_hot_spots(loc_df, log_df)
-    >>> desc = cm.vega.vis_hot_spots(hspots)
-    >>> Vega(desc)  # display the visualization inline in you notebook.
-
-    See also:
-        `Vega circle pack example`_
-
-    .. _Vega circle pack example: https://vega.github.io/editor/#/examples/vega/circle-packing
+        size_column: name of the column to use for the size of the circle.
+        color_column: name of the column to use for the color of the circle.
+        colorscheme: color scheme. See https://vega.github.io/vega/docs/schemes/
 
     """
-    max_changes = df['changes'].max()
-    df = df.loc[df['changes'] > changes_threshold * max_changes,
-                ['path', 'lines', 'changes']]
+    assert size_column in df.columns, f'{size_column} not found in columns'
+    assert color_column in df.columns, f'{color_column} not found in columns'
     hierarchy = build_hierarchy(df[['path']], root='')
     hierarchy = pd.merge(hierarchy, df,
                          left_on='path', right_on='path', how='left'). \
+        rename(columns={size_column: 'size',
+                        color_column: 'intensity'}). \
         sort_values(by='id')
-    hierarchy.loc[:, ['lines', 'changes']] = \
-        hierarchy[['lines', 'changes']].fillna(0)
+    hierarchy.loc[:, ['size', 'intensity']] = \
+        hierarchy[['size', 'intensity']].fillna(0)
     json_values = hierarchy.to_json(orient='records')
+    signal = "datum.path + " \
+        f"(datum.intensity ? ', ' + datum.intensity + ' {color_column}' : '') + " \
+        f"(datum.size ? ', ' + datum.size + ' {size_column}' : '')"
     desc = {
         '$schema': 'https://vega.github.io/schema/vega/v4.json',
         'width': width,
@@ -132,7 +119,7 @@ def vis_hot_spots(df: pd.DataFrame,
                     },
                     {
                         'type': 'pack',
-                        'field': 'lines',
+                        'field': 'size',
                         'sort': {
                             'field': 'value',
                             'order': 'descending'
@@ -153,9 +140,9 @@ def vis_hot_spots(df: pd.DataFrame,
             {
                 'name': 'color',
                 'type': 'linear',
-                'domain': {'data': 'tree', 'field': 'changes'},
+                'domain': {'data': 'tree', 'field': 'intensity'},
                 'range': {
-                    'scheme': 'yelloworangered'
+                    'scheme': colorscheme
                 },
                 'domainMin': 0
             }
@@ -173,10 +160,10 @@ def vis_hot_spots(df: pd.DataFrame,
                         },
                         'fill': {
                             'scale': 'color',
-                            'field': 'changes'
+                            'field': 'intensity'
                         },
                         'tooltip': {
-                            'signal': "datum.path + (datum.changes ? ', ' + datum.changes + ' changes' : '') + (datum.lines ? ', ' + datum.lines + ' lines': '')"
+                            'signal': signal
                         }
                     },
                     'update': {
@@ -210,3 +197,68 @@ def vis_hot_spots(df: pd.DataFrame,
     }
     desc["data"][0]["values"] = json.loads(json_values)
     return desc
+
+
+def vis_hot_spots(df: pd.DataFrame,
+                  height: int = 300,
+                  width: int = 400) -> dict:
+    """Convert get_hot_spots output to a json vega dict.
+
+    Args:
+        df: input data returned by :func:`codemetrics.get_hot_spots`
+        height: vertical size of the figure.
+        width: horizontal size of the figure.
+
+    Returns:
+        Vega description suitable to be use with Altair.
+
+    Example::
+
+    >>> import codemetrics as cm
+    >>> from altair.vega.v4 import Vega
+    >>> hspots = cm.get_hot_spots(loc_df, log_df)
+    >>> desc = cm.vega.vis_hot_spots(hspots)
+    >>> Vega(desc)  # display the visualization inline in you notebook.
+
+    See also:
+        `Vega circle pack example`_
+
+    .. _Vega circle pack example: https://vega.github.io/editor/#/examples/vega/circle-packing
+
+    """
+    return vis_generic(df, size_column='lines', color_column='changes',
+                       colorscheme='yelloworangered', width=width,
+                       height=height)
+
+
+def vis_ages(df: pd.DataFrame,
+             height: int = 300,
+             width: int = 400) -> dict:
+    """Convert get_ages output to a json vega dict.
+
+    Args:
+        df: input data returned by :func:`codemetrics.get_ages`
+        height: vertical size of the figure.
+        width: horizontal size of the figure.
+
+    Returns:
+        Vega description suitable to be use with Altair.
+
+    Example::
+
+    >>> import codemetrics as cm
+    >>> from altair.vega.v4 import Vega
+    >>> ages = cm.get_ages(loc_df, log_df)
+    >>> desc = cm.vega.vis_ages(ages)
+    >>> Vega(desc)  # display the visualization inline in you notebook.
+
+    See also:
+        `Vega circle pack example`_
+
+    .. _Vega circle pack example: https://vega.github.io/editor/#/examples/vega/circle-packing
+
+    """
+    df['days'] = df['age'].astype('int32')
+    df = df.rename(columns={'code': 'lines'})
+    return vis_generic(df, size_column='lines', color_column='days',
+                       colorscheme='greenblue', width=width, height=height)

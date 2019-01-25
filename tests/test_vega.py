@@ -107,160 +107,91 @@ class TestHotSpots(DataFrameTestCase):
 
     def test_vis_hot_spots(self):
         """Test conversion of get_hot_spots data frame to vega visualization."""
-        actual = vega.vis_hot_spots(self.df)
+        actual = vega.vis_hot_spots(
+            self.df.sort_values(by='changes', ascending=False).head(3))
         # Check it out on https://vega.github.io/editor/#/custom/vega
-        expected = {
-            '$schema': 'https://vega.github.io/schema/vega/v4.json',
-            'width': 400,
-            'height': 300,
-            'padding': 5,
-            'autosize': 'none',
-            'data': [
-                {
-                    'name': 'tree',
-                    'values': [
-                        {
-                            'id': 0,
-                            'parent': None,
-                            'path': '',
-                            'lines': 0.0,
-                            'changes': 0.0
-                        },
-                        {
-                            'id': 1,
-                            'parent': 0.0,
-                            'path': 'pandas',
-                            'lines': 0.0,
-                            'changes': 0.0
-                        },
-                        {
-                            'id': 2,
-                            'parent': 1.0,
-                            'path': 'pandas/io',
-                            'lines': 0.0,
-                            'changes': 0.0
-                        },
-                        {
-                            'id': 3,
-                            'parent': 1.0,
-                            'path': 'pandas/tests',
-                            'lines': 0.0,
-                            'changes': 0.0
-                        },
-                        {
-                            'id': 4,
-                            'parent': 3.0,
-                            'path': 'pandas/tests/io',
-                            'lines': 0.0,
-                            'changes': 0.0
-                        },
-                        {
-                            'id': 5,
-                            'parent': 2.0,
-                            'path': 'pandas/io/pytables.py',
-                            'lines': 2960.0,
-                            'changes': 36.0
-                        },
-                        {
-                            'id': 6,
-                            'parent': 3.0,
-                            'path': 'pandas/tests/test_window.py',
-                            'lines': 2970.0,
-                            'changes': 19.0
-                        },
-                        {
-                            'id': 7,
-                            'parent': 4.0,
-                            'path': 'pandas/tests/io/test_pytables.py',
-                            'lines': 3961.0,
-                            'changes': 27.0
-                        }
-                    ],
-                    'transform': [
-                        {
-                            'type': 'stratify',
-                            'key': 'id',
-                            'parentKey': 'parent'
-                        },
-                        {
-                            'type': 'pack',
-                            'field': 'lines',
-                            'sort': {
-                                'field': 'value',
-                                'order': 'descending'
-                            },
-                            'size': [
-                                {
-                                    'signal': 'width'
-                                },
-                                {
-                                    'signal': 'height'
-                                }
-                            ]
-                        }
-                    ]
-                }
-            ],
-            'scales': [
-                {
-                    'name': 'color',
-                    'type': 'linear',
-                    'domain': {
-                        'data': 'tree',
-                        'field': 'changes'
-                    },
-                    'range': {
-                        'scheme': 'yelloworangered'
-                    },
-                    'domainMin': 0
-                }
-            ],
-            'marks': [
-                {
-                    'type': 'symbol',
-                    'from': {
-                        'data': 'tree'
-                    },
-                    'encode': {
-                        'enter': {
-                            'shape': {
-                                'value': 'circle'
-                            },
-                            'fill': {
-                                'scale': 'color',
-                                'field': 'changes'
-                            },
-                            'tooltip': {
-                                'signal': "datum.path + (datum.changes ? ', ' + datum.changes + ' changes' : '') + (datum.lines ? ', ' + datum.lines + ' lines': '')"
-                            }
-                        },
-                        'update': {
-                            'x': {
-                                'field': 'x'
-                            },
-                            'y': {
-                                'field': 'y'
-                            },
-                            'size': {
-                                'signal': '4 * datum.r * datum.r'
-                            },
-                            'stroke': {
-                                'value': 'white'
-                            },
-                            'strokeWidth': {
-                                'value': 0.5
-                            }
-                        },
+        expected = {'$schema': 'https://vega.github.io/schema/vega/v4.json',
+                    'autosize': 'none',
+                    'data': [{'name': 'tree',
+                              'transform': [{'key': 'id',
+                                             'parentKey': 'parent',
+                                             'type': 'stratify'},
+                                            {'field': 'size',
+                                             'size': [{'signal': 'width'},
+                                                      {'signal': 'height'}],
+                                             'sort': {'field': 'value',
+                                                      'order': 'descending'},
+                                             'type': 'pack'}],
+                              'values': [{'intensity': 0.0,
+                                          'id': 0,
+                                          'size': 0.0,
+                                          'parent': None,
+                                          'path': ''},
+                                         {'intensity': 0.0,
+                                          'id': 1,
+                                          'size': 0.0,
+                                          'parent': 0.0,
+                                          'path': 'pandas'},
+                                         {'intensity': 0.0,
+                                          'id': 2,
+                                          'size': 0.0,
+                                          'parent': 1.0,
+                                          'path': 'pandas/tests'},
+                                         {'intensity': 0.0,
+                                          'id': 3,
+                                          'size': 0.0,
+                                          'parent': 2.0,
+                                          'path': 'pandas/tests/io'},
+                                         {'intensity': 0.0,
+                                          'id': 4,
+                                          'size': 0.0,
+                                          'parent': 1.0,
+                                          'path': 'pandas/io'},
+                                         {'intensity': 19.0,
+                                          'id': 5,
+                                          'size': 2970.0,
+                                          'parent': 2.0,
+                                          'path': 'pandas/tests/test_window.py'},
+                                         {'intensity': 27.0,
+                                          'id': 6,
+                                          'size': 3961.0,
+                                          'parent': 3.0,
+                                          'path': 'pandas/tests/io/test_pytables.py'},
+                                         {'intensity': 36.0,
+                                          'id': 7,
+                                          'size': 2960.0,
+                                          'parent': 4.0,
+                                          'path': 'pandas/io/pytables.py'}]}],
+                    'height': 300,
+                    'marks': [{'encode': {'enter': {
+                        'fill': {'field': 'intensity', 'scale': 'color'},
+                        'shape': {'value': 'circle'},
+                        'tooltip': {'signal': 'datum.path + '
+                                              "(datum.intensity ? ', "
+                                              "' + datum.intensity + "
+                                              "' changes' : '') + "
+                                              "(datum.size ? ', ' + "
+                                              "datum.size + ' lines' "
+                                              ": '')"}},
                         'hover': {
+                            'stroke': {'value': 'black'},
+                            'strokeWidth': {'value': 2}},
+                        'update': {'size': {
+                            'signal': '4 * datum.r * datum.r'},
                             'stroke': {
-                                'value': 'black'
-                            },
+                                'value': 'white'},
                             'strokeWidth': {
-                                'value': 2
-                            }
-                        }
-                    }
-                }
-            ]
-        }
+                                'value': 0.5},
+                            'x': {'field': 'x'},
+                            'y': {'field': 'y'}}},
+                        'from': {'data': 'tree'},
+                        'type': 'symbol'}],
+                    'padding': 5,
+                    'scales': [
+                        {'domain': {'data': 'tree', 'field': 'intensity'},
+                         'domainMin': 0,
+                         'name': 'color',
+                         'range': {'scheme': 'yelloworangered'},
+                         'type': 'linear'}],
+                    'width': 400}
         self.assertEqual(expected, actual)
