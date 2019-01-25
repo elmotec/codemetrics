@@ -10,7 +10,7 @@
     :target: https://travis-ci.org/elmotec/codemetrics
     :alt: Build Status
 
-.. image:: https://img.shields.io/readthedocs/:packageName.svg
+.. image:: https://img.shields.io/readthedocs/codemetrics.svg
     :target: https://codemetrics.readthedocs.org/
     :alt: Documentation
 
