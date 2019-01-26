@@ -6,7 +6,7 @@
 # noinspection SpellCheckingInspection
 __author__ = """Elmotec"""
 __email__ = 'elmotec@gmx.com'
-__version__ = '0.7.0'
+__version__ = '0.7.1'
 
 from .core import *
 from .git import *
