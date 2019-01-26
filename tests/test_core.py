@@ -37,12 +37,16 @@ class SimpleRepositoryFixture(DataFrameTestCase):
 
     @staticmethod
     def get_log_df():
-        return pd.read_csv(io.StringIO(textwrap.dedent('''
+        csv_data = io.StringIO(textwrap.dedent('''
         revision,author,date,textmods,kind,action,propmods,path,message
         1016,elmotec,2018-02-26T10:28:00Z,true,file,M,false,stats.py,modified again
         1018,elmotec,2018-02-24T11:14:11Z,true,file,M,false,stats.py,modified
-        1018,elmotec,2018-02-24T11:14:11Z,true,file,M,false,requirements.txt,modified''')),
-                           parse_dates=['date'])
+        1018,elmotec,2018-02-24T11:14:11Z,true,file,M,false,requirements.txt,modified'''))
+        date_parser = lambda d: dt.datetime.strptime(d, '%Y-%m-%dT%H:%M:%SZ').\
+            replace(tzinfo=dt.timezone.utc)
+        df = pd.read_csv(csv_data, parse_dates=['date'],
+                         date_parser=date_parser)
+        return df
 
     @staticmethod
     def get_files_df():
@@ -147,7 +151,7 @@ class HotSpotReportTestCase(SimpleRepositoryFixture):
 
     def test_hot_spot_report(self):
         """Generate a report to find hot spots."""
-        after = dt.datetime(2018, 2, 26)
+        after = dt.datetime(2018, 2, 26, tzinfo=dt.timezone.utc)
         log = self.log.loc[self.log['date'] >= after, :]
         actual = cm.get_hot_spots(log, self.loc)
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
@@ -159,8 +163,8 @@ class HotSpotReportTestCase(SimpleRepositoryFixture):
 
     def test_hot_spot_with_custom_change_metric(self):
         """Generate report with a different change metric than revision."""
-        self.log['day'] = dt.date(2018, 2,
-                                  24)  # force all rows to the same date.
+        # force all rows to the same date.
+        self.log['day'] = dt.datetime(2018, 2, 24, tzinfo=dt.timezone.utc)
         actual = cm.get_hot_spots(self.log, self.loc, count_one_change_per=['day'])
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
         language,path,blank,comment,lines,changes
