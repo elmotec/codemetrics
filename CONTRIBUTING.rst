@@ -60,7 +60,7 @@ Ready to contribute? Here's how to set up `codemetrics` for local development.
 1. Fork the `codemetrics` repo on GitHub.
 2. Clone your fork locally::
 
-    $ git clone git@github.com:your_name_here/codemetrics.git
+    $ git clone git@github.com:elmotec/codemetrics.git
 
 3. Install your local copy into a virtualenv. Assuming you have virtualenvwrapper installed, this is how you set up your fork for local development::
 
@@ -119,8 +119,10 @@ A reminder for the maintainers on how to deploy.
 Make sure all your changes are committed (including an entry in HISTORY.rst).
 Then run::
 
-$ bump2version patch # possible: major / minor / patch
-$ git push
-$ git push --tags
+    $ bump2version patch # possible: major / minor / patch
+    $ git push
+    $ git push --tags
+    $ python setup.py sdist  # will generate new .tar.gz in dist folder
+    $ twine upload dist/<dist>.tar.gz
 
 Travis will then deploy to PyPI if tests pass.

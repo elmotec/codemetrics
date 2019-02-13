@@ -17,7 +17,7 @@ To install codemetrics, run this command in your terminal:
 This is the preferred method to install codemetrics, as it will always install the most recent stable release.
 
 If you don't have `pip`_ installed, this `Python installation guide`_ can guide
-you through the get_log_entries.
+you through the process_log_entries.
 
 .. _pip: https://pip.pypa.io
 .. _Python installation guide: http://docs.python-guide.org/en/latest/starting/installation/
