@@ -73,22 +73,23 @@ def build_hierarchy(data: pd.DataFrame,
         reset_index(drop=True)
 
 
-def vis_generic(df: pd.DataFrame,
-                size_column: str,
-                color_column: str,
-                colorscheme: str = 'yelloworangered',
-                height: int = 300,
-                width: int = 400) -> dict:
+def _vis_generic(df: pd.DataFrame,
+                 size_column: str,
+                 color_column: str,
+                 colorscheme: str,
+                 height: int = 300,
+                 width: int = 400) -> dict:
     """Factors common parts of vis_xxx functions.
 
-    Args:
-        size_column: name of the column to use for the size of the circle.
-        color_column: name of the column to use for the color of the circle.
-        colorscheme: color scheme. See https://vega.github.io/vega/docs/schemes/
+    Internal. See vis_hot_spots or vis_ages for documentation.
 
     """
-    assert size_column in df.columns, f'{size_column} not found in columns'
-    assert color_column in df.columns, f'{color_column} not found in columns'
+    if len(df) <= 0:
+        raise ValueError('dataframe is empty')
+    if size_column not in df.columns:
+        raise ValueError(f'{size_column} not found in columns')
+    if color_column not in df.columns:
+        raise ValueError(f'{color_column} not found in columns')
     hierarchy = build_hierarchy(df[['path']], root='')
     hierarchy = pd.merge(hierarchy, df,
                          left_on='path', right_on='path', how='left'). \
@@ -201,13 +202,15 @@ def vis_generic(df: pd.DataFrame,
 
 def vis_hot_spots(df: pd.DataFrame,
                   height: int = 300,
-                  width: int = 400) -> dict:
+                  width: int = 400,
+                  colorscheme: str = 'yelloworangered') -> dict:
     """Convert get_hot_spots output to a json vega dict.
 
     Args:
         df: input data returned by :func:`codemetrics.get_hot_spots`
         height: vertical size of the figure.
         width: horizontal size of the figure.
+        colorscheme: color scheme. See https://vega.github.io/vega/docs/schemes/
 
     Returns:
         Vega description suitable to be use with Altair.
@@ -226,20 +229,22 @@ def vis_hot_spots(df: pd.DataFrame,
     .. _Vega circle pack example: https://vega.github.io/editor/#/examples/vega/circle-packing
 
     """
-    return vis_generic(df, size_column='lines', color_column='changes',
-                       colorscheme='yelloworangered', width=width,
-                       height=height)
+    return _vis_generic(df, size_column='lines', color_column='changes',
+                        colorscheme=colorscheme, width=width,
+                        height=height)
 
 
 def vis_ages(df: pd.DataFrame,
              height: int = 300,
-             width: int = 400) -> dict:
+             width: int = 400,
+             colorscheme: str = 'greenblue') -> dict:
     """Convert get_ages output to a json vega dict.
 
     Args:
         df: input data returned by :func:`codemetrics.get_ages`
         height: vertical size of the figure.
         width: horizontal size of the figure.
+        colorscheme: color scheme. See https://vega.github.io/vega/docs/schemes/
 
     Returns:
         Vega description suitable to be use with Altair.
@@ -260,5 +265,5 @@ def vis_ages(df: pd.DataFrame,
     """
     df['days'] = df['age'].astype('int32')
     df = df.rename(columns={'code': 'lines'})
-    return vis_generic(df, size_column='lines', color_column='days',
-                       colorscheme='greenblue', width=width, height=height)
+    return _vis_generic(df, size_column='lines', color_column='days',
+                        colorscheme=colorscheme, width=width, height=height)

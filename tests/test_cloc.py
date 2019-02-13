@@ -27,9 +27,9 @@ class SimpleDirectory(unittest.TestCase):
         Python,setup.py,4,2,30
         """)
         cmi = 'codemetrics.internals.'
-        self.run_patcher = mock.patch(cmi + '_run', autospec=True,
-                                      return_value=self.run_output.split('\n'))
-        self.check_patcher = mock.patch(cmi + '_check_run_in_root',
+        self.run_patcher = mock.patch(cmi + 'run', autospec=True,
+                                      return_value=self.run_output)
+        self.check_patcher = mock.patch(cmi + 'check_run_in_root',
                                         autospec=True)
         self.run_ = self.run_patcher.start()
         self.check_run_from_root = self.check_patcher.start()

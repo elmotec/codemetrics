@@ -195,3 +195,9 @@ class TestHotSpots(DataFrameTestCase):
                          'type': 'linear'}],
                     'width': 400}
         self.assertEqual(expected, actual)
+
+    def test_empty_frame_generates_error(self):
+        """Test that an empty frame generate an error."""
+        with self.assertRaises(ValueError) as context:
+            _ = vega.vis_hot_spots(self.df.head(0))
+            self.assertIn('empty', str(context.exception))

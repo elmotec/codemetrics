@@ -11,6 +11,7 @@ import unittest.mock as mock
 
 import numpy as np
 import pandas as pd
+import lizard as lz
 from click.testing import CliRunner
 
 import codemetrics as cm
@@ -301,6 +302,61 @@ class ComponentTestCase(SimpleRepositoryFixture):
                                     n_clusters=n_clusters)
         actual = comps[['component']].drop_duplicates().reset_index(drop=True)
         expected = pd.DataFrame(data={'component': ['parsers', 'src.analysis', 'test']})
+        self.assertEqual(expected, actual)
+
+
+class ComplexityTestCase(DataFrameTestCase):
+    """Test complexity analysis."""
+
+    file_content_1=textwrap.dedent('''\
+    def test():
+        if not True:
+            print('we should never get there!')
+        print('all OK!')
+    ''')
+
+    file_content_2=textwrap.dedent('''\
+    def test():
+        print('all OK!')
+    ''')
+
+    @mock.patch('lizard.auto_read', autospec=True,
+               return_value=file_content_1, create=True)
+    def test_lizard_analyze(self, auto_read):
+        actuals = list(lz.analyze_files([__file__], exts=lz.get_extensions([])))
+        self.assertEqual(len(actuals), 1)
+        actual = actuals[0]
+        self.assertEqual(4, actual.nloc)
+        self.assertEqual(2.0, actual.average_cyclomatic_complexity)
+
+    def test_simple_analysis(self):
+        """Runs complexity trend analysis on this file."""
+        def scm_download_files(path_revision_df):
+            return [cm.scm.FileDownloadResult('f.py', 1, self.file_content_1),
+                    cm.scm.FileDownloadResult('f.py', 2, self.file_content_2)]
+        sublog = pd.read_csv(io.StringIO(textwrap.dedent("""\
+        revision,author,date,textmods,kind,action,propmods,path,message
+        1,elmotec,2018-02-26T10:28:00Z,true,file,M,false,f.py,again
+        2,elmotec,2018-02-24T11:14:11Z,true,file,M,false,f.py,modified""")))
+        actual = cm.get_complexity(sublog, download_func=scm_download_files)
+        expected = pd.read_csv(io.StringIO(textwrap.dedent("""\
+        cyclomatic_complexity,nloc,token_count,name,long_name,start_line,end_line,top_nesting_level,length,fan_in,fan_out,general_fan_out,file_tokens,file_nloc,path,revision
+        2,4,16,test,test( ),1,4,0,4,0,0,0,17,4,f.py,1
+        1,2,8,test,test( ),1,2,0,2,0,0,0,9,2,f.py,2""")))
+        self.assertEqual(expected.columns.tolist(), actual.columns.tolist())
+        self.assertEqual(expected, actual)
+
+    def test_handles_no_function(self):
+        """Handles files with no function well."""
+        file_name, rev = 'f.py', 1
+        def scm_download_files(path_rev_df):
+            return [cm.scm.FileDownloadResult(file_name, rev, '')]
+        sublog = pd.DataFrame({'revision': [rev],
+                               'path': [file_name]})
+        actual = cm.get_complexity(sublog, download_func=scm_download_files)
+        expected_fields = cm.core._lizard_fields + \
+                          'file_tokens file_nloc path revision'.split()
+        expected = pd.DataFrame(data={k: [] for k in expected_fields})
         self.assertEqual(expected, actual)
 
 

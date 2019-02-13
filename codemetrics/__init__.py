@@ -19,6 +19,6 @@ codemetrics
 ===========
 
 Code metrics is a simple Python module that leverage your source control 
-management (SCM) tool to generate insight on your code base.
+management (SCM) tool and pandas to generate insight on your code base.
 
 """

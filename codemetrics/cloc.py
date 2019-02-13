@@ -27,11 +27,11 @@ def get_cloc(path='.', cloc_program='cloc'):
         pandas.DataFrame.
 
     """
-    internals._check_run_in_root(path)
+    internals.check_run_in_root(path)
     cmdline = f'{cloc_program} --csv --by-file {path}'
     records = []
     try:
-        output = internals._run(cmdline)
+        output = internals.run(cmdline).split('\n')
     except FileNotFoundError as err:
         msg = f'{err}. Is {cloc_program} available? Please pass ' \
               'cloc_program=<cloc location> to get_cloc'

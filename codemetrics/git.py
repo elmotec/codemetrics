@@ -4,10 +4,12 @@
 """Git related functions."""
 
 import datetime as dt
+import typing
 import re
 
 import tqdm
 import numpy as np
+import pandas as pd
 
 from . import internals
 from . import scm
@@ -19,19 +21,19 @@ class _GitLogCollector(scm._ScmLogCollector):
 
     _args = 'log --pretty=format:"[%h] [%an] [%ad] [%s]" --date=iso --numstat'
 
-    def __init__(self, git_program='git', **kwargs):
+    def __init__(self, git_client='git', **kwargs):
         """Initialize.
 
         Compiles regular expressions to be used during parsing of log.
 
         Args:
-            git_program: name of svn client.
-            **kwargs: passed to parent :class:`_ScmLogCollector`
+            git_client: name of git client.
+            **kwargs: passed to parent :class:`codemetrics.scm._ScmLogCollector`
 
         """
         super().__init__(**kwargs)
-        self.git_program = git_program
-        self.log_moved_re = re.compile(r"\{(?:\S* )?=> (\S*)\}")
+        self.git_client = git_client
+        self.log_moved_re = re.compile(r"([-\d]+)\s+([-\d]+)\s+(\S*)\{(\S*) => (\S*)\}(\S*)")
 
     def process_entry(self, log_entry):
         """Convert a single xml <logentry/> element to csv rows.
@@ -48,35 +50,43 @@ class _GitLogCollector(scm._ScmLogCollector):
 
         """
         try:
-            hash, author, date_str, *remainder = log_entry[0][1:-1].split('] [')
-        except ValueError as err:
+            rev, author, date_str, *remainder = log_entry[0][1:-1].split('] [')
+        except ValueError:
             log.warning('failed to parse %s', log_entry[0])
             raise
         msg = '] ['.join(remainder)
         date = dt.datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S %z')
         for path_elem in log_entry[1:]:
+            copyfrompath = None
             path_elem = path_elem.strip()
             if not path_elem:
                 break
             # git log shows special characters in paths to indicate moves.
-            substed_path_elem = self.log_moved_re.sub(r'\1', path_elem)
-            substed_path_elem = substed_path_elem.replace('//', '/')
-            try:
-                added, removed, relpath = substed_path_elem.split()
-            except ValueError:
-                log.warning('failed to parse the following line:\n%s\n%s',
-                            log_entry[0], path_elem)
-                continue
+            if '{' not in path_elem:
+                added, removed, relpath = path_elem.split()
+            else:
+                match = self.log_moved_re.match(path_elem)
+                if not match:
+                    log.warning('failed to parse the following line:\n%s\n%s',
+                                log_entry[0], path_elem)
+                    continue
+                added = match.group(1)
+                removed = match.group(2)
+                relpath = match.group(3) + match.group(5) + match.group(6)
+                relpath = relpath.replace('//', '/')
+                copyfrompath = match.group(3) + match.group(4) + match.group(6)
+                copyfrompath = copyfrompath.replace('//', '/')
             # - indicate binary files.
             added_as_int = int(added) if added != '-' else np.nan
             removed_as_int = int(removed) if removed != '-' else np.nan
-            entry = scm.LogEntry(hash, author, date, None, 'f', None,
-                                 None, relpath, msg, added_as_int,
-                                 removed_as_int)
+            entry = scm.LogEntry(rev, author=author, date=date, path=relpath,
+                                 message=msg, kind='f', added=added_as_int,
+                                 removed=removed_as_int,
+                                 copyfrompath=copyfrompath)
             yield entry
 
-    def get_log_entries(self, text):
-        """See :member:`_ScmLogCollector.get_log_entries`."""
+    def process_log_entries(self, text):
+        """See :member:`_ScmLogCollector.process_log_entries`."""
         log_entry = []
         for line in text:
             if line.startswith('['):
@@ -90,33 +100,51 @@ class _GitLogCollector(scm._ScmLogCollector):
             yield from self.process_entry(log_entry)
             log_entry = []
 
-    def get_log(self):
-        """Call git log and return output as a DataFrame."""
-        command = f'{self.git_program} {self._args}'
-        if self.after:
-            command += f' --after {self.after:%Y-%m-%d}'
-        if self.before:
-            command += f' --before {self.before:%Y-%m-%d}'
-        command_with_path = f'{command} {self.path}'
-        results = internals._run(command_with_path)
-        return self.process_output_to_df(results)
+    def get_log(self,
+                path: str = '.',
+                after: dt.datetime = None,
+                before: dt.datetime = None,
+                progress_bar: tqdm.tqdm = None) -> pd.DataFrame:
+        """Retrieve log from git.
+
+        Args:
+            path: location of checked out subversion repository root. Defaults to .
+            after: only get the log after time stamp. Defaults to one year ago.
+            before: only get the log before time stamp. Defaults to now.
+            progress_bar: tqdm.tqdm progress bar.
+
+        Returns:
+            pandas.DataFrame with columns matching the fields of
+            codemetrics.scm.LogEntry.
+
+        """
+        internals.check_run_in_root(path)
+        after, before = internals.handle_default_dates(after, before)
+        if progress_bar is not None and after is None:
+            raise ValueError("progress_bar requires 'after' parameter")
+        command = f'{self.git_client} {self._args}'
+        if after:
+            command += f' --after {after:%Y-%m-%d}'
+        if before:
+            command += f' --before {before:%Y-%m-%d}'
+        command_with_path = f'{command} {path}'
+        results = internals.run(command_with_path).split('\n')
+        return self.process_log_output_to_df(results, after=after,
+                                             progress_bar=progress_bar)
 
 
-def get_git_log(
-    after: dt.datetime=None,
-    before: dt.datetime=None,
-    path: str='.',
-    git_program: str='git',
-    progress_bar: tqdm.tqdm=None):
-    """Entry point to retrieve Subversion log.
+def get_git_log(path: str = '.',
+                after: dt.datetime = None,
+                before: dt.datetime = None,
+                progress_bar: tqdm.tqdm = None,
+                git_client: str = 'git') -> pd.DataFrame:
+    """Entry point to retrieve git log.
 
     Args:
-        after: only get the log after time stamp
-               (defaults to one year ago).
-        before: only get the log before time stamp
-                (defaults to now).
-        path: location of checked out subversion repository root.
-        svn_program: svn client (defaults to svn).
+        path: location of checked out subversion repository root. Defaults to .
+        after: only get the log after time stamp. Defaults to one year ago.
+        before: only get the log before time stamp. Defaults to now.
+        git_client: git client executable (defaults to git).
         progress_bar: tqdm.tqdm progress bar.
 
     Returns:
@@ -129,8 +157,59 @@ def get_git_log(
         log_df = cm.git.get_git_log(path='src', after=last_year)
 
     """
-    internals._check_run_in_root(path)
-    collector = _GitLogCollector(after=after, before=before, path=path,
-                                 git_program=git_program,
-                                 progress_bar=progress_bar)
-    return collector.get_log()
+    collector = _GitLogCollector(git_client=git_client)
+    return collector.get_log(after=after, before=before, path=path,
+                             progress_bar=progress_bar)
+
+
+def _download_file(base_command, filename, revision) -> scm.FileDownloadResult:
+    """Download specific file and revision from git."""
+    command = f'{base_command} {revision}:{filename}'
+    content = internals.run(command)
+    yield scm.FileDownloadResult(filename, revision, content)
+
+
+class _GitFileDownloader:
+    """Download files from Subversion."""
+
+    def __init__(self, git_client: str = 'git'):
+        """Initialize downloader.
+
+        Args:
+            git_client: name of git client.
+
+        """
+        self.command = f'{git_client} show '
+
+    def download_files(self,
+                       df: pd.DataFrame) -> typing.Sequence[scm.FileDownloadResult]:
+        """Downloads files from Subversion.
+
+        Args:
+            df: dataframe containing at least a (path, revision) columns to
+                identify the files to download.
+
+        Returns:
+             list of file locations.
+
+        """
+        for _, (filename, revision) in df[['path', 'revision']].iterrows():
+            yield from _download_file(self.command, filename, revision)
+        return
+
+
+def download_files(df: pd.DataFrame,
+                   git_client: str = 'git') -> typing.Sequence[scm.FileDownloadResult]:
+    """Downloads files from Subversion.
+
+    Args:
+        df: dataframe containing at least a (path, revision) columns to
+            identify the files to download.
+        git_client: Subversion client executable. Defaults to git.
+
+    Returns:
+         list of scm.FileDownloadResult.
+
+    """
+    downloader = _GitFileDownloader(git_client=git_client)
+    yield from downloader.download_files(df)

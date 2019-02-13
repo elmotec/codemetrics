@@ -4,3 +4,4 @@ pandas
 tqdm
 python-dateutil
 scikit-learn
+lizard

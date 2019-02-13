@@ -3,8 +3,10 @@
 
 import os.path
 import typing
+import datetime as dt
 
 import pandas as pd
+import lizard
 import sklearn
 import sklearn.cluster
 import sklearn.feature_extraction.text
@@ -17,7 +19,8 @@ __all__ = [
     'get_ages',
     'get_hot_spots',
     'get_co_changes',
-    'guess_components'
+    'guess_components',
+    'get_complexity',
 ]
 
 
@@ -127,10 +130,9 @@ def get_co_changes(log=None, by=None, on=None):
     if on is None:
         on = 'revision'
     df = log[[on, by]].drop_duplicates()
-    sj = pd.merge(df, df, on=on)
-    sj = sj.rename(columns={by + '_x': by, by + '_y': 'dependency'})
-    sj.drop_duplicates(inplace=True)  # FIXME: needs a test
-    sj = sj.groupby([by, 'dependency']).count().reset_index()
+    sj = pd.merge(df, df, on=on).\
+        rename(columns={by + '_x': by, by + '_y': 'dependency'}).\
+        groupby([by, 'dependency']).count().reset_index()
     result = pd.merge(sj[sj[by] == sj['dependency']][[by, on]],
                       sj[sj[by] != sj['dependency']], on=by). \
         rename(columns={on + '_x': 'changes', on + '_y': 'cochanges'})
@@ -179,3 +181,79 @@ def guess_components(paths, stop_words=None, n_clusters=8):
     rv = pd.DataFrame(data={'path': data, 'component': components})
     rv.sort_values(by='component', inplace=True)
     return rv
+
+
+# Exclude the parameters field for now.
+_lizard_fields = [fld for fld in vars(lizard.FunctionInfo('', '')).keys()
+                  if fld not in ['filename', 'parameters']]
+_complexity_fields = _lizard_fields + \
+                     'file_tokens file_nloc path revision'.split()
+
+
+def _get_complexity(path_ref_df: pd.DataFrame,
+                    download_func: typing.Callable) -> pd.DataFrame:
+    """Downloads and run complexity metrics on a specific path and revision.
+
+    Args:
+        path_rev_df: DataFrame of path and revision.
+        download_func: function to download a particular revision of a file.
+
+    Returns:
+        DataFrame with metrics at the function levels.
+
+    """
+    # FIXME Check the type of download_func: taking (path, revision) or df?
+    assert callable(download_func), 'download_func is not callable'
+    for dld in download_func(path_ref_df):
+        assert isinstance(dld, scm.FileDownloadResult), \
+            'download_func is expected to return scm.FileDownloadResult objs'
+        assert isinstance(dld.code, str), 'code is expected to be 1 long string'
+        info = lizard.analyze_file.analyze_source_code(dld.path, dld.code)
+        if info.function_list:
+            df = pd.DataFrame.from_records(
+                    [vars(d) for d in info.function_list],
+                    columns=_lizard_fields)
+            df['file_tokens'] = info.token_count
+            df['file_nloc'] = info.nloc
+            df['path'] = dld.path
+            df['revision'] = dld.revision
+        else:
+            df = pd.DataFrame({k: [] for k in _complexity_fields})
+        # For consistency with the input.
+        yield df
+    return
+
+
+def get_complexity(df: pd.DataFrame,
+                   download_func: typing.Callable) -> pd.DataFrame:
+    """Generate complexity information for files and revisions in dataframe.
+
+    For each pair of (path, revision) in the input dataframe, analyze the code
+    with lizard and return the output.
+
+    Args:
+        df: expected to contain at least 2 columns (path, revision).
+        download_func: callable that downloads a path on a given revision in
+            a temporary directory and return that file in an object of type
+            `codemetrics.scm.FileDownloadResult`.
+
+    Returns:
+        Dataframe containing output of function-level lizard.analyze_
+
+    Example::
+
+        >>> import codemetrics as cm
+        >>> list(df.columns)
+        ['path', 'revision']
+        >>> complexity = get_complexity(df)
+
+    .. _lizard.analyze: https://github.com/terryyin/lizard
+
+    """
+    for expected in ['path', 'revision']:
+        if expected not in df.columns:
+            raise ValueError(f"'{expected}' column not found in input")
+    dfs = list(
+        _get_complexity(df[['path', 'revision']], download_func=download_func)
+    )
+    return pd.concat(dfs).reset_index(drop=True)
