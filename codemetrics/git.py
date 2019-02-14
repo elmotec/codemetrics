@@ -33,7 +33,42 @@ class _GitLogCollector(scm._ScmLogCollector):
         """
         super().__init__(**kwargs)
         self.git_client = git_client
-        self.log_moved_re = re.compile(r"([-\d]+)\s+([-\d]+)\s+(\S*)\{(\S*) => (\S*)\}(\S*)")
+        self.log_moved_re = \
+            re.compile(r"([-\d]+)\s+([-\d]+)\s+(\S*)\{(\S*) => (\S*)\}(\S*)")
+
+    def parse_path_elem(self, path_elem: str):
+        """Parses git output to identify lines added, removed and path.
+
+        Also handles renamed path.
+
+        Args:
+            path_elem: path element line.
+
+        Returns:
+            Quadruplet of added, removed, relpath, copyfrompath where
+            copyfrompath may be None.
+
+        """
+        copyfrompath = None
+        if '{' not in path_elem:
+                if '=>' in path_elem:
+                    added, removed, copyfrompath, _, relpath = \
+                        path_elem.split()
+                else:
+                    added, removed, relpath = path_elem.split()
+        else:
+            match = self.log_moved_re.match(path_elem)
+            if not match:
+                raise ValueError(f'{path_elem} not understood')
+            added = match.group(1)
+            removed = match.group(2)
+            relpath = match.group(3) + match.group(5) + match.group(6)
+            relpath = relpath.replace('//', '/')
+            copyfrompath = match.group(3) + match.group(4) + match.group(6)
+            copyfrompath = copyfrompath.replace('//', '/')
+        added_as_int = int(added) if added != '-' else np.nan
+        removed_as_int = int(removed) if removed != '-' else np.nan
+        return added_as_int, removed_as_int, relpath, copyfrompath
 
     def process_entry(self, log_entry):
         """Convert a single xml <logentry/> element to csv rows.
@@ -62,27 +97,16 @@ class _GitLogCollector(scm._ScmLogCollector):
             if not path_elem:
                 break
             # git log shows special characters in paths to indicate moves.
-            if '{' not in path_elem:
-                added, removed, relpath = path_elem.split()
-            else:
-                match = self.log_moved_re.match(path_elem)
-                if not match:
-                    log.warning('failed to parse the following line:\n%s\n%s',
-                                log_entry[0], path_elem)
-                    continue
-                added = match.group(1)
-                removed = match.group(2)
-                relpath = match.group(3) + match.group(5) + match.group(6)
-                relpath = relpath.replace('//', '/')
-                copyfrompath = match.group(3) + match.group(4) + match.group(6)
-                copyfrompath = copyfrompath.replace('//', '/')
+            try:
+                added, removed, relpath, copyfrompath = \
+                    self.parse_path_elem(path_elem)
+            except ValueError as err:
+                log.error(f'failed to parse {path_elem}: {err}')
+                continue
             # - indicate binary files.
-            added_as_int = int(added) if added != '-' else np.nan
-            removed_as_int = int(removed) if removed != '-' else np.nan
             entry = scm.LogEntry(rev, author=author, date=date, path=relpath,
-                                 message=msg, kind='f', added=added_as_int,
-                                 removed=removed_as_int,
-                                 copyfrompath=copyfrompath)
+                                 message=msg, kind='f', added=added,
+                                 removed=removed, copyfrompath=copyfrompath)
             yield entry
 
     def process_log_entries(self, text):

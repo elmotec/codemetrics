@@ -11,11 +11,55 @@ from unittest import mock
 
 import tqdm
 import pandas as pd
+import numpy as np
 
 import tests.utils as utils
 
 import codemetrics as cm
 import codemetrics.git as git
+
+
+class PathElemParser(unittest.TestCase):
+
+    def setUp(self):
+        """Initialize git collector."""
+        self.git = git._GitLogCollector()
+
+    def test_parse_path_elem(self):
+        """Parsing of path element."""
+        pe = '21	    2   	dir/test.py'
+        added, removed, relpath, copyfrompath = self.git.parse_path_elem(pe)
+        self.assertEqual(21, added)
+        self.assertEqual(2, removed)
+        self.assertEqual('dir/test.py', relpath)
+        self.assertIsNone(copyfrompath)
+
+    def test_parse_renamed_path(self):
+        """Parsing of path element."""
+        pe = '1       1       dir/{b/a.py => a/b.py}'
+        added, removed, relpath, copyfrompath = self.git.parse_path_elem(pe)
+        self.assertEqual(1, added)
+        self.assertEqual(1, removed)
+        self.assertEqual('dir/a/b.py', relpath)
+        self.assertEqual('dir/b/a.py', copyfrompath)
+
+    def test_parse_renamed_path_empty_right(self):
+        """Parsing of path element."""
+        pe = '21	    2   	dir/{category => }/test.py'
+        added, removed, relpath, copyfrompath = self.git.parse_path_elem(pe)
+        self.assertEqual(21, added)
+        self.assertEqual(2, removed)
+        self.assertEqual('dir/test.py', relpath)
+        self.assertEqual('dir/category/test.py', copyfrompath)
+
+    def test_parse_renamed_path_empty_left(self):
+        """Parsing of path element."""
+        pe = '-       -       dir/{ => subdir}/file.py'
+        added, removed, relpath, copyfrompath = self.git.parse_path_elem(pe)
+        self.assertTrue(np.isnan(added))
+        self.assertTrue(np.isnan(removed))
+        self.assertEqual('dir/subdir/file.py', relpath)
+        self.assertEqual('dir/file.py', copyfrompath)
 
 
 def get_log():
@@ -117,52 +161,6 @@ b9fe5a6,elmotec,2018-12-04 21:49:55+00:00,tests/test_core.py,Added guess_compone
         expected = utils.csvlog_to_dataframe(textwrap.dedent('''\
         revision,author,date,path,message,kind,action,copyfromrev,copyfrompath,added,removed
         xxxxxxx,elmotec,2018-12-05 23:44:38+00:00,some/file,bbb [ci skip] [skipci],f,,,,1,1'''))
-        self.assertEqual(expected, df)
-
-    @mock.patch('codemetrics.internals.run', autospec=True,
-                return_value=textwrap.dedent("""
-                [xxxxxxx] [elmotec] [2018-12-05 23:44:38 -0000] [blah]
-                -       -       directory/{ => subdir}/file
-                """))
-    def test_handling_of_files_moved(self, call):
-        """Handles files that were moved using the new location."""
-        actual = git.get_git_log('.', after=self.after)
-        call.assert_called_with(
-            f'git {git._GitLogCollector._args} --after {self.after:%Y-%m-%d} .')
-        expected = utils.csvlog_to_dataframe(textwrap.dedent('''\
-        revision,author,date,path,message,kind,copyfrompath,added,removed
-        xxxxxxx,elmotec,2018-12-05 23:44:38+00:00,directory/subdir/file,blah,f,directory/file,,'''))
-        self.assertEqual(expected, actual)
-
-    @mock.patch('codemetrics.internals.run', autospec=True,
-                return_value=textwrap.dedent("""
-                [xxxxxxx] [elmotec] [2018-12-05 23:44:38 -0000] [a]
-                1       1       dir/{b/a.py => a/b.py}
-                """))
-    def test_handling_of_directory_renamed(self, call):
-        """Handles subdirectories that were renamed."""
-        df = git.get_git_log('.', after=self.after)
-        call.assert_called_with(
-            f'git {git._GitLogCollector._args} --after {self.after:%Y-%m-%d} .')
-        expected = utils.csvlog_to_dataframe(textwrap.dedent('''\
-        revision,author,date,path,message,kind,action,copyfrompath,added,removed
-        xxxxxxx,elmotec,2018-12-05 23:44:38+00:00,dir/a/b.py,a,f,,dir/b/a.py,1,1'''))
-        self.assertEqual(expected, df)
-
-    @mock.patch('codemetrics.internals.run', autospec=True,
-                return_value=textwrap.dedent("""
-                [xxxxxxx] [elmotec] [2018-12-05 23:44:38 -0000] [a]
-                21	    2   	dir/{category => }/test.py
-                """))
-    def test_handling_of_removed_directories(self, call):
-        """Handles subdirectories that were renamed."""
-        df = git.get_git_log('.', after=self.after)
-        call.assert_called_with(
-            f'git {git._GitLogCollector._args} --after {self.after:%Y-%m-%d} .')
-        expected = utils.csvlog_to_dataframe(textwrap.dedent('''\
-        revision,author,date,copyfrompath,path,message,kind,action,added,removed
-        xxxxxxx,elmotec,2018-12-05 23:44:38+00:00,dir/category/test.py,dir/test.py,a,f,,21,2
-        '''))
         self.assertEqual(expected, df)
 
 

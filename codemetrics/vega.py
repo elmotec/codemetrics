@@ -203,6 +203,8 @@ def _vis_generic(df: pd.DataFrame,
 def vis_hot_spots(df: pd.DataFrame,
                   height: int = 300,
                   width: int = 400,
+                  size_column: str = 'lines',
+                  color_column: str = 'changes',
                   colorscheme: str = 'yelloworangered') -> dict:
     """Convert get_hot_spots output to a json vega dict.
 
@@ -210,6 +212,8 @@ def vis_hot_spots(df: pd.DataFrame,
         df: input data returned by :func:`codemetrics.get_hot_spots`
         height: vertical size of the figure.
         width: horizontal size of the figure.
+        size_column: column that drives the size of the circles.
+        color_column: column that drives the color intensity of the circles.
         colorscheme: color scheme. See https://vega.github.io/vega/docs/schemes/
 
     Returns:
@@ -229,7 +233,7 @@ def vis_hot_spots(df: pd.DataFrame,
     .. _Vega circle pack example: https://vega.github.io/editor/#/examples/vega/circle-packing
 
     """
-    return _vis_generic(df, size_column='lines', color_column='changes',
+    return _vis_generic(df, size_column=size_column, color_column=color_column,
                         colorscheme=colorscheme, width=width,
                         height=height)
 
