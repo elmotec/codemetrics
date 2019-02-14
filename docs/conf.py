@@ -59,7 +59,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'codemetrics'
-copyright = u"2018, Elmotec"
+copyright = u"2019, Elmotec"
 author = u"Elmotec"
 
 # The version info for the project you're documenting, acts as replacement
