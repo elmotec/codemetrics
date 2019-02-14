@@ -12,8 +12,7 @@ Welcome to codemetrics's documentation!
    authors
    history
 
-Indices and tables
-==================
+Search and Index
+================
 * :ref:`genindex`
-* :ref:`modindex`
 * :ref:`search`

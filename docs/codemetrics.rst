@@ -11,6 +11,15 @@ fields of :class:`codemetrics.scm.LogEntry`:
 .. autoclass:: codemetrics.scm.LogEntry
 
 
+codemetrics.scm
+---------------
+
+Common logic for source control management tools.
+
+.. automodule:: codemetrics.scm
+    :members:
+
+
 codemetrics.svn
 ---------------
 
@@ -45,6 +54,7 @@ For instance::
 .. automodule:: codemetrics.core
     :members:
 
+
 codemetrics.vega
 ----------------
 
@@ -57,9 +67,3 @@ Brdges visualization in Jupyter_ notebooks with Vega_ and Altair_.
 .. _Vega: https://vega.github.io/
 .. _Altair: https://altair-viz.github.io/
 
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
