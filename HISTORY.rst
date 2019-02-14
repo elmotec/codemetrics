@@ -2,6 +2,11 @@
 History
 =======
 
+0.8 (2019-02-13)
+----------------
+
+* Integrated lizard to calculate average and function level cyclomatic complexity.
+
 0.7 (2019-01-09)
 ----------------
 
