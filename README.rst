@@ -21,8 +21,8 @@ Code Metrics
 Mine your SCM for insight on your software. A work of love
 inspired by `Adam Tornhill`_'s books.
 
-Code metrics is a simple Python module that leverage your source control
-management (SCM) tool to generate insight on your code base.
+Code metrics is a simple Python module that leverage pandas and your source control management (SCM) tool togenerate
+insight on your code base.
 
 - pandas_: for data munching.
 - lizard_: for code complexity calculation.
