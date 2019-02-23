@@ -14,5 +14,5 @@ script:
     - python setup.py test
 
 after_success:
-    - coverage run --source metrics tests.py
+    - coverage run --source codemetrics setup.py test
     - coveralls
