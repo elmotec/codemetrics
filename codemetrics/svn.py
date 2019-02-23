@@ -192,12 +192,11 @@ class _SvnLogCollector(scm._ScmLogCollector):
                                              progress_bar=progress_bar)
 
 
-def get_svn_log(
-    path: str='.',
-    after: dt.datetime=None,
-    before: dt.datetime=None,
-    progress_bar: tqdm.tqdm=None,
-    svn_client: str = 'svn') -> pd.DataFrame:
+def get_svn_log(path: str='.',
+                after: dt.datetime=None,
+                before: dt.datetime=None,
+                progress_bar: tqdm.tqdm=None,
+                svn_client: str = 'svn') -> pd.DataFrame:
     """Entry point to retrieve svn log.
 
     Args:

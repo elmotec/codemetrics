@@ -14,6 +14,14 @@
     :target: https://codemetrics.readthedocs.org/
     :alt: Documentation
 
+.. image:: https://coveralls.io/repos/github/elmotec/codemetrics/badge.svg?branch=master
+    :target: https://coveralls.io/github/elmotec/codemetrics?branch=master
+    :alt: Test coverage
+
+.. image:: https://api.codacy.com/project/badge/Grade/dd4a11eb66674b3bbe518d8f829b6234
+    :target: https://www.codacy.com/app/elmotec/codemetrics?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=elmotec/codemetrics&amp;utm_campaign=Badge_Grade
+    :alt: Codacy
+
 ============
 Code Metrics
 ============
