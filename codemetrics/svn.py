@@ -221,27 +221,27 @@ def get_svn_log(path: str='.',
                              progress_bar=progress_bar)
 
 
-def _download_file(base_command, filename, revision) -> scm.FileDownloadResult:
+def _download_file(base_command, filename, revision) -> scm.DownloadResult:
     """Download specific file and revision from svn."""
     command = f'{base_command} {revision} {filename}'
     content = internals.run(command)
-    yield scm.FileDownloadResult(filename, revision, content)
+    yield scm.DownloadResult(filename, revision, content)
 
 
-class _SvnFileDownloader:
+class _SvnDownloader:
     """Download files from Subversion."""
 
-    def __init__(self, svn_client: str='svn'):
+    def __init__(self, command, svn_client: str='svn'):
         """Initialize downloader.
 
         Args:
             svn_client: name of svn client.
         """
         self.svn_client = svn_client
-        self.command = f'{svn_client} cat -r'
+        self.command = f'{svn_client} {command}'
 
     def download_files(self,
-                       df: pd.DataFrame) -> typing.Sequence[scm.FileDownloadResult]:
+                       df: pd.DataFrame) -> typing.Sequence[scm.DownloadResult]:
         """Downloads files from Subversion.
 
         Args:
@@ -259,7 +259,7 @@ class _SvnFileDownloader:
 
 
 def download_files(df: pd.DataFrame,
-                   svn_client: str = 'svn') -> typing.Sequence[scm.FileDownloadResult]:
+                   svn_client: str = 'svn') -> typing.Sequence[scm.DownloadResult]:
     """Downloads files from Subversion.
 
     Args:
@@ -271,5 +271,26 @@ def download_files(df: pd.DataFrame,
          list of file locations.
 
     """
-    downloader = _SvnFileDownloader(svn_client=svn_client)
+    downloader = _SvnDownloader('cat -r', svn_client=svn_client)
     return downloader.download_files(df)
+
+
+def get_diff_stats(input_df: pd.DataFrame,
+                   svn_client: str = 'svn') -> pd.DataFrame:
+    """Download diff chunks statistics from Subversion.
+
+    Args:
+        df: dataframe containing at least the (path, revision) columns.
+        svn_client: Subversion client executable. Defaults to svn.
+
+    Returns:
+        Dataframe containing the statistics for each chunk.
+
+    """
+    columns = ['path', 'revision']
+    internals._check_columns(input_df, columns)
+    downloader = _SvnDownloader('diff --git -c', svn_client=svn_client)
+    dfs = []
+    for dld in downloader.download_files(input_df):
+        dfs.append(scm.parse_diff_chunks(dld))
+    return pd.concat(dfs).reset_index(drop=True)

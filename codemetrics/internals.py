@@ -7,6 +7,7 @@ import datetime as dt
 import pathlib as pl
 import subprocess
 import logging
+import typing
 
 import pandas as pd
 
@@ -117,4 +118,20 @@ def handle_default_dates(after: dt.datetime, before: dt.datetime):
     if not after:
         after = get_year_ago(from_date=before)
     return after, before
+
+
+def _check_columns(df: pd.DataFrame, names: typing.Sequence[str]) -> None:
+    """Checks columns names are found in the data frame.
+
+    Args:
+        df: input dataframe.
+
+    Raise:
+        ValueError if one of the name is not found.
+
+    """
+    for expected in names:
+        if expected not in df.columns:
+            raise ValueError(f"'{expected}' column not found in input")
+    return
 

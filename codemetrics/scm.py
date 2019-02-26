@@ -7,6 +7,7 @@ import abc
 import datetime as dt
 import typing
 import collections
+import re
 
 import pandas as pd
 import tqdm
@@ -177,6 +178,39 @@ class _ScmLogCollector(abc.ABC):
         pass
 
 
-FileDownloadResult = collections.namedtuple('FileDownloadResult',
-                                            ['path', 'revision', 'code'])
+DownloadResult = collections.namedtuple('DownloadResult',
+                                        ['path', 'revision', 'content'])
 
+
+def parse_diff_chunks(download: DownloadResult) -> pd.DataFrame:
+    """Parse download result looking for diff chunks.
+
+    Returns:
+        statistics with one row for each chunk.
+
+    """
+    chunk_start_re = re.compile(r'^@@ -\d+,\d+ \+(\d+),(\d+) @@')
+    ChunkStats = collections.namedtuple('ChunkStats', 'begin end added removed')
+    chunk_stats, current = [], None
+    for line in download.content.split('\n'):
+        match = chunk_start_re.match(line)
+        if match is not None:
+            if current is not None:
+                chunk_stats.append(current)
+            begin = int(match.group(1))
+            length = int(match.group(2))
+            current = ChunkStats(begin, begin + length, 0, 0)
+            continue
+        if current is None or not line:
+            continue
+        if line[0] == '-':
+            current = current._replace(removed=current.removed + 1)
+        elif line[0] == '+':
+            current = current._replace(added=current.added + 1)
+    if current is not None:
+        chunk_stats.append(current)
+    columns = list(ChunkStats._fields)
+    df = pd.DataFrame.from_records(chunk_stats, columns=columns)
+    df['path'] = download.path
+    df['revision'] = download.revision
+    return df[['path', 'revision'] + columns]

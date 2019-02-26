@@ -186,11 +186,11 @@ def get_git_log(path: str = '.',
                              progress_bar=progress_bar)
 
 
-def _download_file(base_command, filename, revision) -> scm.FileDownloadResult:
+def _download_file(base_command, filename, revision) -> scm.DownloadResult:
     """Download specific file and revision from git."""
     command = f'{base_command} {revision}:{filename}'
     content = internals.run(command)
-    yield scm.FileDownloadResult(filename, revision, content)
+    yield scm.DownloadResult(filename, revision, content)
 
 
 class _GitFileDownloader:
@@ -206,7 +206,7 @@ class _GitFileDownloader:
         self.command = f'{git_client} show '
 
     def download_files(self,
-                       df: pd.DataFrame) -> typing.Sequence[scm.FileDownloadResult]:
+                       df: pd.DataFrame) -> typing.Sequence[scm.DownloadResult]:
         """Downloads files from Subversion.
 
         Args:
@@ -223,7 +223,7 @@ class _GitFileDownloader:
 
 
 def download_files(df: pd.DataFrame,
-                   git_client: str = 'git') -> typing.Sequence[scm.FileDownloadResult]:
+                   git_client: str = 'git') -> typing.Sequence[scm.DownloadResult]:
     """Downloads files from Subversion.
 
     Args:
@@ -232,7 +232,7 @@ def download_files(df: pd.DataFrame,
         git_client: Subversion client executable. Defaults to git.
 
     Returns:
-         list of scm.FileDownloadResult.
+         list of scm.DownloadResult.
 
     """
     downloader = _GitFileDownloader(git_client=git_client)

@@ -209,7 +209,7 @@ class SubversionGetLogTestCase(unittest.TestCase):
         self.assertEqual(expected, df)
 
 
-class DownloadSvnFilesTestCase(unittest.TestCase):
+class SubversionDownloadFilesTestCase(unittest.TestCase):
     """Test getting historical files with subversion."""
 
     content1 = textwrap.dedent('''
@@ -225,7 +225,7 @@ class DownloadSvnFilesTestCase(unittest.TestCase):
     ''')
 
     def setUp(self):
-        self.svn = cm.svn._SvnFileDownloader()
+        self.svn = cm.svn._SvnDownloader('cat -r')
 
     @mock.patch('codemetrics.internals.run', autospec=True,
                 return_value=content1)
@@ -238,7 +238,7 @@ class DownloadSvnFilesTestCase(unittest.TestCase):
         _run.assert_called_with(f'{self.svn.command} 1 file.py')
         self.assertEqual(1, len(results))
         actual = results[0]
-        expected = cm.scm.FileDownloadResult('file.py', 1, self.content1)
+        expected = cm.scm.DownloadResult('file.py', 1, self.content1)
         self.assertEqual(expected, actual)
 
     @mock.patch('codemetrics.internals.run', autospec=True,
@@ -251,11 +251,97 @@ class DownloadSvnFilesTestCase(unittest.TestCase):
         """)))
         actual = list(cm.svn.download_files(sublog))
         expected = [
-            cm.scm.FileDownloadResult('file.py', 1, self.content1),
-            cm.scm.FileDownloadResult('file.py', 2, self.content2),
+            cm.scm.DownloadResult('file.py', 1, self.content1),
+            cm.scm.DownloadResult('file.py', 2, self.content2),
         ]
         self.assertEqual(expected, actual)
 
+
+class SubversionGetDiffStatsTestCase(utils.DataFrameTestCase):
+    """Given a subversion repository and file chunks."""
+
+    init_chunk = textwrap.dedent('''\
+    Index: __init__.py
+    ===================================================================
+    diff --git a/file.py b/file.py
+    --- a/file.py       (revision 1019)
+    +++ b/file.py       (revision 1020)
+    @@ -5,7 +5,7 @@
+     Retrieves data from various financial sources.
+     """
+    
+    -__version__ = "0.1"
+    +__version__ = "0.2"
+     __author__ = "elmotec"
+     __license__ = "MIT"
+     ''')
+
+    multi_chunk = textwrap.dedent('''\
+    diff --git a/codemetrics/vega.py b/codemetrics/vega.py
+    index 6b3adcf..3408a55 100644
+    --- a/vega.py
+    +++ b/vega.py
+    @@ -203,6 +203,8 @@ def _vis_generic(df: pd.DataFrame,
+     def vis_hot_spots(df: pd.DataFrame,
+                       height: int = 300,
+                       width: int = 400,
+    +                  size_column: str = 'lines',
+    +                  color_column: str = 'changes',
+                       colorscheme: str = 'yelloworangered') -> dict:
+         """Convert get_hot_spots output to a json vega dict.
+     
+    @@ -210,6 +212,8 @@ def vis_hot_spots(df: pd.DataFrame,
+             df: input data returned by :func:`codemetrics.get_hot_spots`
+             height: vertical size of the figure.
+             width: horizontal size of the figure.
+    +        size_column: column that drives the size of the circles.
+    +        color_column: column that drives the color intensity of the circles.
+             colorscheme: color scheme. See https://vega.github.io/vega/docs/schemes/
+     
+         Returns:
+    @@ -229,7 +233,7 @@ def vis_hot_spots(df: pd.DataFrame,
+         .. _Vega circle pack example: https://vega.github.io/editor/#/examples/vega/circle-packing
+     
+         """
+    -    return _vis_generic(df, size_column='lines', color_column='changes',
+    +    return _vis_generic(df, size_column=size_column, color_column=color_column,
+                             colorscheme=colorscheme, width=width,
+                             height=height)
+     ''')
+
+    @mock.patch('codemetrics.internals.run', autospec=True,
+                return_value=init_chunk)
+    def test_can_retrieve_one_chunk(self, run_):
+        """Can retrieve chunk statistics from Subversion"""
+        sublog_df = pd.read_csv(io.StringIO(textwrap.dedent('''\
+        revision,path
+        abc,__init__.py
+        ''')))
+        actual = cm.svn.get_diff_stats(sublog_df)
+        expected = pd.read_csv(io.StringIO(textwrap.dedent('''\
+        path,revision,begin,end,added,removed
+        __init__.py,abc,5,12,1,1
+        ''')))
+        run_.assert_called_with('svn diff --git -c abc __init__.py')
+        self.assertEqual(expected, actual)
+
+    @mock.patch('codemetrics.internals.run', autospec=True,
+                side_effect=[init_chunk, multi_chunk])
+    def test_can_retrieve_multiple_chunks(self, run_):
+        """Can retrieve chunk statistics from Subversion"""
+        sublog_df = pd.read_csv(io.StringIO(textwrap.dedent('''\
+        revision,path
+        abc,__init__.py
+        def,vega.py
+        ''')))
+        actual = cm.svn.get_diff_stats(sublog_df)
+        expected = pd.read_csv(io.StringIO(textwrap.dedent('''\
+        path,revision,begin,end,added,removed
+        __init__.py,abc,5,12,1,1
+        vega.py,def,203,211,2,0
+        vega.py,def,212,220,2,0
+        vega.py,def,233,240,1,1''')))
+        self.assertEqual(expected, actual)
 
 
 if __name__ == '__main__':

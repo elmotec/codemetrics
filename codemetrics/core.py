@@ -202,13 +202,12 @@ def _get_complexity(path_ref_df: pd.DataFrame,
         DataFrame with metrics at the function levels.
 
     """
-    # FIXME Check the type of download_func: taking (path, revision) or df?
     assert callable(download_func), 'download_func is not callable'
     for dld in download_func(path_ref_df):
-        assert isinstance(dld, scm.FileDownloadResult), \
-            'download_func is expected to return scm.FileDownloadResult objs'
-        assert isinstance(dld.code, str), 'code is expected to be 1 long string'
-        info = lizard.analyze_file.analyze_source_code(dld.path, dld.code)
+        assert isinstance(dld, scm.DownloadResult), \
+            'download_func is expected to return scm.DownloadResult objs'
+        assert isinstance(dld.content, str), 'code is expected to be 1 long string'
+        info = lizard.analyze_file.analyze_source_code(dld.path, dld.content)
         if info.function_list:
             df = pd.DataFrame.from_records(
                     [vars(d) for d in info.function_list],
@@ -235,7 +234,7 @@ def get_complexity(df: pd.DataFrame,
         df: expected to contain at least 2 columns (path, revision).
         download_func: callable that downloads a path on a given revision in
             a temporary directory and return that file in an object of type
-            `codemetrics.scm.FileDownloadResult`.
+            `codemetrics.scm.DownloadResult`.
 
     Returns:
         Dataframe containing output of function-level lizard.analyze_
@@ -250,10 +249,11 @@ def get_complexity(df: pd.DataFrame,
     .. _lizard.analyze: https://github.com/terryyin/lizard
 
     """
-    for expected in ['path', 'revision']:
-        if expected not in df.columns:
-            raise ValueError(f"'{expected}' column not found in input")
+    columns = ['path', 'revision']
+    internals._check_columns(df, columns)
     dfs = list(
-        _get_complexity(df[['path', 'revision']], download_func=download_func)
+        _get_complexity(df[columns], download_func=download_func)
     )
     return pd.concat(dfs).reset_index(drop=True)
+
+

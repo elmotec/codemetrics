@@ -332,8 +332,8 @@ class ComplexityTestCase(DataFrameTestCase):
     def test_simple_analysis(self):
         """Runs complexity trend analysis on this file."""
         def scm_download_files(path_revision_df):
-            return [cm.scm.FileDownloadResult('f.py', 1, self.file_content_1),
-                    cm.scm.FileDownloadResult('f.py', 2, self.file_content_2)]
+            return [cm.scm.DownloadResult('f.py', 1, self.file_content_1),
+                    cm.scm.DownloadResult('f.py', 2, self.file_content_2)]
         sublog = pd.read_csv(io.StringIO(textwrap.dedent("""\
         revision,author,date,textmods,kind,action,propmods,path,message
         1,elmotec,2018-02-26T10:28:00Z,true,file,M,false,f.py,again
@@ -350,7 +350,7 @@ class ComplexityTestCase(DataFrameTestCase):
         """Handles files with no function well."""
         file_name, rev = 'f.py', 1
         def scm_download_files(path_rev_df):
-            return [cm.scm.FileDownloadResult(file_name, rev, '')]
+            return [cm.scm.DownloadResult(file_name, rev, '')]
         sublog = pd.DataFrame({'revision': [rev],
                                'path': [file_name]})
         actual = cm.get_complexity(sublog, download_func=scm_download_files)

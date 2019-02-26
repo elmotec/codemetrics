@@ -194,7 +194,7 @@ class DownloadGitFilesTestCase(unittest.TestCase):
         _run.assert_called_with(f'{self.git.command} 1:file.py')
         self.assertEqual(1, len(results))
         actual = results[0]
-        expected = cm.scm.FileDownloadResult('file.py', 1, self.content1)
+        expected = cm.scm.DownloadResult('file.py', 1, self.content1)
         self.assertEqual(expected, actual)
 
     @mock.patch('codemetrics.internals.run', autospec=True,
@@ -208,8 +208,8 @@ class DownloadGitFilesTestCase(unittest.TestCase):
         """)))
         actual = list(cm.svn.download_files(sublog))
         expected = [
-            cm.scm.FileDownloadResult('file.py', 1, self.content1),
-            cm.scm.FileDownloadResult('file.py', 2, self.content2),
+            cm.scm.DownloadResult('file.py', 1, self.content1),
+            cm.scm.DownloadResult('file.py', 2, self.content2),
         ]
         self.assertEqual(expected, actual)
 
