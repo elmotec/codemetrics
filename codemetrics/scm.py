@@ -4,10 +4,10 @@
 """Factor things common to git and svn."""
 
 import abc
-import datetime as dt
-import typing
 import collections
+import datetime as dt
 import re
+import typing
 
 import pandas as pd
 import tqdm
@@ -182,8 +182,13 @@ DownloadResult = collections.namedtuple('DownloadResult',
                                         ['path', 'revision', 'content'])
 
 
-def parse_diff_chunks(download: DownloadResult) -> pd.DataFrame:
+def parse_diff_chunks(download: DownloadResult,
+                      rev_path=typing.Sequence[str]) -> pd.DataFrame:
     """Parse download result looking for diff chunks.
+
+    Args:
+        download: Download result.
+        rev_path: order in which path and revision should show.
 
     Returns:
         statistics with one row for each chunk.
@@ -213,4 +218,4 @@ def parse_diff_chunks(download: DownloadResult) -> pd.DataFrame:
     df = pd.DataFrame.from_records(chunk_stats, columns=columns)
     df['path'] = download.path
     df['revision'] = download.revision
-    return df[['path', 'revision'] + columns]
+    return df[rev_path + columns]

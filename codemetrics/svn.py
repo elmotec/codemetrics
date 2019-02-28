@@ -3,19 +3,18 @@
 
 """_SvnLogCollector related functions."""
 
-import pathlib as pl
-import xml.etree.ElementTree as ET
 import datetime as dt
-import typing
 import re
+import typing
+import xml.etree.ElementTree as ET
 
 import dateutil as du
-import tqdm
 import numpy as np
 import pandas as pd
+import tqdm
 
-from . import scm
 from . import internals
+from . import scm
 from .internals import log
 
 
@@ -61,7 +60,7 @@ class _SvnLogCollector(scm._ScmLogCollector):
             **kwargs: passed to :class:`scm._ScmLogCollector`
 `
         """
-        super().__init__(**kwargs)
+        super().__init__()
         self.svn_client = svn_client or 'svn'
         self.path = path
         self._relative_url = relative_url
@@ -69,8 +68,7 @@ class _SvnLogCollector(scm._ScmLogCollector):
     def update_urls(self):
         """Relative URL so we can generate local paths."""
         rel_url_re = re.compile(r'^Relative URL: \^(.*)/?$')
-        wc_root_re = re.compile(r'^Working Copy Root Path: (.*)$')
-        if not self._relative_url or not self._wc_root:
+        if not self._relative_url:
             for line in internals.run(f'{self.svn_client} info {self.path}').split('\n'):
                 match = rel_url_re.match(line)
                 if match:
@@ -247,7 +245,6 @@ class _SvnDownloader:
         Args:
             df: dataframe containing at least a (path, revision) columns to
                 identify the files to download.
-            svn_client: Subversion client executable. Defaults to svn.
 
         Returns:
              list of file locations.
@@ -280,17 +277,18 @@ def get_diff_stats(input_df: pd.DataFrame,
     """Download diff chunks statistics from Subversion.
 
     Args:
-        df: dataframe containing at least the (path, revision) columns.
+        input_df: dataframe containing at least the (path, revision) columns.
         svn_client: Subversion client executable. Defaults to svn.
 
     Returns:
         Dataframe containing the statistics for each chunk.
 
     """
-    columns = ['path', 'revision']
-    internals._check_columns(input_df, columns)
+    cols = [col for col in input_df.columns if col in ['revision', 'path']]
+    internals._check_columns(input_df, cols)
     downloader = _SvnDownloader('diff --git -c', svn_client=svn_client)
     dfs = []
     for dld in downloader.download_files(input_df):
-        dfs.append(scm.parse_diff_chunks(dld))
-    return pd.concat(dfs).reset_index(drop=True)
+        dfs.append(scm.parse_diff_chunks(dld, rev_path=cols))
+    return pd.merge(input_df, pd.concat(dfs), left_on=cols, right_on=cols). \
+        reset_index(drop=True)

@@ -319,6 +319,38 @@ class SubversionGetDiffStatsTestCase(utils.DataFrameTestCase):
         ''')))
         actual = cm.svn.get_diff_stats(sublog_df)
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''\
+        revision,path,begin,end,added,removed
+        abc,__init__.py,5,12,1,1
+        ''')))
+        run_.assert_called_with('svn diff --git -c abc __init__.py')
+        self.assertEqual(expected, actual)
+
+    @mock.patch('codemetrics.internals.run', autospec=True,
+                return_value=init_chunk)
+    def test_can_keep_other_data(self, run_):
+        """Can retrieve chunk statistics and keep existing columns"""
+        sublog_df = pd.read_csv(io.StringIO(textwrap.dedent('''\
+        revision,path,other
+        abc,__init__.py,data
+        ''')))
+        actual = cm.svn.get_diff_stats(sublog_df)
+        expected = pd.read_csv(io.StringIO(textwrap.dedent('''\
+        revision,path,other,begin,end,added,removed
+        abc,__init__.py,data,5,12,1,1
+        ''')))
+        run_.assert_called_with('svn diff --git -c abc __init__.py')
+        self.assertEqual(expected, actual)
+
+    @mock.patch('codemetrics.internals.run', autospec=True,
+                return_value=init_chunk)
+    def test_does_not_reorder_columns(self, run_):
+        """Can retrieve chunk statistics without re-ordering columns"""
+        sublog_df = pd.read_csv(io.StringIO(textwrap.dedent('''\
+        path,revision
+        __init__.py,abc
+        ''')))
+        actual = cm.svn.get_diff_stats(sublog_df)
+        expected = pd.read_csv(io.StringIO(textwrap.dedent('''\
         path,revision,begin,end,added,removed
         __init__.py,abc,5,12,1,1
         ''')))
@@ -336,11 +368,11 @@ class SubversionGetDiffStatsTestCase(utils.DataFrameTestCase):
         ''')))
         actual = cm.svn.get_diff_stats(sublog_df)
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''\
-        path,revision,begin,end,added,removed
-        __init__.py,abc,5,12,1,1
-        vega.py,def,203,211,2,0
-        vega.py,def,212,220,2,0
-        vega.py,def,233,240,1,1''')))
+        revision,path,begin,end,added,removed
+        abc,__init__.py,5,12,1,1
+        def,vega.py,203,211,2,0
+        def,vega.py,212,220,2,0
+        def,vega.py,233,240,1,1''')))
         self.assertEqual(expected, actual)
 
 
