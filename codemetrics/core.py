@@ -186,44 +186,10 @@ def guess_components(paths, stop_words=None, n_clusters=8):
 # Exclude the parameters field for now.
 _lizard_fields = [fld for fld in vars(lizard.FunctionInfo('', '')).keys()
                   if fld not in ['filename', 'parameters']]
-_complexity_fields = _lizard_fields + \
-                     'file_tokens file_nloc path revision'.split()
+_complexity_fields = ['function'] + _lizard_fields + 'file_tokens file_nloc'.split()
 
 
-def _get_complexity(path_ref_df: pd.DataFrame,
-                    download_func: typing.Callable) -> pd.DataFrame:
-    """Downloads and run complexity metrics on a specific path and revision.
-
-    Args:
-        path_rev_df: DataFrame of path and revision.
-        download_func: function to download a particular revision of a file.
-
-    Returns:
-        DataFrame with metrics at the function levels.
-
-    """
-    assert callable(download_func), 'download_func is not callable'
-    for dld in download_func(path_ref_df):
-        assert isinstance(dld, scm.DownloadResult), \
-            'download_func is expected to return scm.DownloadResult objs'
-        assert isinstance(dld.content, str), 'code is expected to be 1 long string'
-        info = lizard.analyze_file.analyze_source_code(dld.path, dld.content)
-        if info.function_list:
-            df = pd.DataFrame.from_records(
-                    [vars(d) for d in info.function_list],
-                    columns=_lizard_fields)
-            df['file_tokens'] = info.token_count
-            df['file_nloc'] = info.nloc
-            df['path'] = dld.path
-            df['revision'] = dld.revision
-        else:
-            df = pd.DataFrame({k: [] for k in _complexity_fields})
-        # For consistency with the input.
-        yield df
-    return
-
-
-def get_complexity(df: pd.DataFrame,
+def get_complexity(group: typing.Union[pd.DataFrame, pd.Series],
                    download_func: typing.Callable) -> pd.DataFrame:
     """Generate complexity information for files and revisions in dataframe.
 
@@ -231,7 +197,7 @@ def get_complexity(df: pd.DataFrame,
     with lizard and return the output.
 
     Args:
-        df: expected to contain at least 2 columns (path, revision).
+        group: contains at least path and revision values.
         download_func: callable that downloads a path on a given revision in
             a temporary directory and return that file in an object of type
             `codemetrics.scm.DownloadResult`.
@@ -242,18 +208,29 @@ def get_complexity(df: pd.DataFrame,
     Example::
 
         >>> import codemetrics as cm
-        >>> list(df.columns)
-        ['path', 'revision']
-        >>> complexity = get_complexity(df)
+        >>> log = cm.get_git_log()
+        >>> log.groupby(['revision', 'path']).apply(get_complexity,
+        ...     download_func=cm.git.download_file)
 
     .. _lizard.analyze: https://github.com/terryyin/lizard
 
     """
-    columns = ['path', 'revision']
-    internals._check_columns(df, columns)
-    dfs = list(
-        _get_complexity(df[columns], download_func=download_func)
-    )
-    return pd.concat(dfs).reset_index(drop=True)
+    count = 0
+    download = download_func(group)
+    path = download.path
+    content = download.content
+    info = lizard.analyze_file.analyze_source_code(path, content)
+    if info.function_list:
+        df = pd.DataFrame.from_records(
+                [vars(d) for d in info.function_list],
+                columns=_lizard_fields)
+        df['file_tokens'] = info.token_count
+        df['file_nloc'] = info.nloc
+        df['function'] = count
+        count += 1
+    else:
+        df = pd.DataFrame({k: [] for k in _complexity_fields})
+    # For consistency with the input.
+    return df.set_index('function')
 
 

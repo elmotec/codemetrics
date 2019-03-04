@@ -21,7 +21,7 @@ class _GitLogCollector(scm._ScmLogCollector):
 
     _args = 'log --pretty=format:"[%h] [%an] [%ad] [%s]" --date=iso --numstat'
 
-    def __init__(self, git_client='git', **kwargs):
+    def __init__(self, git_client='git', debug=False, **kwargs):
         """Initialize.
 
         Compiles regular expressions to be used during parsing of log.
@@ -32,6 +32,7 @@ class _GitLogCollector(scm._ScmLogCollector):
 
         """
         super().__init__(**kwargs)
+        self.debug = debug
         self.git_client = git_client
         self.log_moved_re = \
             re.compile(r"([-\d]+)\s+([-\d]+)\s+(\S*)\{(\S*) => (\S*)\}(\S*)")
@@ -91,6 +92,12 @@ class _GitLogCollector(scm._ScmLogCollector):
             raise
         msg = '] ['.join(remainder)
         date = dt.datetime.strptime(date_str, '%Y-%m-%d %H:%M:%S %z')
+        if len(log_entry) < 2:
+            entry = scm.LogEntry(rev, author=author, date=date, path=None,
+                                 message=msg, kind='X', added=0,
+                                 removed=0, copyfrompath=None)
+            yield entry
+            return
         for path_elem in log_entry[1:]:
             copyfrompath = None
             path_elem = path_elem.strip()
@@ -102,18 +109,25 @@ class _GitLogCollector(scm._ScmLogCollector):
                     self.parse_path_elem(path_elem)
             except ValueError as err:
                 log.error(f'failed to parse {path_elem}: {err}')
+                if self.debug:
+                    import pdb
+                    pdb.set_trace()
                 continue
             # - indicate binary files.
             entry = scm.LogEntry(rev, author=author, date=date, path=relpath,
                                  message=msg, kind='f', added=added,
                                  removed=removed, copyfrompath=copyfrompath)
             yield entry
+        return
 
     def process_log_entries(self, text):
         """See :member:`_ScmLogCollector.process_log_entries`."""
         log_entry = []
         for line in text:
             if line.startswith('['):
+                if log_entry:
+                    yield from self.process_entry(log_entry)
+                    log_entry = []
                 log_entry.append(line)
                 continue
             if not log_entry:
@@ -121,8 +135,9 @@ class _GitLogCollector(scm._ScmLogCollector):
             log_entry.append(line)
             if line != '':
                 continue
+        if log_entry:
             yield from self.process_entry(log_entry)
-            log_entry = []
+        return
 
     def get_log(self,
                 path: str = '.',
@@ -161,7 +176,8 @@ def get_git_log(path: str = '.',
                 after: dt.datetime = None,
                 before: dt.datetime = None,
                 progress_bar: tqdm.tqdm = None,
-                git_client: str = 'git') -> pd.DataFrame:
+                git_client: str = 'git',
+                debug: bool = False) -> pd.DataFrame:
     """Entry point to retrieve git log.
 
     Args:
@@ -170,6 +186,7 @@ def get_git_log(path: str = '.',
         before: only get the log before time stamp. Defaults to now.
         git_client: git client executable (defaults to git).
         progress_bar: tqdm.tqdm progress bar.
+        debug: drop in debugger on parsing errors.
 
     Returns:
         pandas.DataFrame with columns matching the fields of
@@ -181,7 +198,7 @@ def get_git_log(path: str = '.',
         log_df = cm.git.get_git_log(path='src', after=last_year)
 
     """
-    collector = _GitLogCollector(git_client=git_client)
+    collector = _GitLogCollector(git_client=git_client, debug=debug)
     return collector.get_log(after=after, before=before, path=path,
                              progress_bar=progress_bar)
 
@@ -190,7 +207,7 @@ def _download_file(base_command, filename, revision) -> scm.DownloadResult:
     """Download specific file and revision from git."""
     command = f'{base_command} {revision}:{filename}'
     content = internals.run(command)
-    yield scm.DownloadResult(filename, revision, content)
+    yield scm.DownloadResult(revision, filename, content)
 
 
 class _GitFileDownloader:

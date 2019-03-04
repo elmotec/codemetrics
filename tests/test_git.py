@@ -103,20 +103,11 @@ class GitTestCase(unittest.TestCase):
 
     @mock.patch('codemetrics.internals.run',
                 side_effect=[get_log()], autospec=True)
-    def test_get_log(self, call):
-        """Simple git call returns pandas.DataFrame."""
-        actual = git.get_git_log('.', after=self.after)
+    def test_git_arguments(self, call):
+        """Check that git is called with the expected parameters."""
+        git.get_git_log('.', after=self.after)
         call.assert_called_with(
             f'git {git._GitLogCollector._args} --after {self.after:%Y-%m-%d} .')
-        expected = utils.csvlog_to_dataframe(textwrap.dedent('''
-revision,author,date,path,message,kind,action,copyfromrev,copyfrompath,added,removed
-2adcc03,elmotec,2018-12-05 23:44:38+00:00,codemetrics/core.py,Fixed Windows specific paths,f,,,,1,1
-2adcc03,elmotec,2018-12-05 23:44:38+00:00,requirements.txt,Fixed Windows specific paths,f,,,,1,1
-b9fe5a6,elmotec,2018-12-04 21:49:55+00:00,codemetrics/core.py,Added guess_components,f,,,,44,0
-b9fe5a6,elmotec,2018-12-04 21:49:55+00:00,codemetrics/svn.py,Added guess_components,f,,,,1,8
-b9fe5a6,elmotec,2018-12-04 21:49:55+00:00,requirements.txt,Added guess_components,f,,,,1,0
-b9fe5a6,elmotec,2018-12-04 21:49:55+00:00,tests/test_core.py,Added guess_components,f,,,,110,18'''))
-        self.assertEqual(expected, actual)
 
     @mock.patch('tqdm.tqdm', autospec=True, create=True)
     @mock.patch('codemetrics.internals.run', side_effect=[get_log()],
@@ -133,6 +124,21 @@ b9fe5a6,elmotec,2018-12-04 21:49:55+00:00,tests/test_core.py,Added guess_compone
         pb.update.assert_has_calls(calls)
         pb.close.assert_called_once()
 
+    @mock.patch('codemetrics.internals.run',
+                side_effect=[get_log()], autospec=True)
+    def test_get_log(self, call):
+        """Simple git call returns pandas.DataFrame."""
+        actual = git.get_git_log('.', after=self.after)
+        expected = utils.csvlog_to_dataframe(textwrap.dedent('''
+revision,author,date,path,message,kind,action,copyfromrev,copyfrompath,added,removed
+2adcc03,elmotec,2018-12-05 23:44:38+00:00,codemetrics/core.py,Fixed Windows specific paths,f,,,,1,1
+2adcc03,elmotec,2018-12-05 23:44:38+00:00,requirements.txt,Fixed Windows specific paths,f,,,,1,1
+b9fe5a6,elmotec,2018-12-04 21:49:55+00:00,codemetrics/core.py,Added guess_components,f,,,,44,0
+b9fe5a6,elmotec,2018-12-04 21:49:55+00:00,codemetrics/svn.py,Added guess_components,f,,,,1,8
+b9fe5a6,elmotec,2018-12-04 21:49:55+00:00,requirements.txt,Added guess_components,f,,,,1,0
+b9fe5a6,elmotec,2018-12-04 21:49:55+00:00,tests/test_core.py,Added guess_components,f,,,,110,18'''))
+        self.assertEqual(expected, actual)
+
     @mock.patch('codemetrics.internals.run', autospec=True,
                 return_value=textwrap.dedent("""
                 [xxxxxxx] [elmotec] [2018-12-05 23:44:38 -0000] [excel file]
@@ -141,8 +147,6 @@ b9fe5a6,elmotec,2018-12-04 21:49:55+00:00,tests/test_core.py,Added guess_compone
     def test_handling_of_binary_files(self, call):
         """Handles binary files which do not show added or removed lines."""
         df = git.get_git_log('.', after=self.after)
-        call.assert_called_with(
-            f'git {git._GitLogCollector._args} --after 2018-12-03 .')
         expected = utils.csvlog_to_dataframe(textwrap.dedent('''\
         revision,author,date,path,message,kind,action
         xxxxxxx,elmotec,2018-12-05 23:44:38+00:00,directory/output.xls,excel file,f,'''))
@@ -156,12 +160,27 @@ b9fe5a6,elmotec,2018-12-04 21:49:55+00:00,tests/test_core.py,Added guess_compone
     def test_handling_of_brackets_in_log(self, call):
         """Handles brackets inside the commit log."""
         df = git.get_git_log('.', after=self.after)
-        call.assert_called_with(
-            f'git {git._GitLogCollector._args} --after {self.after:%Y-%m-%d} .')
         expected = utils.csvlog_to_dataframe(textwrap.dedent('''\
         revision,author,date,path,message,kind,action,copyfromrev,copyfrompath,added,removed
         xxxxxxx,elmotec,2018-12-05 23:44:38+00:00,some/file,bbb [ci skip] [skipci],f,,,,1,1'''))
         self.assertEqual(expected, df)
+
+    @mock.patch('codemetrics.internals.run', autospec=True,
+                return_value=textwrap.dedent("""
+                [a897aad] [elmotec] [2019-01-25 07:05:25 -0500] [Merge nothing]
+                [1987486] [elmotec] [2019-01-25 07:04:31 -0500] [Change]
+                3       4       .gitignore
+                """))
+    def test_empty_diff(self, call):
+        """Handles log segment with no diffs."""
+        actual = git.get_git_log('.', after=self.after)
+        expected = utils.csvlog_to_dataframe(textwrap.dedent('''\
+        revision,author,date,path,message,kind,added,removed
+        a897aad,elmotec,2019-01-25 12:05:25,,Merge nothing,X,0,0
+        1987486,elmotec,2019-01-25 12:04:31,.gitignore,Change,f,3,4
+        '''))
+        #expected, actual = expected.iloc[:, 5], actual.iloc[:, 5]
+        self.assertEqual(expected, actual)
 
 
 class DownloadGitFilesTestCase(unittest.TestCase):
@@ -194,7 +213,7 @@ class DownloadGitFilesTestCase(unittest.TestCase):
         _run.assert_called_with(f'{self.git.command} 1:file.py')
         self.assertEqual(1, len(results))
         actual = results[0]
-        expected = cm.scm.DownloadResult('file.py', 1, self.content1)
+        expected = cm.scm.DownloadResult(1, 'file.py', self.content1)
         self.assertEqual(expected, actual)
 
     @mock.patch('codemetrics.internals.run', autospec=True,
@@ -206,10 +225,10 @@ class DownloadGitFilesTestCase(unittest.TestCase):
         1,file.py
         2,file.py
         """)))
-        actual = list(cm.svn.download_files(sublog))
+        actual = sublog.apply(cm.svn.download_file, axis=1).tolist()
         expected = [
-            cm.scm.DownloadResult('file.py', 1, self.content1),
-            cm.scm.DownloadResult('file.py', 2, self.content2),
+            cm.scm.DownloadResult(1, 'file.py', self.content1),
+            cm.scm.DownloadResult(2, 'file.py', self.content2),
         ]
         self.assertEqual(expected, actual)
 

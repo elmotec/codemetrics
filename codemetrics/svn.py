@@ -3,19 +3,18 @@
 
 """_SvnLogCollector related functions."""
 
-import pathlib as pl
-import xml.etree.ElementTree as ET
 import datetime as dt
-import typing
 import re
+import typing
+import xml.etree.ElementTree as ET
 
 import dateutil as du
-import tqdm
 import numpy as np
 import pandas as pd
+import tqdm
 
-from . import scm
 from . import internals
+from . import scm
 from .internals import log
 
 
@@ -61,7 +60,7 @@ class _SvnLogCollector(scm._ScmLogCollector):
             **kwargs: passed to :class:`scm._ScmLogCollector`
 `
         """
-        super().__init__(**kwargs)
+        super().__init__()
         self.svn_client = svn_client or 'svn'
         self.path = path
         self._relative_url = relative_url
@@ -69,8 +68,7 @@ class _SvnLogCollector(scm._ScmLogCollector):
     def update_urls(self):
         """Relative URL so we can generate local paths."""
         rel_url_re = re.compile(r'^Relative URL: \^(.*)/?$')
-        wc_root_re = re.compile(r'^Working Copy Root Path: (.*)$')
-        if not self._relative_url or not self._wc_root:
+        if not self._relative_url:
             for line in internals.run(f'{self.svn_client} info {self.path}').split('\n'):
                 match = rel_url_re.match(line)
                 if match:
@@ -221,13 +219,6 @@ def get_svn_log(path: str='.',
                              progress_bar=progress_bar)
 
 
-def _download_file(base_command, filename, revision) -> scm.DownloadResult:
-    """Download specific file and revision from svn."""
-    command = f'{base_command} {revision} {filename}'
-    content = internals.run(command)
-    yield scm.DownloadResult(filename, revision, content)
-
-
 class _SvnDownloader:
     """Download files from Subversion."""
 
@@ -240,57 +231,84 @@ class _SvnDownloader:
         self.svn_client = svn_client
         self.command = f'{svn_client} {command}'
 
-    def download_files(self,
-                       df: pd.DataFrame) -> typing.Sequence[scm.DownloadResult]:
-        """Downloads files from Subversion.
-
-        Args:
-            df: dataframe containing at least a (path, revision) columns to
-                identify the files to download.
-            svn_client: Subversion client executable. Defaults to svn.
-
-        Returns:
-             list of file locations.
-
-        """
-        for _, (filename, revision) in df[['path', 'revision']].iterrows():
-            yield from _download_file(self.command, filename, revision)
-        return
+    def download(self, revision, path):
+        """Download revision and specific path if requested."""
+        command = f"{self.command} {revision}"
+        if path is not None:
+            command += f" {path}"
+        content = internals.run(command)
+        return scm.DownloadResult(revision, path, content)
 
 
-def download_files(df: pd.DataFrame,
-                   svn_client: str = 'svn') -> typing.Sequence[scm.DownloadResult]:
+def download_file(data: typing.Union[pd.DataFrame, pd.Series],
+                  svn_client: str = 'svn') -> typing.Sequence[scm.DownloadResult]:
     """Downloads files from Subversion.
 
     Args:
-        df: dataframe containing at least a (path, revision) columns to
-            identify the files to download.
+        data: log data containing at least revision and path values.
         svn_client: Subversion client executable. Defaults to svn.
 
     Returns:
          list of file locations.
 
     """
+    if isinstance(data, pd.DataFrame):
+        assert len(data) == 1
+        data = data.iloc[0]
+    assert 'revision' in data.index
+    assert 'path' in data.index
+    revision, path = data['revision'], data['path']
     downloader = _SvnDownloader('cat -r', svn_client=svn_client)
-    return downloader.download_files(df)
+    return downloader.download(revision, path)
 
 
-def get_diff_stats(input_df: pd.DataFrame,
-                   svn_client: str = 'svn') -> pd.DataFrame:
+# FIXME: Handle data as str as well so it can be called with lambda.
+def get_diff_stats(data: pd.Series,
+                   svn_client: str = 'svn',
+                   # chunks=None
+                   ) -> pd.DataFrame:
     """Download diff chunks statistics from Subversion.
 
     Args:
-        df: dataframe containing at least the (path, revision) columns.
+        data: revision ID of the change set.
         svn_client: Subversion client executable. Defaults to svn.
+        chunks: if True, return statistics by chunk. Otherwise, return just
+            added, and removed column for each path. If chunk is None, will try
+            to figure it out as row is a series when apply is called directly.
 
     Returns:
         Dataframe containing the statistics for each chunk.
 
+    Example::
+
+        >>> import pandas as pd
+        >>> import codemetrics as cm
+        >>> df = cm.get_svn_log()
+        >>> df.loc[df['kind'] == 'file', :].groupby('revision').\
+        ...     apply(cm.svn.get_diff_stats)
+        >>> pd.DataFrame[]  FIXME
+
     """
-    columns = ['path', 'revision']
-    internals._check_columns(input_df, columns)
     downloader = _SvnDownloader('diff --git -c', svn_client=svn_client)
-    dfs = []
-    for dld in downloader.download_files(input_df):
-        dfs.append(scm.parse_diff_chunks(dld))
-    return pd.concat(dfs).reset_index(drop=True)
+    if isinstance(data, pd.Series):
+        revision = data['revision']
+    else:
+        revisions = data['revision'].drop_duplicates()
+        assert len(revisions) == 1
+        revision = revisions.iloc[0]
+    try:
+        downloaded = downloader.download(revision, None)
+    except Exception as err:
+        # FIXME add test
+        log.warning(f'cannot retrieve diff for {revision}: {err}')
+        return None
+    df = scm.parse_diff_chunks(downloaded)
+    # if chunks is None:
+    #     chunks = isinstance(data, pd.DataFrame)
+    # if not chunks:
+    #     ar = ['added', 'removed']
+    #     path = data['path']
+    #     query = f"revision == '{revision}' and path == '{path}'"
+    #     df = df.query(query)[ar].sum()
+    return df
+

@@ -4,10 +4,10 @@
 """Factor things common to git and svn."""
 
 import abc
-import datetime as dt
-import typing
 import collections
+import datetime as dt
 import re
+import typing
 
 import pandas as pd
 import tqdm
@@ -179,38 +179,59 @@ class _ScmLogCollector(abc.ABC):
 
 
 DownloadResult = collections.namedtuple('DownloadResult',
-                                        ['path', 'revision', 'content'])
+                                        ['revision', 'path', 'content'])
+
+ChunkStats = collections.namedtuple('ChunkStats',
+                                    ['path', 'chunk', 'first', 'last',
+                                     'added', 'removed'])
+
+
+def parse_diff_as_tuples(download: DownloadResult) -> typing.Generator[tuple, None, None]:
+    """Parse download result looking for diff chunks.
+
+    Args:
+        download: Download result.
+
+    Yield:
+        statistics, one tuple for each chunk (begin, end, added, removed).
+
+    """
+    curr_chunk, curr_path, count = None, None, 0
+    for line in download.content.split('\n'):
+        file_match = re.match(r'^\+\+\+ b/([^\s]+).*', line)
+        if file_match is not None:
+            if curr_chunk is not None:
+                yield curr_chunk
+            curr_chunk = None
+            curr_path = file_match.group(1)
+            count = 0
+            continue
+        chunk_match = re.match(r'^@@ -\d+,\d+ \+(\d+),(\d+) @@', line)
+        if chunk_match is not None:
+            if curr_chunk is not None:
+                yield curr_chunk
+            begin = int(chunk_match.group(1))
+            length = int(chunk_match.group(2))
+            assert curr_path is not None
+            curr_chunk = ChunkStats(curr_path, count,
+                                    begin, begin + length, 0, 0)
+            count += 1
+            continue
+        if curr_chunk is None or not line:
+            continue
+        if line[0] == '-':
+            curr_chunk = curr_chunk._replace(removed=curr_chunk.removed + 1)
+        elif line[0] == '+':
+            curr_chunk = curr_chunk._replace(added=curr_chunk.added + 1)
+    if curr_chunk is not None:
+        yield curr_chunk
+    return
 
 
 def parse_diff_chunks(download: DownloadResult) -> pd.DataFrame:
-    """Parse download result looking for diff chunks.
+    """Concatenate chunks data returned by parse_diff_as_tuples into a frame"""
+    tuples = list(parse_diff_as_tuples(download))
+    df = pd.DataFrame.from_records(data=tuples, columns=ChunkStats._fields,
+                                   index=['path', 'chunk'])
+    return df
 
-    Returns:
-        statistics with one row for each chunk.
-
-    """
-    chunk_start_re = re.compile(r'^@@ -\d+,\d+ \+(\d+),(\d+) @@')
-    ChunkStats = collections.namedtuple('ChunkStats', 'begin end added removed')
-    chunk_stats, current = [], None
-    for line in download.content.split('\n'):
-        match = chunk_start_re.match(line)
-        if match is not None:
-            if current is not None:
-                chunk_stats.append(current)
-            begin = int(match.group(1))
-            length = int(match.group(2))
-            current = ChunkStats(begin, begin + length, 0, 0)
-            continue
-        if current is None or not line:
-            continue
-        if line[0] == '-':
-            current = current._replace(removed=current.removed + 1)
-        elif line[0] == '+':
-            current = current._replace(added=current.added + 1)
-    if current is not None:
-        chunk_stats.append(current)
-    columns = list(ChunkStats._fields)
-    df = pd.DataFrame.from_records(chunk_stats, columns=columns)
-    df['path'] = download.path
-    df['revision'] = download.revision
-    return df[['path', 'revision'] + columns]

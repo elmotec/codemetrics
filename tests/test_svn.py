@@ -225,34 +225,34 @@ class SubversionDownloadFilesTestCase(unittest.TestCase):
     ''')
 
     def setUp(self):
+        super().setUp()
         self.svn = cm.svn._SvnDownloader('cat -r')
+        self.sublog = pd.read_csv(io.StringIO(textwrap.dedent("""\
+        revision,path
+        1,file.py
+        2,file.py
+        """)))
+
+    @mock.patch('codemetrics.internals.run', autospec=True,
+                return_value=content1)
+    def test_svn_arguments(self, _run):
+        cm.svn.download_file(self.sublog.iloc[0])
+        _run.assert_called_with(f'{self.svn.command} 1 file.py')
 
     @mock.patch('codemetrics.internals.run', autospec=True,
                 return_value=content1)
     def test_single_revision_download(self, _run):
-        sublog = pd.read_csv(io.StringIO(textwrap.dedent("""\
-        revision,path
-        1,file.py
-        """)))
-        results = list(cm.svn.download_files(sublog))
-        _run.assert_called_with(f'{self.svn.command} 1 file.py')
-        self.assertEqual(1, len(results))
-        actual = results[0]
-        expected = cm.scm.DownloadResult('file.py', 1, self.content1)
+        actual = cm.svn.download_file(self.sublog.iloc[0])
+        expected = cm.scm.DownloadResult(1, 'file.py', self.content1)
         self.assertEqual(expected, actual)
 
     @mock.patch('codemetrics.internals.run', autospec=True,
                 side_effect=[content1, content2])
     def test_multiple_revision_download(self, _run):
-        sublog = pd.read_csv(io.StringIO(textwrap.dedent("""\
-        revision,path
-        1,file.py
-        2,file.py
-        """)))
-        actual = list(cm.svn.download_files(sublog))
+        actual = self.sublog.apply(cm.svn.download_file, axis=1).tolist()
         expected = [
-            cm.scm.DownloadResult('file.py', 1, self.content1),
-            cm.scm.DownloadResult('file.py', 2, self.content2),
+            cm.scm.DownloadResult(1, 'file.py', self.content1),
+            cm.scm.DownloadResult(2, 'file.py', self.content2),
         ]
         self.assertEqual(expected, actual)
 
@@ -260,88 +260,141 @@ class SubversionDownloadFilesTestCase(unittest.TestCase):
 class SubversionGetDiffStatsTestCase(utils.DataFrameTestCase):
     """Given a subversion repository and file chunks."""
 
-    init_chunk = textwrap.dedent('''\
-    Index: __init__.py
+    diffs = textwrap.dedent(r'''
+    Index: estimate/__init__.py
     ===================================================================
-    diff --git a/file.py b/file.py
-    --- a/file.py       (revision 1019)
-    +++ b/file.py       (revision 1020)
-    @@ -5,7 +5,7 @@
-     Retrieves data from various financial sources.
-     """
+    diff --git a/estimate/estimate/__init__.py b/estimate/estimate/__init__.py
+    --- a/estimate/estimate/__init__.py     (revision 1013)
+    +++ b/estimate/estimate/__init__.py     (revision 1014)
+    @@ -8,7 +8,7 @@
+     import logging
+     import warnings
     
-    -__version__ = "0.1"
-    +__version__ = "0.2"
-     __author__ = "elmotec"
-     __license__ = "MIT"
-     ''')
+    -__version__ = "0.44.2"
+    +__version__ = "0.44.3"
+     package_name = 'estimate'
+    Index: estimate/mktdata.py
+    ===================================================================
+    diff --git a/estimate/estimate/mktdata.py b/estimate/estimate/mktdata.py
+    --- a/estimate/estimate/mktdata.py      (revision 1013)
+    +++ b/estimate/estimate/mktdata.py      (revision 1014)
+    @@ -1042,7 +1042,7 @@
+    
+         def get_prices(self, securities=None, begin_date=None, end_date=None,
+                        num_periods=None, ascending=True,
+    -                   source=None, keep_source=False) -> pd.DataFrame:
+    +                   source=None) -> pd.DataFrame:
+             """"Retrieve prices as a pandas.DataFrame.
+    
+             Prices are normalized for txns and dividends so that the most recent
+    @@ -1086,7 +1086,10 @@
+                 return df
+    
+             def adjust_prices(df, debug=None):
+    -            df.sort_values('as_of_date', ascending=False, inplace=True)
+    +            df.sort_values(['as_of_date', 'source'], ascending=False,
+    +                           inplace=True)
+    +            df.drop_duplicates(['as_of_date'], keep='last',
+    +                               inplace=True)
+                 df['sfactor'] = (df['old_q'] / df['new_q']).shift(1)
+                 df['sfactor'].iloc[0] = 1.0
+                 df['sfactor'].fillna(method='ffill', axis=0, inplace=True)
+    @@ -1190,23 +1193,14 @@
+                                         Distribution.amount.label('amount'),
+                                         HistoricalPrice.source.label('source'))
+             df = pd.read_sql(query.selectable, self.context.session.bind)
+    +        # convert source to categorical column.
+    +        df['source'] = df['source'].astype('category', categories=sources,
+    +                                           ordered=True)
+             df = df.groupby(by=['symbol']).apply(adjust_prices)
+             if len(df):
+                 # First 2 column labels of the query.
+                 index = [c._label for c in
+                          itertools.islice(query.selectable.inner_columns, 0, 2)]
+    -            if not keep_source:
+    -                dfs = []
+    -                # reversed so lower priority source at index 0
+    -                for src in reversed(sources):
+    -                    dfs.append(df[df['source'] == src].
+    -                               drop(['source'], axis=1))
+    -                if dfs:
+    -                    df = dfs[0].set_index(index)
+    -                    # each higher priority overwrites df in place.
+    -                    for altdf in dfs[1:]:
+    -                        df.update(altdf.set_index(index))
+    -                    df.reset_index(inplace=True)
+                 df = df.set_index(index)
+             if ascending is not None:
+                 df.sort_index(axis=0, ascending=ascending, inplace=True)
+    Index: setup.py
+    ===================================================================
+    diff --git a/estimate/setup.py b/estimate/setup.py
+    --- a/estimate/setup.py (revision 1013)
+    +++ b/estimate/setup.py (revision 1014)
+    @@ -22,7 +22,7 @@
+    
+     setup(
+         name="estimate",
+    -    version="0.44.2",
+    +    version="0.44.3",
+         author="J├⌐r├┤me Lecomte",
+         author_email="jlecomte1972@yahoo.com",
+         description=("Portfolio management tools."),
+    ''')
 
-    multi_chunk = textwrap.dedent('''\
-    diff --git a/codemetrics/vega.py b/codemetrics/vega.py
-    index 6b3adcf..3408a55 100644
-    --- a/vega.py
-    +++ b/vega.py
-    @@ -203,6 +203,8 @@ def _vis_generic(df: pd.DataFrame,
-     def vis_hot_spots(df: pd.DataFrame,
-                       height: int = 300,
-                       width: int = 400,
-    +                  size_column: str = 'lines',
-    +                  color_column: str = 'changes',
-                       colorscheme: str = 'yelloworangered') -> dict:
-         """Convert get_hot_spots output to a json vega dict.
-     
-    @@ -210,6 +212,8 @@ def vis_hot_spots(df: pd.DataFrame,
-             df: input data returned by :func:`codemetrics.get_hot_spots`
-             height: vertical size of the figure.
-             width: horizontal size of the figure.
-    +        size_column: column that drives the size of the circles.
-    +        color_column: column that drives the color intensity of the circles.
-             colorscheme: color scheme. See https://vega.github.io/vega/docs/schemes/
-     
-         Returns:
-    @@ -229,7 +233,7 @@ def vis_hot_spots(df: pd.DataFrame,
-         .. _Vega circle pack example: https://vega.github.io/editor/#/examples/vega/circle-packing
-     
-         """
-    -    return _vis_generic(df, size_column='lines', color_column='changes',
-    +    return _vis_generic(df, size_column=size_column, color_column=color_column,
-                             colorscheme=colorscheme, width=width,
-                             height=height)
-     ''')
+    log = pd.read_csv(io.StringIO(textwrap.dedent('''\
+    index,revision,path
+    0,1014,estimate/estimate/__init__.py
+    1,1014,estimate/estimate/mktdata.py
+    3,1014,estimate/setup.py
+    ''')), index_col='index')
+    expected = pd.read_csv(io.StringIO(textwrap.dedent('''\
+    revision,path,chunk,first,last,added,removed
+    1014,estimate/estimate/__init__.py,0,8,15,1,2
+    1014,estimate/estimate/mktdata.py,0,1042,1049,1,1
+    1014,estimate/estimate/mktdata.py,1,1086,1096,4,1
+    1014,estimate/estimate/mktdata.py,2,1193,1207,3,13
+    1014,estimate/setup.py,0,22,29,1,1
+    ''')), index_col=['revision', 'path', 'chunk'])
 
     @mock.patch('codemetrics.internals.run', autospec=True,
-                return_value=init_chunk)
-    def test_can_retrieve_one_chunk(self, run_):
+                return_value=diffs)
+    def test_called_command_line(self, run_):
         """Can retrieve chunk statistics from Subversion"""
-        sublog_df = pd.read_csv(io.StringIO(textwrap.dedent('''\
-        revision,path
-        abc,__init__.py
-        ''')))
-        actual = cm.svn.get_diff_stats(sublog_df)
-        expected = pd.read_csv(io.StringIO(textwrap.dedent('''\
-        path,revision,begin,end,added,removed
-        __init__.py,abc,5,12,1,1
-        ''')))
-        run_.assert_called_with('svn diff --git -c abc __init__.py')
+        cm.svn.get_diff_stats(self.log)
+        run_.assert_called_once_with('svn diff --git -c 1014')
+
+    @mock.patch('codemetrics.internals.run', autospec=True,
+                return_value=diffs)
+    def test_direct_call(self, run_):
+        """Direct call to cm.svn.get_diff_stats"""
+        actual = cm.svn.get_diff_stats(self.log)
+        expected = self.expected.reset_index(level='revision', drop=True)
         self.assertEqual(expected, actual)
 
     @mock.patch('codemetrics.internals.run', autospec=True,
-                side_effect=[init_chunk, multi_chunk])
-    def test_can_retrieve_multiple_chunks(self, run_):
+                side_effect=[diffs, diffs])
+    def test_get_chunk_stats_with_groupby_apply(self, run_):
         """Can retrieve chunk statistics from Subversion"""
-        sublog_df = pd.read_csv(io.StringIO(textwrap.dedent('''\
-        revision,path
-        abc,__init__.py
-        def,vega.py
-        ''')))
-        actual = cm.svn.get_diff_stats(sublog_df)
-        expected = pd.read_csv(io.StringIO(textwrap.dedent('''\
-        path,revision,begin,end,added,removed
-        __init__.py,abc,5,12,1,1
-        vega.py,def,203,211,2,0
-        vega.py,def,212,220,2,0
-        vega.py,def,233,240,1,1''')))
+        actual = self.log.groupby(['revision']).\
+            apply(cm.svn.get_diff_stats)
+        expected = self.expected
         self.assertEqual(expected, actual)
+
+    # @mock.patch('codemetrics.internals.run', autospec=True,
+    #             side_effect=[diffs, diffs])
+    # def test_get_diff_stats_with_apply(self, run_):
+    #     """Can retrieve whole file diff statistics from Subversion"""
+    #     actual = self.log
+    #     df = actual.apply(cm.svn.get_diff_stats, chunks=False, axis=1)
+    #     actual[['added', 'removed']] = \
+    #         actual.apply(cm.svn.get_diff_stats, chunks=False, axis=1)
+    #     expected = pd.read_csv(io.StringIO(textwrap.dedent('''\
+    #     revision,path,added,removed
+    #     abc,__init__.py,1,1
+    #     def,vega.py,5,1
+    #     ''')))
+    #     self.assertEqual(expected, actual)
 
 
 if __name__ == '__main__':

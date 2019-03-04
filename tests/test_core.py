@@ -315,10 +315,24 @@ class ComplexityTestCase(DataFrameTestCase):
         print('all OK!')
     ''')
 
+    # FIXME: Test second function here!
     file_content_2=textwrap.dedent('''\
     def test():
         print('all OK!')
     ''')
+
+    def setUp(self):
+        super().setUp()
+        self.log = pd.read_csv(io.StringIO(textwrap.dedent("""\
+        revision,author,date,textmods,kind,action,propmods,path,message
+        1,elmotec,2018-02-26T10:28:00Z,true,file,M,false,f.py,again
+        2,elmotec,2018-02-24T11:14:11Z,true,file,M,false,f.py,modified""")))
+
+    def get_complexity(self, download_func):
+        """Factor retrieval of complexity"""
+        return self.log.groupby(['revision', 'path']).\
+            apply(cm.get_complexity, download_func=download_func).\
+            reset_index()
 
     @mock.patch('lizard.auto_read', autospec=True,
                return_value=file_content_1, create=True)
@@ -331,32 +345,39 @@ class ComplexityTestCase(DataFrameTestCase):
 
     def test_simple_analysis(self):
         """Runs complexity trend analysis on this file."""
-        def scm_download_files(path_revision_df):
-            return [cm.scm.DownloadResult('f.py', 1, self.file_content_1),
-                    cm.scm.DownloadResult('f.py', 2, self.file_content_2)]
-        sublog = pd.read_csv(io.StringIO(textwrap.dedent("""\
-        revision,author,date,textmods,kind,action,propmods,path,message
-        1,elmotec,2018-02-26T10:28:00Z,true,file,M,false,f.py,again
-        2,elmotec,2018-02-24T11:14:11Z,true,file,M,false,f.py,modified""")))
-        actual = cm.get_complexity(sublog, download_func=scm_download_files)
+        def scm_download_file(data):
+            if data.iloc[0]['revision'] == 1:
+                return cm.scm.DownloadResult(1, 'f.py', self.file_content_1)
+            return cm.scm.DownloadResult(2, 'f.py', self.file_content_2)
+        actual = self.get_complexity(scm_download_file)
         expected = pd.read_csv(io.StringIO(textwrap.dedent("""\
-        cyclomatic_complexity,nloc,token_count,name,long_name,start_line,end_line,top_nesting_level,length,fan_in,fan_out,general_fan_out,file_tokens,file_nloc,path,revision
-        2,4,16,test,test( ),1,4,0,4,0,0,0,17,4,f.py,1
-        1,2,8,test,test( ),1,2,0,2,0,0,0,9,2,f.py,2""")))
-        self.assertEqual(expected.columns.tolist(), actual.columns.tolist())
+        revision,path,function,cyclomatic_complexity,nloc,token_count,name,long_name,start_line,end_line,top_nesting_level,length,fan_in,fan_out,general_fan_out,file_tokens,file_nloc
+        1,f.py,0,2,4,16,test,test( ),1,4,0,4,0,0,0,17,4
+        2,f.py,0,1,2,8,test,test( ),1,2,0,2,0,0,0,9,2""")))
         self.assertEqual(expected, actual)
 
     def test_handles_no_function(self):
         """Handles files with no function well."""
         file_name, rev = 'f.py', 1
-        def scm_download_files(path_rev_df):
-            return [cm.scm.DownloadResult(file_name, rev, '')]
-        sublog = pd.DataFrame({'revision': [rev],
-                               'path': [file_name]})
-        actual = cm.get_complexity(sublog, download_func=scm_download_files)
-        expected_fields = cm.core._lizard_fields + \
-                          'file_tokens file_nloc path revision'.split()
+        def scm_download_file(data):
+            return cm.scm.DownloadResult(rev, file_name, '')
+        actual = self.get_complexity(scm_download_file)
+        expected_fields = 'revision path function'.split() + \
+                          cm.core._lizard_fields + \
+                          'file_tokens file_nloc'.split()
         expected = pd.DataFrame(data={k: [] for k in expected_fields})
+        self.assertEqual(expected, actual)
+
+    @mock.patch('codemetrics.internals.run', autospec=True,
+                side_effect=[file_content_1, file_content_1, file_content_2])
+    def test_analysis_with_groupby_svn_download(self, run_):
+        """Check interface with svn."""
+        actual = self.get_complexity(cm.svn.download_file)
+        expected = pd.read_csv(io.StringIO(textwrap.dedent("""\
+        revision,path,function,cyclomatic_complexity,nloc,token_count,name,long_name,start_line,end_line,top_nesting_level,length,fan_in,fan_out,general_fan_out,file_tokens,file_nloc
+        1,f.py,0,2,4,16,test,test( ),1,4,0,4,0,0,0,17,4
+        2,f.py,0,1,2,8,test,test( ),1,2,0,2,0,0,0,9,2
+        """)))
         self.assertEqual(expected, actual)
 
 

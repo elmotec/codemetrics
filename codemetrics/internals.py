@@ -87,6 +87,7 @@ def run(command, **kwargs):
     # FIXME add test for this feature.
     if 'errors' not in kwargs:
         kwargs['errors'] = 'ignore'
+    result = None
     try:
         log.info(command)
         result = subprocess.run(command, check=True,
@@ -95,7 +96,7 @@ def run(command, **kwargs):
         # FIXME Add a test for return type.
         return result.stdout  # No split. See note in __doc__.
     except subprocess.CalledProcessError as err:
-        log.warning(err)
+        # Enhance the error exception with result.stderr?
         raise
 
 
