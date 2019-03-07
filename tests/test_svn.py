@@ -344,17 +344,17 @@ class SubversionGetDiffStatsTestCase(utils.DataFrameTestCase):
 
     log = pd.read_csv(io.StringIO(textwrap.dedent('''\
     index,revision,path
-    0,1014,estimate/estimate/__init__.py
-    1,1014,estimate/estimate/mktdata.py
-    3,1014,estimate/setup.py
+    0,1014,estimate/__init__.py
+    1,1014,estimate/mktdata.py
+    3,1014,setup.py
     ''')), index_col='index')
     expected = pd.read_csv(io.StringIO(textwrap.dedent('''\
     revision,path,chunk,first,last,added,removed
-    1014,estimate/estimate/__init__.py,0,8,15,1,2
-    1014,estimate/estimate/mktdata.py,0,1042,1049,1,1
-    1014,estimate/estimate/mktdata.py,1,1086,1096,4,1
-    1014,estimate/estimate/mktdata.py,2,1193,1207,3,13
-    1014,estimate/setup.py,0,22,29,1,1
+    1014,estimate/__init__.py,0,8,15,1,2
+    1014,estimate/mktdata.py,0,1042,1049,1,1
+    1014,estimate/mktdata.py,1,1086,1096,4,1
+    1014,estimate/mktdata.py,2,1193,1207,3,13
+    1014,setup.py,0,22,29,1,1
     ''')), index_col=['revision', 'path', 'chunk'])
 
     @mock.patch('codemetrics.internals.run', autospec=True,

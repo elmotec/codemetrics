@@ -198,7 +198,7 @@ def parse_diff_as_tuples(download: DownloadResult) -> typing.Generator[tuple, No
     """
     curr_chunk, curr_path, count = None, None, 0
     for line in download.content.split('\n'):
-        file_match = re.match(r'^\+\+\+ b/([^\s]+).*', line)
+        file_match = re.match(r'^\+\+\+ b/[^\s/]+/([^\s]+).*', line)
         if file_match is not None:
             if curr_chunk is not None:
                 yield curr_chunk

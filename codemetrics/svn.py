@@ -283,10 +283,19 @@ def get_diff_stats(data: pd.Series,
 
         >>> import pandas as pd
         >>> import codemetrics as cm
-        >>> df = cm.get_svn_log()
-        >>> df.loc[df['kind'] == 'file', :].groupby('revision').\
-        ...     apply(cm.svn.get_diff_stats)
-        >>> pd.DataFrame[]  FIXME
+        >>> log = cm.get_svn_log().set_index(['revision', 'path'])
+        >>> log[['added', 'removed']] = log.groupby('revision').\
+                                         apply(cm.svn.get_diff_stats).\
+                                         groupby('path')[['added', 'removed']].\
+                                         sum()
+        >>> log[['added', 'removed']]
+                                        added  removed
+        revision path
+        1018     estimate/stats.py       13.0     11.0
+                 requirements.txt         1.0      0.0
+        1022     estimate/cmdline.py      2.0      2.0
+        1027     estimate                 NaN      NaN
+        ...
 
     """
     downloader = _SvnDownloader('diff --git -c', svn_client=svn_client)
