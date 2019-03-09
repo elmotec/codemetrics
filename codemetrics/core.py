@@ -3,7 +3,6 @@
 
 import os.path
 import typing
-import datetime as dt
 
 import pandas as pd
 import lizard

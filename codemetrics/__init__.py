@@ -8,6 +8,7 @@ __author__ = """Elmotec"""
 __email__ = 'elmotec@gmx.com'
 __version__ = '0.8.0'
 
+# Convenience import.
 from .core import *
 from .git import *
 from .svn import *

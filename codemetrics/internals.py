@@ -11,7 +11,7 @@ import typing
 
 import pandas as pd
 
-log = logging.getLogger(__name__)
+log = logging.getLogger('codemetrics')
 log.addHandler(logging.NullHandler())
 
 
@@ -27,7 +27,7 @@ def get_now():
     return dt.datetime.now(dt.timezone.utc)
 
 
-def get_year_ago(from_date: dt.datetime=None):
+def get_year_ago(from_date: dt.datetime = None):
     """Get current time stamp minus 1 year.
 
     Decrements by one the year of the date returned by `get_now()`.
@@ -79,28 +79,22 @@ def run(command, **kwargs):
         Output of the command long single string
 
     Note that if some process may want a list of string, others may need one
-    long string so we push up the eventual split call to the caller.
+    long string so the eventual split call is pushed to the caller.
 
     _subprocess.run:: https://docs.python.org/3/library/subprocess.html
 
     """
-    # FIXME add test for this feature.
     if 'errors' not in kwargs:
         kwargs['errors'] = 'ignore'
-    result = None
-    try:
-        log.info(command)
-        result = subprocess.run(command, check=True,
-                                stdout=subprocess.PIPE,
-                                **kwargs)
-        # FIXME Add a test for return type.
-        return result.stdout  # No split. See note in __doc__.
-    except subprocess.CalledProcessError as err:
-        # Enhance the error exception with result.stderr?
-        raise
+    log.info(command)
+    result = subprocess.run(command, check=True,
+                            stdout=subprocess.PIPE,
+                            **kwargs)
+    return result.stdout  # No split. See __doc__.
 
 
-def handle_default_dates(after: dt.datetime, before: dt.datetime):
+def handle_default_dates(after: typing.Union[dt.datetime, None],
+                         before: typing.Union[dt.datetime, None]):
     """Handles defaults when before, after is None.
 
     Also checks that the dates are tz-aware and that after.

@@ -26,7 +26,7 @@ class LogEntry:
                  revision: str,
                  author: str,
                  date: dt.datetime,
-                 path: str,
+                 path: typing.Union[str, None],
                  message: str,
                  kind,
                  action=None,

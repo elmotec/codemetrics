@@ -25,7 +25,7 @@ def add_data_frame_equality_func(test):
             except AssertionError:
                 raise test.failureException(msg)
         else:
-            # FIXME. Getting weird errors on categorical differences.
+            # Getting weird errors on categorical differences.
             pdt.assert_frame_equal(lhs, rhs, check_categorical=False)
     test.addTypeEqualityFunc(pd.DataFrame, frame_equal)
 

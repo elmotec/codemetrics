@@ -8,6 +8,7 @@ import io
 import textwrap
 import unittest
 from unittest import mock
+import subprocess
 
 import pandas as pd
 
@@ -290,7 +291,7 @@ class SubversionGetDiffStatsTestCase(utils.DataFrameTestCase):
     @@ -1086,7 +1086,10 @@
                  return df
     
-             def adjust_prices(df, debug=None):
+             def adjust_prices(df, _pdb=None):
     -            df.sort_values('as_of_date', ascending=False, inplace=True)
     +            df.sort_values(['as_of_date', 'source'], ascending=False,
     +                           inplace=True)
@@ -332,14 +333,12 @@ class SubversionGetDiffStatsTestCase(utils.DataFrameTestCase):
     --- a/estimate/setup.py (revision 1013)
     +++ b/estimate/setup.py (revision 1014)
     @@ -22,7 +22,7 @@
-    
      setup(
          name="estimate",
     -    version="0.44.2",
     +    version="0.44.3",
-         author="J├⌐r├┤me Lecomte",
-         author_email="jlecomte1972@yahoo.com",
-         description=("Portfolio management tools."),
+         author="elmotec",
+         description=("Management tools."),
     ''')
 
     log = pd.read_csv(io.StringIO(textwrap.dedent('''\
@@ -366,7 +365,7 @@ class SubversionGetDiffStatsTestCase(utils.DataFrameTestCase):
 
     @mock.patch('codemetrics.internals.run', autospec=True,
                 return_value=diffs)
-    def test_direct_call(self, run_):
+    def test_direct_call(self, _):
         """Direct call to cm.svn.get_diff_stats"""
         actual = cm.svn.get_diff_stats(self.log)
         expected = self.expected.reset_index(level='revision', drop=True)
@@ -374,27 +373,36 @@ class SubversionGetDiffStatsTestCase(utils.DataFrameTestCase):
 
     @mock.patch('codemetrics.internals.run', autospec=True,
                 side_effect=[diffs, diffs])
-    def test_get_chunk_stats_with_groupby_apply(self, run_):
+    def test_get_chunk_stats_with_groupby_apply(self, _):
         """Can retrieve chunk statistics from Subversion"""
         actual = self.log.groupby(['revision']).\
             apply(cm.svn.get_diff_stats)
         expected = self.expected
         self.assertEqual(expected, actual)
 
-    # @mock.patch('codemetrics.internals.run', autospec=True,
-    #             side_effect=[diffs, diffs])
-    # def test_get_diff_stats_with_apply(self, run_):
-    #     """Can retrieve whole file diff statistics from Subversion"""
-    #     actual = self.log
-    #     df = actual.apply(cm.svn.get_diff_stats, chunks=False, axis=1)
-    #     actual[['added', 'removed']] = \
-    #         actual.apply(cm.svn.get_diff_stats, chunks=False, axis=1)
-    #     expected = pd.read_csv(io.StringIO(textwrap.dedent('''\
-    #     revision,path,added,removed
-    #     abc,__init__.py,1,1
-    #     def,vega.py,5,1
-    #     ''')))
-    #     self.assertEqual(expected, actual)
+    @mock.patch('codemetrics.internals.run', autospec=True,
+                side_effect=[diffs, diffs])
+    def test_get_stats_with_groupby_apply(self, _):
+        """Can retrieve chunk statistics from Subversion"""
+        actual = self.log.groupby(['revision']).\
+            apply(cm.svn.get_diff_stats, chunks=False)
+        expected = self.expected[['added', 'removed']].\
+            groupby(['revision', 'path']).\
+            sum()
+        self.assertEqual(expected, actual)
+
+    @mock.patch('codemetrics.internals.run', autospec=True)
+    def test_error_handling(self, run_):
+        """Can retrieve chunk statistics from Subversion"""
+        exception = subprocess.CalledProcessError(1, cmd='svn',
+                                                  stderr='some error')
+        run_.side_effect = [exception] * 2
+        with self.assertLogs(level='WARN') as context:
+            with self.assertRaises(subprocess.CalledProcessError):
+                cm.svn.get_diff_stats(self.log)
+        expected = "WARNING:codemetrics:cannot retrieve diff for 1014: " \
+                   "Command 'svn' returned non-zero exit status 1.: some error"
+        self.assertEqual([expected], context.output)
 
 
 if __name__ == '__main__':

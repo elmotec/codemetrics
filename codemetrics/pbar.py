@@ -19,7 +19,7 @@ class ProgressBarAdapter:
     def __init__(self,
                  progress_bar: tqdm.tqdm,
                  after: dt.datetime,
-                 ascending:bool=None):
+                 ascending: bool = None):
         """Creates adapter to update the progress bar based on days retrieved.
 
         We can't really know how far we are in processing the SCM log so we

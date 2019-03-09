@@ -21,18 +21,18 @@ class _GitLogCollector(scm._ScmLogCollector):
 
     _args = 'log --pretty=format:"[%h] [%an] [%ad] [%s]" --date=iso --numstat'
 
-    def __init__(self, git_client='git', debug=False, **kwargs):
+    def __init__(self, git_client='git', _pdb=False):
         """Initialize.
 
         Compiles regular expressions to be used during parsing of log.
 
         Args:
             git_client: name of git client.
-            **kwargs: passed to parent :class:`codemetrics.scm._ScmLogCollector`
+            _pdb: drop in debugger when output cannot be parsed.
 
         """
-        super().__init__(**kwargs)
-        self.debug = debug
+        super().__init__()
+        self._pdb = _pdb
         self.git_client = git_client
         self.log_moved_re = \
             re.compile(r"([-\d]+)\s+([-\d]+)\s+(\S*)\{(\S*) => (\S*)\}(\S*)")
@@ -99,7 +99,6 @@ class _GitLogCollector(scm._ScmLogCollector):
             yield entry
             return
         for path_elem in log_entry[1:]:
-            copyfrompath = None
             path_elem = path_elem.strip()
             if not path_elem:
                 break
@@ -109,7 +108,7 @@ class _GitLogCollector(scm._ScmLogCollector):
                     self.parse_path_elem(path_elem)
             except ValueError as err:
                 log.error(f'failed to parse {path_elem}: {err}')
-                if self.debug:
+                if self._pdb:
                     import pdb
                     pdb.set_trace()
                 continue
@@ -177,7 +176,7 @@ def get_git_log(path: str = '.',
                 before: dt.datetime = None,
                 progress_bar: tqdm.tqdm = None,
                 git_client: str = 'git',
-                debug: bool = False) -> pd.DataFrame:
+                _pdb: bool = False) -> pd.DataFrame:
     """Entry point to retrieve git log.
 
     Args:
@@ -186,7 +185,7 @@ def get_git_log(path: str = '.',
         before: only get the log before time stamp. Defaults to now.
         git_client: git client executable (defaults to git).
         progress_bar: tqdm.tqdm progress bar.
-        debug: drop in debugger on parsing errors.
+        _pdb: drop in debugger on parsing errors.
 
     Returns:
         pandas.DataFrame with columns matching the fields of
@@ -198,7 +197,7 @@ def get_git_log(path: str = '.',
         log_df = cm.git.get_git_log(path='src', after=last_year)
 
     """
-    collector = _GitLogCollector(git_client=git_client, debug=debug)
+    collector = _GitLogCollector(git_client=git_client, _pdb=_pdb)
     return collector.get_log(after=after, before=before, path=path,
                              progress_bar=progress_bar)
 

@@ -6,7 +6,9 @@
 import datetime as dt
 import re
 import typing
+# noinspection PyPep8Naming,PyPep8Naming
 import xml.etree.ElementTree as ET
+import subprocess
 
 import dateutil as du
 import numpy as np
@@ -46,18 +48,15 @@ class _SvnLogCollector(scm._ScmLogCollector):
     _args = 'log --xml -v'
 
     def __init__(self,
-                 svn_client: str='svn',
-                 path: str='.',
-                 relative_url: str=None,
-                 wc_root: str=None,
-                 **kwargs):
+                 svn_client: str = 'svn',
+                 path: str = '.',
+                 relative_url: str = None):
         """Initialize.
 
         Args:
             svn_client: name of svn client.
             path: top of the checked out directory.
             relative_url: Subversion relative url (e.g. /project/trunk/).
-            **kwargs: passed to :class:`scm._ScmLogCollector`
 `
         """
         super().__init__()
@@ -69,7 +68,9 @@ class _SvnLogCollector(scm._ScmLogCollector):
         """Relative URL so we can generate local paths."""
         rel_url_re = re.compile(r'^Relative URL: \^(.*)/?$')
         if not self._relative_url:
-            for line in internals.run(f'{self.svn_client} info {self.path}').split('\n'):
+            # noinspection PyPep8
+            for line in internals.run(
+                f'{self.svn_client} info {self.path}').split('\n'):
                 match = rel_url_re.match(line)
                 if match:
                     self._relative_url = match.group(1)
@@ -150,10 +151,10 @@ class _SvnLogCollector(scm._ScmLogCollector):
             log_entry = ''
 
     def get_log(self,
-                path: str='.',
-                after: dt.datetime=None,
-                before: dt.datetime=None,
-                progress_bar: tqdm.tqdm=None) -> pd.DataFrame:
+                path: str = '.',
+                after: dt.datetime = None,
+                before: dt.datetime = None,
+                progress_bar: tqdm.tqdm = None) -> pd.DataFrame:
         """Entry point to retrieve _SvnLogCollector log.
 
         Call svn log --xml -v and return the output as a DataFrame.
@@ -176,24 +177,24 @@ class _SvnLogCollector(scm._ScmLogCollector):
         """
         internals.check_run_in_root(path)
         after, before = internals.handle_default_dates(after, before)
-        relative_url = self.relative_url
         before_str = 'HEAD'
         if before:
             before_str = '{' + f'{before:%Y-%m-%d}' + '}'
         after_str = '{' + f'{after:%Y-%m-%d}' + '}'
+        # noinspection PyPep8
         command = \
             f'{self.svn_client} {_SvnLogCollector._args} ' \
-            f'-r {after_str}:{before_str}'
+                f'-r {after_str}:{before_str}'
         command_with_path = f'{command} {path}'
         results = internals.run(command_with_path).split('\n')
         return self.process_log_output_to_df(results, after=after,
                                              progress_bar=progress_bar)
 
 
-def get_svn_log(path: str='.',
-                after: dt.datetime=None,
-                before: dt.datetime=None,
-                progress_bar: tqdm.tqdm=None,
+def get_svn_log(path: str = '.',
+                after: dt.datetime = None,
+                before: dt.datetime = None,
+                progress_bar: tqdm.tqdm = None,
                 svn_client: str = 'svn') -> pd.DataFrame:
     """Entry point to retrieve svn log.
 
@@ -222,7 +223,7 @@ def get_svn_log(path: str='.',
 class _SvnDownloader:
     """Download files from Subversion."""
 
-    def __init__(self, command, svn_client: str='svn'):
+    def __init__(self, command, svn_client: str = 'svn'):
         """Initialize downloader.
 
         Args:
@@ -262,10 +263,9 @@ def download_file(data: typing.Union[pd.DataFrame, pd.Series],
     return downloader.download(revision, path)
 
 
-# FIXME: Handle data as str as well so it can be called with lambda.
-def get_diff_stats(data: pd.Series,
+def get_diff_stats(data: pd.DataFrame,
                    svn_client: str = 'svn',
-                   # chunks=None
+                   chunks=None
                    ) -> pd.DataFrame:
     """Download diff chunks statistics from Subversion.
 
@@ -307,17 +307,13 @@ def get_diff_stats(data: pd.Series,
         revision = revisions.iloc[0]
     try:
         downloaded = downloader.download(revision, None)
-    except Exception as err:
-        # FIXME add test
-        log.warning(f'cannot retrieve diff for {revision}: {err}')
-        return None
+    except subprocess.CalledProcessError as err:
+        message = f'cannot retrieve diff for {revision}: {err}: {err.stderr}'
+        log.warning(message)
+        raise
     df = scm.parse_diff_chunks(downloaded)
-    # if chunks is None:
-    #     chunks = isinstance(data, pd.DataFrame)
-    # if not chunks:
-    #     ar = ['added', 'removed']
-    #     path = data['path']
-    #     query = f"revision == '{revision}' and path == '{path}'"
-    #     df = df.query(query)[ar].sum()
+    if chunks is None:
+        chunks = isinstance(data, pd.DataFrame)
+    if not chunks:
+        df = df[['added', 'removed']].groupby(['path']).sum()
     return df
-

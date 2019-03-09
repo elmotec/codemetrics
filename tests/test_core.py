@@ -12,25 +12,9 @@ import unittest.mock as mock
 import numpy as np
 import pandas as pd
 import lizard as lz
-from click.testing import CliRunner
 
 import codemetrics as cm
-from codemetrics import cli
 from tests.utils import DataFrameTestCase
-
-
-class TestCodemetrics(unittest.TestCase):
-    """Tests for `codemetrics` package."""
-
-    def test_command_line_interface(self):
-        """Test the CLI."""
-        runner = CliRunner()
-        result = runner.invoke(cli.main)
-        assert result.exit_code == 0
-        # assert 'codemetrics.cli.main' in result.output
-        help_result = runner.invoke(cli.main, ['--help'])
-        assert help_result.exit_code == 0
-        assert '--help  Show this message and exit.' in help_result.output
 
 
 class SimpleRepositoryFixture(DataFrameTestCase):
@@ -43,8 +27,8 @@ class SimpleRepositoryFixture(DataFrameTestCase):
         1016,elmotec,2018-02-26T10:28:00Z,true,file,M,false,stats.py,modified again
         1018,elmotec,2018-02-24T11:14:11Z,true,file,M,false,stats.py,modified
         1018,elmotec,2018-02-24T11:14:11Z,true,file,M,false,requirements.txt,modified'''))
-        date_parser = lambda d: dt.datetime.strptime(d, '%Y-%m-%dT%H:%M:%SZ').\
-            replace(tzinfo=dt.timezone.utc)
+        date_parser = (lambda d: dt.datetime.strptime(d, '%Y-%m-%dT%H:%M:%SZ').
+                       replace(tzinfo=dt.timezone.utc))
         df = pd.read_csv(csv_data, parse_dates=['date'],
                          date_parser=date_parser)
         return df
@@ -308,17 +292,19 @@ class ComponentTestCase(SimpleRepositoryFixture):
 class ComplexityTestCase(DataFrameTestCase):
     """Test complexity analysis."""
 
-    file_content_1=textwrap.dedent('''\
+    file_content_1 = textwrap.dedent('''\
     def test():
         if not True:
             print('we should never get there!')
         print('all OK!')
     ''')
 
-    # FIXME: Test second function here!
-    file_content_2=textwrap.dedent('''\
+    file_content_2 = textwrap.dedent('''\
     def test():
         print('all OK!')
+    
+    def other():
+        print('all good')
     ''')
 
     def setUp(self):
@@ -335,32 +321,21 @@ class ComplexityTestCase(DataFrameTestCase):
             reset_index()
 
     @mock.patch('lizard.auto_read', autospec=True,
-               return_value=file_content_1, create=True)
-    def test_lizard_analyze(self, auto_read):
+                return_value=file_content_1, create=True)
+    def test_lizard_analyze(self, _):
         actuals = list(lz.analyze_files([__file__], exts=lz.get_extensions([])))
         self.assertEqual(len(actuals), 1)
         actual = actuals[0]
         self.assertEqual(4, actual.nloc)
         self.assertEqual(2.0, actual.average_cyclomatic_complexity)
 
-    def test_simple_analysis(self):
-        """Runs complexity trend analysis on this file."""
-        def scm_download_file(data):
-            if data.iloc[0]['revision'] == 1:
-                return cm.scm.DownloadResult(1, 'f.py', self.file_content_1)
-            return cm.scm.DownloadResult(2, 'f.py', self.file_content_2)
-        actual = self.get_complexity(scm_download_file)
-        expected = pd.read_csv(io.StringIO(textwrap.dedent("""\
-        revision,path,function,cyclomatic_complexity,nloc,token_count,name,long_name,start_line,end_line,top_nesting_level,length,fan_in,fan_out,general_fan_out,file_tokens,file_nloc
-        1,f.py,0,2,4,16,test,test( ),1,4,0,4,0,0,0,17,4
-        2,f.py,0,1,2,8,test,test( ),1,2,0,2,0,0,0,9,2""")))
-        self.assertEqual(expected, actual)
-
     def test_handles_no_function(self):
         """Handles files with no function well."""
         file_name, rev = 'f.py', 1
-        def scm_download_file(data):
+
+        def scm_download_file(_):
             return cm.scm.DownloadResult(rev, file_name, '')
+
         actual = self.get_complexity(scm_download_file)
         expected_fields = 'revision path function'.split() + \
                           cm.core._lizard_fields + \
@@ -370,13 +345,14 @@ class ComplexityTestCase(DataFrameTestCase):
 
     @mock.patch('codemetrics.internals.run', autospec=True,
                 side_effect=[file_content_1, file_content_1, file_content_2])
-    def test_analysis_with_groupby_svn_download(self, run_):
+    def test_analysis_with_groupby_svn_download(self, _):
         """Check interface with svn."""
         actual = self.get_complexity(cm.svn.download_file)
         expected = pd.read_csv(io.StringIO(textwrap.dedent("""\
         revision,path,function,cyclomatic_complexity,nloc,token_count,name,long_name,start_line,end_line,top_nesting_level,length,fan_in,fan_out,general_fan_out,file_tokens,file_nloc
         1,f.py,0,2,4,16,test,test( ),1,4,0,4,0,0,0,17,4
-        2,f.py,0,1,2,8,test,test( ),1,2,0,2,0,0,0,9,2
+        2,f.py,0,1,2,8,test,test( ),1,2,0,2,0,0,0,18,4
+        2,f.py,0,1,2,8,other,other( ),4,5,0,2,0,0,0,18,4
         """)))
         self.assertEqual(expected, actual)
 

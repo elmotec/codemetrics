@@ -109,6 +109,7 @@ class GitTestCase(unittest.TestCase):
         call.assert_called_with(
             f'git {git._GitLogCollector._args} --after {self.after:%Y-%m-%d} .')
 
+    # noinspection PyUnresolvedReferences,PyUnresolvedReferences,PyUnresolvedReferences
     @mock.patch('tqdm.tqdm', autospec=True, create=True)
     @mock.patch('codemetrics.internals.run', side_effect=[get_log()],
                 autospec=True)
@@ -126,7 +127,7 @@ class GitTestCase(unittest.TestCase):
 
     @mock.patch('codemetrics.internals.run',
                 side_effect=[get_log()], autospec=True)
-    def test_get_log(self, call):
+    def test_get_log(self, _):
         """Simple git call returns pandas.DataFrame."""
         actual = git.get_git_log('.', after=self.after)
         expected = utils.csvlog_to_dataframe(textwrap.dedent('''
@@ -144,7 +145,7 @@ b9fe5a6,elmotec,2018-12-04 21:49:55+00:00,tests/test_core.py,Added guess_compone
                 [xxxxxxx] [elmotec] [2018-12-05 23:44:38 -0000] [excel file]
                 -       -       directory/output.xls
                 """))
-    def test_handling_of_binary_files(self, call):
+    def test_handling_of_binary_files(self, _):
         """Handles binary files which do not show added or removed lines."""
         df = git.get_git_log('.', after=self.after)
         expected = utils.csvlog_to_dataframe(textwrap.dedent('''\
@@ -157,7 +158,7 @@ b9fe5a6,elmotec,2018-12-04 21:49:55+00:00,tests/test_core.py,Added guess_compone
                 [xxxxxxx] [elmotec] [2018-12-05 23:44:38 -0000] [bbb [ci skip] [skipci]]
                 1       1       some/file
                 """))
-    def test_handling_of_brackets_in_log(self, call):
+    def test_handling_of_brackets_in_log(self, _):
         """Handles brackets inside the commit log."""
         df = git.get_git_log('.', after=self.after)
         expected = utils.csvlog_to_dataframe(textwrap.dedent('''\
@@ -171,7 +172,7 @@ b9fe5a6,elmotec,2018-12-04 21:49:55+00:00,tests/test_core.py,Added guess_compone
                 [1987486] [elmotec] [2019-01-25 07:04:31 -0500] [Change]
                 3       4       .gitignore
                 """))
-    def test_empty_diff(self, call):
+    def test_empty_diff(self, _):
         """Handles log segment with no diffs."""
         actual = git.get_git_log('.', after=self.after)
         expected = utils.csvlog_to_dataframe(textwrap.dedent('''\
@@ -179,7 +180,6 @@ b9fe5a6,elmotec,2018-12-04 21:49:55+00:00,tests/test_core.py,Added guess_compone
         a897aad,elmotec,2019-01-25 12:05:25,,Merge nothing,X,0,0
         1987486,elmotec,2019-01-25 12:04:31,.gitignore,Change,f,3,4
         '''))
-        #expected, actual = expected.iloc[:, 5], actual.iloc[:, 5]
         self.assertEqual(expected, actual)
 
 
