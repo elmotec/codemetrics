@@ -273,8 +273,8 @@ def get_diff_stats(data: pd.DataFrame,
         data: revision ID of the change set.
         svn_client: Subversion client executable. Defaults to svn.
         chunks: if True, return statistics by chunk. Otherwise, return just
-            added, and removed column for each path. If chunk is None, will try
-            to figure it out as row is a series when apply is called directly.
+            added, and removed column for each path. If chunk is None, defaults
+            to true for data frame and false for series.
 
     Returns:
         Dataframe containing the statistics for each chunk.
@@ -284,10 +284,10 @@ def get_diff_stats(data: pd.DataFrame,
         >>> import pandas as pd
         >>> import codemetrics as cm
         >>> log = cm.get_svn_log().set_index(['revision', 'path'])
-        >>> log[['added', 'removed']] = log.groupby('revision').\
-                                         apply(cm.svn.get_diff_stats).\
-                                         groupby('path')[['added', 'removed']].\
-                                         sum()
+        >>> log.loc[:, ['added', 'removed']] = log.reset_index().\
+                                                groupby('revision').\
+                                                apply(cm.svn.get_diff_stats,
+                                                      chunks=False)
         >>> log[['added', 'removed']]
                                         added  removed
         revision path
@@ -298,22 +298,30 @@ def get_diff_stats(data: pd.DataFrame,
         ...
 
     """
+    data = data.copy()  # prevents messing with input frame.
+    try:
+        assert 1 <= data.ndim <= 2
+        if data.ndim == 2:
+            revisions = data['revision'].drop_duplicates()
+            assert len(revisions) == 1
+            revision = revisions.iloc[0]
+        else:
+            revision = data['revision']
+    except Exception as err:
+        log.warning('cannot find revision in group: %s\n%s', str(err), data)
+        return None
     downloader = _SvnDownloader('diff --git -c', svn_client=svn_client)
-    if isinstance(data, pd.Series):
-        revision = data['revision']
-    else:
-        revisions = data['revision'].drop_duplicates()
-        assert len(revisions) == 1
-        revision = revisions.iloc[0]
     try:
         downloaded = downloader.download(revision, None)
     except subprocess.CalledProcessError as err:
         message = f'cannot retrieve diff for {revision}: {err}: {err.stderr}'
         log.warning(message)
-        raise
+        return None
     df = scm.parse_diff_chunks(downloaded)
     if chunks is None:
-        chunks = isinstance(data, pd.DataFrame)
+        chunks = (data.ndim == 2)
     if not chunks:
-        df = df[['added', 'removed']].groupby(['path']).sum()
+        df = df[['path', 'added', 'removed']].groupby(['path']).sum()
+    else:
+        df = df.set_index(['path', 'chunk'])
     return df

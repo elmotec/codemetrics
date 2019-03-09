@@ -60,11 +60,23 @@ Source Control Management (SCM) repository and hopefully gain insight from it.
   import codemetrics as cm
   import cm.git
 
-  log_df = cm.git.get_git_log()
+  log_df = cm.get_git_log()
   ages_df = cm.get_ages(log_df)
 
 
-See `module documentation`_ for more advanced functions.
+To retrieve the number of lines changed by revision with Subversion:
+
+::
+
+  import codemetrics as cm
+  import cm.git
+
+  log_df = cm.get_svn_log().set_index(['revision', 'path'])
+  log_df.loc[:, ['added', 'removed']] = log_df.reset_index().\
+                                           groupby('revision').\
+                                           apply(cm.svn.get_diff_stats, chunks=False)
+
+See `module documentation`_ for more advanced functions or the `example notebook`_
 
 
 License
@@ -88,3 +100,4 @@ Credits
 .. _MIT License: https://en.wikipedia.org/wiki/MIT_License
 .. _Adam Tornhill: https://www.adamtornhill.com/
 .. _module documentation: https://codemetrics.readthedocs.org/
+.. _example notebook: https://github.com/elmotec/codemetrics/tree/master/notebooks

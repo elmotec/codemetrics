@@ -354,7 +354,7 @@ class SubversionGetDiffStatsTestCase(utils.DataFrameTestCase):
     1014,estimate/mktdata.py,1,1086,1096,4,1
     1014,estimate/mktdata.py,2,1193,1207,3,13
     1014,setup.py,0,22,29,1,1
-    ''')), index_col=['revision', 'path', 'chunk'])
+    ''')))
 
     @mock.patch('codemetrics.internals.run', autospec=True,
                 return_value=diffs)
@@ -368,7 +368,8 @@ class SubversionGetDiffStatsTestCase(utils.DataFrameTestCase):
     def test_direct_call(self, _):
         """Direct call to cm.svn.get_diff_stats"""
         actual = cm.svn.get_diff_stats(self.log)
-        expected = self.expected.reset_index(level='revision', drop=True)
+        expected = self.expected.drop(columns=['revision']).\
+                        set_index(['path', 'chunk'])
         self.assertEqual(expected, actual)
 
     @mock.patch('codemetrics.internals.run', autospec=True,
@@ -377,7 +378,8 @@ class SubversionGetDiffStatsTestCase(utils.DataFrameTestCase):
         """Can retrieve chunk statistics from Subversion"""
         actual = self.log.groupby(['revision']).\
             apply(cm.svn.get_diff_stats)
-        expected = self.expected
+        expected = self.expected.reset_index(drop=True).\
+                        set_index(['revision', 'path', 'chunk'])
         self.assertEqual(expected, actual)
 
     @mock.patch('codemetrics.internals.run', autospec=True,
@@ -386,23 +388,59 @@ class SubversionGetDiffStatsTestCase(utils.DataFrameTestCase):
         """Can retrieve chunk statistics from Subversion"""
         actual = self.log.groupby(['revision']).\
             apply(cm.svn.get_diff_stats, chunks=False)
-        expected = self.expected[['added', 'removed']].\
+        expected = self.expected[['revision', 'path', 'added', 'removed']].\
             groupby(['revision', 'path']).\
             sum()
         self.assertEqual(expected, actual)
 
     @mock.patch('codemetrics.internals.run', autospec=True)
-    def test_error_handling(self, run_):
+    def test_error_generates_warning(self, run_):
         """Can retrieve chunk statistics from Subversion"""
         exception = subprocess.CalledProcessError(1, cmd='svn',
                                                   stderr='some error')
         run_.side_effect = [exception] * 2
         with self.assertLogs(level='WARN') as context:
-            with self.assertRaises(subprocess.CalledProcessError):
-                cm.svn.get_diff_stats(self.log)
+            cm.svn.get_diff_stats(self.log)
         expected = "WARNING:codemetrics:cannot retrieve diff for 1014: " \
                    "Command 'svn' returned non-zero exit status 1.: some error"
         self.assertEqual([expected], context.output)
+
+    @mock.patch('codemetrics.internals.run', autospec=True)
+    def test_empty_diff(self, run):
+        """Direct call when svn returns an empty data frame"""
+        run.return_value = textwrap.dedent('''
+        Index: connect_jupyter_on_desktop1.sh
+        ===================================================================
+        diff --git a/estimate/connect_jupyter_on_desktop1.sh b/estimate/connect_jupyter_on_desktop1.sh
+        new file mode 100644
+        --- a/estimate/connect_jupyter_on_desktop1.sh   (nonexistent)
+        +++ b/estimate/connect_jupyter_on_desktop1.sh   (revision 899)
+        ''')
+        actual = cm.svn.get_diff_stats(self.log)
+        expected = pd.read_csv(io.StringIO(textwrap.dedent('''
+        path,chunk,first,last,added,removed
+        ''')), index_col=['path', 'chunk'])
+        self.assertEqual(expected, actual)
+
+    @mock.patch('codemetrics.internals.run', autospec=True)
+    def test_single_diff_line(self, run):
+        """Direct call to cm.svn.get_diff_stats when svn returns single line"""
+        run.return_value = textwrap.dedent('''
+        Index: connect_jupyter_on_desktop1.sh
+        ===================================================================
+        diff --git a/estimate/connect_jupyter_on_desktop1.sh b/estimate/connect_jupyter_on_desktop1.sh
+        new file mode 100644
+        --- a/estimate/connect_jupyter_on_desktop1.sh   (nonexistent)
+        +++ b/estimate/connect_jupyter_on_desktop1.sh   (revision 899)
+        @@ -0,0 +1 @@
+        +ssh -NL 8888:localhost:8888 jlecomte@desktop1
+        ''')
+        actual = cm.svn.get_diff_stats(self.log)
+        expected = pd.read_csv(io.StringIO(textwrap.dedent('''
+        path,chunk,first,last,added,removed
+        connect_jupyter_on_desktop1.sh,0,1,1,1,0
+        ''')), index_col=['path', 'chunk'])
+        self.assertEqual(expected, actual)
 
 
 if __name__ == '__main__':

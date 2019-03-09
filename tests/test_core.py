@@ -311,14 +311,14 @@ class ComplexityTestCase(DataFrameTestCase):
         super().setUp()
         self.log = pd.read_csv(io.StringIO(textwrap.dedent("""\
         revision,author,date,textmods,kind,action,propmods,path,message
-        1,elmotec,2018-02-26T10:28:00Z,true,file,M,false,f.py,again
-        2,elmotec,2018-02-24T11:14:11Z,true,file,M,false,f.py,modified""")))
+        r1,elmotec,2018-02-26T10:28:00Z,true,file,M,false,f.py,again
+        r2,elmotec,2018-02-24T11:14:11Z,true,file,M,false,f.py,modified""")))
 
     def get_complexity(self, download_func):
         """Factor retrieval of complexity"""
-        return self.log.groupby(['revision', 'path']).\
-            apply(cm.get_complexity, download_func=download_func).\
-            reset_index()
+        df = self.log.groupby(['revision', 'path']).\
+            apply(cm.get_complexity, download_func=download_func)
+        return df
 
     @mock.patch('lizard.auto_read', autospec=True,
                 return_value=file_content_1, create=True)
@@ -336,11 +336,11 @@ class ComplexityTestCase(DataFrameTestCase):
         def scm_download_file(_):
             return cm.scm.DownloadResult(rev, file_name, '')
 
-        actual = self.get_complexity(scm_download_file)
-        expected_fields = 'revision path function'.split() + \
-                          cm.core._lizard_fields + \
-                          'file_tokens file_nloc'.split()
-        expected = pd.DataFrame(data={k: [] for k in expected_fields})
+        actual = self.get_complexity(scm_download_file).reset_index()
+        columns = 'revision path function'.split() + \
+                  cm.core._lizard_fields + \
+                  'file_tokens file_nloc'.split()
+        expected = pd.DataFrame(data={k: [] for k in columns})
         self.assertEqual(expected, actual)
 
     @mock.patch('codemetrics.internals.run', autospec=True,
@@ -350,10 +350,10 @@ class ComplexityTestCase(DataFrameTestCase):
         actual = self.get_complexity(cm.svn.download_file)
         expected = pd.read_csv(io.StringIO(textwrap.dedent("""\
         revision,path,function,cyclomatic_complexity,nloc,token_count,name,long_name,start_line,end_line,top_nesting_level,length,fan_in,fan_out,general_fan_out,file_tokens,file_nloc
-        1,f.py,0,2,4,16,test,test( ),1,4,0,4,0,0,0,17,4
-        2,f.py,0,1,2,8,test,test( ),1,2,0,2,0,0,0,18,4
-        2,f.py,0,1,2,8,other,other( ),4,5,0,2,0,0,0,18,4
-        """)))
+        r1,f.py,0,2,4,16,test,test( ),1,4,0,4,0,0,0,17,4
+        r2,f.py,0,1,2,8,test,test( ),1,2,0,2,0,0,0,18,4
+        r2,f.py,0,1,2,8,other,other( ),4,5,0,2,0,0,0,18,4
+        """))).set_index(['revision', 'path', 'function'])
         self.assertEqual(expected, actual)
 
 

@@ -206,12 +206,15 @@ def parse_diff_as_tuples(download: DownloadResult) -> typing.Generator[tuple, No
             curr_path = file_match.group(1)
             count = 0
             continue
-        chunk_match = re.match(r'^@@ -\d+,\d+ \+(\d+),(\d+) @@', line)
+        chunk_match = re.match(r'^@@ -\d+,\d+ \+(\d+)(?:,(\d+))? @@', line)
         if chunk_match is not None:
             if curr_chunk is not None:
                 yield curr_chunk
             begin = int(chunk_match.group(1))
-            length = int(chunk_match.group(2))
+            if chunk_match.group(2):
+                length = int(chunk_match.group(2))
+            else:
+                length = 0
             assert curr_path is not None
             curr_chunk = ChunkStats(curr_path, count,
                                     begin, begin + length, 0, 0)
@@ -231,7 +234,6 @@ def parse_diff_as_tuples(download: DownloadResult) -> typing.Generator[tuple, No
 def parse_diff_chunks(download: DownloadResult) -> pd.DataFrame:
     """Concatenate chunks data returned by parse_diff_as_tuples into a frame"""
     tuples = list(parse_diff_as_tuples(download))
-    df = pd.DataFrame.from_records(data=tuples, columns=ChunkStats._fields,
-                                   index=['path', 'chunk'])
+    df = pd.DataFrame.from_records(data=tuples, columns=ChunkStats._fields)
     return df
 
