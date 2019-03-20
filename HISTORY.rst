@@ -2,6 +2,11 @@
 History
 =======
 
+0.8.1 (2019-02-26)
+------------------
+
+* Added svn.get_diff_stats to retrieve line changes stats per diff.
+
 0.8 (2019-02-13)
 ----------------
 
