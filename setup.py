@@ -37,7 +37,7 @@ setuptools.setup(
     description='SCM mining utility classes',
     long_description=readme + '\n\n' + history,
     long_description_content_type='text/x-rst',
-    version='0.8.2',
+    version='0.9.0',
     author="Elmotec",
     author_email="elmotec@gmx.com",
     license="MIT",
