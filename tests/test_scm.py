@@ -6,7 +6,6 @@
 import unittest
 import datetime as dt
 import textwrap
-import types
 import unittest.mock as mock
 
 import pandas as pd
@@ -56,6 +55,9 @@ class ScmDownloadTestCase:
 
     Common test case for all SCM download functions. Inherit from it *and*
     from unittest.TestCase.
+
+    See also:
+        GitDownloadTestCase, SubversionDownloadTestCase
 
     See https://stackoverflow.com/questions/1323455/ for design rationale.
 

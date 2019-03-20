@@ -5,8 +5,6 @@
 
 import datetime as dt
 import unittest
-import io
-import textwrap
 from unittest import mock
 import subprocess
 
@@ -89,7 +87,7 @@ class ExtractValuesTestCase(unittest.TestCase):
 
     def test_dataframe(self):
         data = pd.DataFrame(data={'revision': ['1'] * 2,
-                                  'path': ['file.py'] * 2 })
+                                  'path': ['file.py'] * 2})
         revision, path = internals.extract_values(data, ['revision', 'path'])
         self.assertEqual('1', revision)
         self.assertEqual('file.py', path)
@@ -102,12 +100,12 @@ class ExtractValuesTestCase(unittest.TestCase):
 
     def test_list_of_labels_of_size_one(self):
         data = pd.DataFrame(data={'revision': ['1'] * 2,
-                                  'path': ['file.py'] * 2 })
+                                  'path': ['file.py'] * 2})
         revision = internals.extract_values(data, ['revision'])
         self.assertEqual('1', revision)
 
     def test_label_as_scalar(self):
         data = pd.DataFrame(data={'revision': ['1'] * 2,
-                                  'path': ['file.py'] * 2 })
+                                  'path': ['file.py'] * 2})
         revision = internals.extract_values(data, 'revision')
         self.assertEqual('1', revision)

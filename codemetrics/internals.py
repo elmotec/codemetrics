@@ -150,6 +150,7 @@ def extract_values(data: typing.Union[pd.DataFrame, pd.Series],
         s = data.iloc[0]
     else:
         s = data
+    # FIXME Probably go: let client retrieve a tuple in all case.
     if hasattr(columns, '__len__') and len(columns) == 1:
         return s.loc[columns[0]]
     return s.loc[columns]

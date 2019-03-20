@@ -4,7 +4,6 @@
 """Git related functions."""
 
 import datetime as dt
-import typing
 import re
 
 import tqdm
@@ -226,8 +225,8 @@ def download(data: pd.DataFrame,
     """Downloads files from Subversion.
 
     Args:
-        df: dataframe containing at least a (path, revision) columns to
-            identify the files to download.
+        data: dataframe containing at least a (path, revision) columns to
+              identify the files to download.
         git_client: Subversion client executable. Defaults to git.
 
     Returns:

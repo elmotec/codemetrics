@@ -5,7 +5,6 @@
 
 import datetime as dt
 import textwrap
-import io
 import unittest
 from unittest import mock
 
@@ -184,7 +183,7 @@ b9fe5a6,elmotec,2018-12-04 21:49:55+00:00,tests/test_core.py,Added guess_compone
         self.assertEqual(expected, actual)
 
 
-class DownloadGitFilesTestCase(unittest.TestCase, test_scm.ScmDownloadTestCase):
+class GitDownloadTestCase(unittest.TestCase, test_scm.ScmDownloadTestCase):
     """Test getting historical files with git."""
 
     content1 = textwrap.dedent('''

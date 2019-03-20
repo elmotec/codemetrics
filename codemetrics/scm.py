@@ -245,10 +245,16 @@ class ScmDownloader(abc.ABC):
         """Aggregates the client and the command in one variable."""
         self.command = f'{client} {command}'
 
-    def download(self, revision: str, path: str) -> DownloadResult:
+    def download(self, revision: str,
+                 path: typing.Union[None, str]) -> DownloadResult:
         """Download content specific to a revision and path.
 
-        Template method: runs checks and forward the call to _download.
+        Runs checks and forward the call to _download (template method).
+
+        Args:
+            revision: identify the commit ID
+            path: file path. Can be left as None if all files in the commit
+                are to be retrieved.
 
         """
         assert revision is None or isinstance(revision, str), \

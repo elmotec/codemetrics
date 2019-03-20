@@ -260,7 +260,7 @@ def download(data: typing.Union[pd.DataFrame, pd.Series],
 def get_diff_stats(data: pd.DataFrame,
                    svn_client: str = 'svn',
                    chunks=None
-                   ) -> pd.DataFrame:
+                   ) -> typing.Union[None, pd.DataFrame]:
     """Download diff chunks statistics from Subversion.
 
     Args:

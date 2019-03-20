@@ -327,7 +327,7 @@ class ComplexityTestCase(DataFrameTestCase):
             pipe(pd.Series.astype, 'str')
         columns = 'revision path function'.split() + \
                   cm.core._lizard_fields + \
-                   'file_tokens file_nloc'.split()
+                  'file_tokens file_nloc'.split()
         expected = pd.DataFrame(data={k: [] for k in columns}, dtype='object')
         self.assertEqual(expected, actual)
 
@@ -351,7 +351,6 @@ class ComplexityTestCase(DataFrameTestCase):
         self.log = self.log.iloc[:0]
         actual = cm.get_complexity(self.log, download_func=cm.svn.download)
         self.assertTrue(actual.empty)
-
 
 
 if __name__ == '__main__':

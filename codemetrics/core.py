@@ -11,7 +11,6 @@ import sklearn.cluster
 import sklearn.feature_extraction.text
 
 from . import internals
-from . import scm
 
 __all__ = [
     'get_mass_change_sets',
@@ -213,7 +212,6 @@ def get_complexity(group: typing.Union[pd.DataFrame, pd.Series],
     .. _lizard.analyze: https://github.com/terryyin/lizard
 
     """
-    count = 0
     if len(group) == 0:
         internals.log.info('empty group %s', group)
         return pd.DataFrame({k: [] for k in _complexity_fields})

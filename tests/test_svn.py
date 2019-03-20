@@ -211,7 +211,8 @@ class SubversionGetLogTestCase(unittest.TestCase):
         self.assertEqual(expected, df)
 
 
-class SubversionDownloadTestCase(unittest.TestCase, test_scm.ScmDownloadTestCase):
+class SubversionDownloadTestCase(unittest.TestCase,
+                                 test_scm.ScmDownloadTestCase):
     """Test getting historical files with subversion."""
 
     content1 = textwrap.dedent('''
@@ -368,8 +369,8 @@ class SubversionGetDiffStatsTestCase(utils.DataFrameTestCase):
     def test_direct_call(self, _):
         """Direct call to cm.svn.get_diff_stats"""
         actual = cm.svn.get_diff_stats(self.log)
-        expected = self.expected.drop(columns=['revision']).\
-                        set_index(['path', 'chunk'])
+        expected = self.expected.drop(columns=['revision']). \
+            set_index(['path', 'chunk'])
         self.assertEqual(expected, actual)
 
     @mock.patch('codemetrics.internals.run', autospec=True,
@@ -377,28 +378,28 @@ class SubversionGetDiffStatsTestCase(utils.DataFrameTestCase):
     def test_direct_call_with_indexed_data(self, _):
         """Direct call to cm.svn.get_diff_stats"""
         actual = cm.svn.get_diff_stats(self.log.set_index(['revision', 'path']))
-        expected = self.expected.drop(columns=['revision']).\
-                        set_index(['path', 'chunk'])
+        expected = self.expected.drop(columns=['revision']). \
+            set_index(['path', 'chunk'])
         self.assertEqual(expected, actual)
 
     @mock.patch('codemetrics.internals.run', autospec=True,
                 side_effect=[diffs, diffs])
     def test_get_chunk_stats_with_groupby_apply(self, _):
         """Can retrieve chunk statistics from Subversion"""
-        actual = self.log.groupby(['revision']).\
+        actual = self.log.groupby(['revision']). \
             apply(cm.svn.get_diff_stats)
-        expected = self.expected.reset_index(drop=True).\
-                        set_index(['revision', 'path', 'chunk'])
+        expected = self.expected.reset_index(drop=True). \
+            set_index(['revision', 'path', 'chunk'])
         self.assertEqual(expected, actual)
 
     @mock.patch('codemetrics.internals.run', autospec=True,
                 side_effect=[diffs, diffs])
     def test_get_stats_with_groupby_apply(self, _):
         """Can retrieve chunk statistics from Subversion"""
-        actual = self.log.groupby(['revision']).\
+        actual = self.log.groupby(['revision']). \
             apply(cm.svn.get_diff_stats, chunks=False)
-        expected = self.expected[['revision', 'path', 'added', 'removed']].\
-            groupby(['revision', 'path']).\
+        expected = self.expected[['revision', 'path', 'added', 'removed']]. \
+            groupby(['revision', 'path']). \
             sum()
         self.assertEqual(expected, actual)
 
