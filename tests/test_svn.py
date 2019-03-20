@@ -14,6 +14,7 @@ import pandas as pd
 
 import codemetrics as cm
 import tests.utils as utils
+import tests.test_scm as test_scm
 
 
 def get_log(dates=None):
@@ -210,7 +211,7 @@ class SubversionGetLogTestCase(unittest.TestCase):
         self.assertEqual(expected, df)
 
 
-class SubversionDownloadFilesTestCase(unittest.TestCase):
+class SubversionDownloadTestCase(unittest.TestCase, test_scm.ScmDownloadTestCase):
     """Test getting historical files with subversion."""
 
     content1 = textwrap.dedent('''
@@ -227,33 +228,32 @@ class SubversionDownloadFilesTestCase(unittest.TestCase):
 
     def setUp(self):
         super().setUp()
-        self.svn = cm.svn._SvnDownloader('cat -r')
-        self.sublog = pd.read_csv(io.StringIO(textwrap.dedent("""\
-        revision,path
-        1,file.py
-        2,file.py
-        """)))
+        self.download = cm.svn.download
+        self.svn = cm.svn.SvnDownloader('cat -r')
+        self.sublog = pd.DataFrame(data={
+            'revision': ['1', '2'],
+            'path': ['file.py'] * 2})
 
     @mock.patch('codemetrics.internals.run', autospec=True,
                 return_value=content1)
     def test_svn_arguments(self, _run):
-        cm.svn.download_file(self.sublog.iloc[0])
+        cm.svn.download(self.sublog.iloc[0])
         _run.assert_called_with(f'{self.svn.command} 1 file.py')
 
     @mock.patch('codemetrics.internals.run', autospec=True,
                 return_value=content1)
     def test_single_revision_download(self, _run):
-        actual = cm.svn.download_file(self.sublog.iloc[0])
-        expected = cm.scm.DownloadResult(1, 'file.py', self.content1)
+        actual = cm.svn.download(self.sublog.iloc[0])
+        expected = cm.scm.DownloadResult('1', 'file.py', self.content1)
         self.assertEqual(expected, actual)
 
     @mock.patch('codemetrics.internals.run', autospec=True,
                 side_effect=[content1, content2])
     def test_multiple_revision_download(self, _run):
-        actual = self.sublog.apply(cm.svn.download_file, axis=1).tolist()
+        actual = self.sublog.apply(cm.svn.download, axis=1).tolist()
         expected = [
-            cm.scm.DownloadResult(1, 'file.py', self.content1),
-            cm.scm.DownloadResult(2, 'file.py', self.content2),
+            cm.scm.DownloadResult('1', 'file.py', self.content1),
+            cm.scm.DownloadResult('2', 'file.py', self.content2),
         ]
         self.assertEqual(expected, actual)
 
@@ -346,7 +346,7 @@ class SubversionGetDiffStatsTestCase(utils.DataFrameTestCase):
     0,1014,estimate/__init__.py
     1,1014,estimate/mktdata.py
     3,1014,setup.py
-    ''')), index_col='index')
+    ''')), index_col='index', dtype='str')
     expected = pd.read_csv(io.StringIO(textwrap.dedent('''\
     revision,path,chunk,first,last,added,removed
     1014,estimate/__init__.py,0,8,15,1,2
@@ -354,7 +354,7 @@ class SubversionGetDiffStatsTestCase(utils.DataFrameTestCase):
     1014,estimate/mktdata.py,1,1086,1096,4,1
     1014,estimate/mktdata.py,2,1193,1207,3,13
     1014,setup.py,0,22,29,1,1
-    ''')))
+    ''')), dtype={'revision': 'str', 'path': 'str'})
 
     @mock.patch('codemetrics.internals.run', autospec=True,
                 return_value=diffs)
@@ -368,6 +368,15 @@ class SubversionGetDiffStatsTestCase(utils.DataFrameTestCase):
     def test_direct_call(self, _):
         """Direct call to cm.svn.get_diff_stats"""
         actual = cm.svn.get_diff_stats(self.log)
+        expected = self.expected.drop(columns=['revision']).\
+                        set_index(['path', 'chunk'])
+        self.assertEqual(expected, actual)
+
+    @mock.patch('codemetrics.internals.run', autospec=True,
+                return_value=diffs)
+    def test_direct_call_with_indexed_data(self, _):
+        """Direct call to cm.svn.get_diff_stats"""
+        actual = cm.svn.get_diff_stats(self.log.set_index(['revision', 'path']))
         expected = self.expected.drop(columns=['revision']).\
                         set_index(['path', 'chunk'])
         self.assertEqual(expected, actual)

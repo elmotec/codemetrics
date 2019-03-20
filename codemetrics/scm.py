@@ -186,7 +186,7 @@ ChunkStats = collections.namedtuple('ChunkStats',
                                      'added', 'removed'])
 
 
-def parse_diff_as_tuples(download: DownloadResult) -> typing.Generator[tuple, None, None]:
+def parse_diff_as_tuples(download: DownloadResult) -> typing.Generator[ChunkStats, None, None]:
     """Parse download result looking for diff chunks.
 
     Args:
@@ -236,4 +236,35 @@ def parse_diff_chunks(download: DownloadResult) -> pd.DataFrame:
     tuples = list(parse_diff_as_tuples(download))
     df = pd.DataFrame.from_records(data=tuples, columns=ChunkStats._fields)
     return df
+
+
+class ScmDownloader(abc.ABC):
+    """Abstract class that defines a common interface for SCM downloaders."""
+
+    def __init__(self, command, client):
+        """Aggregates the client and the command in one variable."""
+        self.command = f'{client} {command}'
+
+    def download(self, revision: str, path: str) -> DownloadResult:
+        """Download content specific to a revision and path.
+
+        Template method: runs checks and forward the call to _download.
+
+        """
+        assert revision is None or isinstance(revision, str), \
+            f'expected string, got {type(revision)}'
+        assert path is None or isinstance(path, str), \
+            f'expected a string, got {type(path)}'
+        dr = self._download(revision, path)
+        return dr
+
+    @abc.abstractmethod
+    def _download(self, revision: str, path: str) -> DownloadResult:
+        """Download content specific to a revision and path.
+
+        Return:
+            May return more than one item (e.g. multiple chunks) as generator.
+
+        """
+        pass
 

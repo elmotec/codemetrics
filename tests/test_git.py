@@ -17,6 +17,7 @@ import tests.utils as utils
 
 import codemetrics as cm
 import codemetrics.git as git
+import tests.test_scm as test_scm
 
 
 class PathElemParser(unittest.TestCase):
@@ -155,7 +156,7 @@ b9fe5a6,elmotec,2018-12-04 21:49:55+00:00,tests/test_core.py,Added guess_compone
 
     @mock.patch('codemetrics.internals.run', autospec=True,
                 return_value=textwrap.dedent("""
-                [xxxxxxx] [elmotec] [2018-12-05 23:44:38 -0000] [bbb [ci skip] [skipci]]
+                [xxxxxxx] [elmotec] [2018-12-05 23:44:38 -0000] [bbb [internals skip] [skipci]]
                 1       1       some/file
                 """))
     def test_handling_of_brackets_in_log(self, _):
@@ -163,7 +164,7 @@ b9fe5a6,elmotec,2018-12-04 21:49:55+00:00,tests/test_core.py,Added guess_compone
         df = git.get_git_log('.', after=self.after)
         expected = utils.csvlog_to_dataframe(textwrap.dedent('''\
         revision,author,date,path,message,kind,action,copyfromrev,copyfrompath,added,removed
-        xxxxxxx,elmotec,2018-12-05 23:44:38+00:00,some/file,bbb [ci skip] [skipci],f,,,,1,1'''))
+        xxxxxxx,elmotec,2018-12-05 23:44:38+00:00,some/file,bbb [internals skip] [skipci],f,,,,1,1'''))
         self.assertEqual(expected, df)
 
     @mock.patch('codemetrics.internals.run', autospec=True,
@@ -183,7 +184,7 @@ b9fe5a6,elmotec,2018-12-04 21:49:55+00:00,tests/test_core.py,Added guess_compone
         self.assertEqual(expected, actual)
 
 
-class DownloadGitFilesTestCase(unittest.TestCase):
+class DownloadGitFilesTestCase(unittest.TestCase, test_scm.ScmDownloadTestCase):
     """Test getting historical files with git."""
 
     content1 = textwrap.dedent('''
@@ -199,36 +200,39 @@ class DownloadGitFilesTestCase(unittest.TestCase):
     ''')
 
     def setUp(self):
+        super().setUp()
+        self.download = git.download
         self.git = cm.git._GitFileDownloader()
 
     @mock.patch('codemetrics.internals.run', autospec=True,
                 return_value=content1)
     def test_single_revision_download(self, _run):
         """Retrieval of one file and one revision."""
-        sublog = pd.read_csv(io.StringIO(textwrap.dedent("""\
-        revision,path
-        1,file.py
-        """)))
-        results = list(cm.git.download_files(sublog))
-        _run.assert_called_with(f'{self.git.command} 1:file.py')
-        self.assertEqual(1, len(results))
-        actual = results[0]
-        expected = cm.scm.DownloadResult(1, 'file.py', self.content1)
+        sublog = pd.DataFrame(data={'revision': ['abc'], 'path': ['file.py']})
+        actual = cm.git.download(sublog)
+        _run.assert_called_with(f'{self.git.command} abc:file.py')
+        expected = cm.scm.DownloadResult('abc', 'file.py', self.content1)
+        self.assertEqual(expected, actual)
+
+    @mock.patch('codemetrics.internals.run', autospec=True,
+                side_effect=[content1])
+    def test_single_revision_download_via_apply(self, _run):
+        """Retrieval of single revisions via apply."""
+        sublog = pd.DataFrame(data={'revision': ['r1'], 'path': ['file.py']})
+        actual = sublog.apply(cm.svn.download, axis=1).tolist()
+        expected = [cm.scm.DownloadResult('r1', 'file.py', self.content1)]
         self.assertEqual(expected, actual)
 
     @mock.patch('codemetrics.internals.run', autospec=True,
                 side_effect=[content1, content2])
-    def test_multiple_revision_download(self, _run):
-        """Retrieval of multiple revisions."""
-        sublog = pd.read_csv(io.StringIO(textwrap.dedent("""\
-        revision,path
-        1,file.py
-        2,file.py
-        """)))
-        actual = sublog.apply(cm.svn.download_file, axis=1).tolist()
+    def test_multiple_revision_download_return_multiple_downloads(self, _run):
+        """Retrieval of multiple revisions returns multiple downloads."""
+        sublog = pd.DataFrame(data={'revision': ['r1', 'r2'],
+                                    'path': ['file.py'] * 2})
+        actual = sublog.apply(cm.svn.download, axis=1).tolist()
         expected = [
-            cm.scm.DownloadResult(1, 'file.py', self.content1),
-            cm.scm.DownloadResult(2, 'file.py', self.content2),
+            cm.scm.DownloadResult('r1', 'file.py', self.content1),
+            cm.scm.DownloadResult('r2', 'file.py', self.content2),
         ]
         self.assertEqual(expected, actual)
 

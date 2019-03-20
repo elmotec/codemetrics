@@ -5,10 +5,14 @@
 
 import datetime as dt
 import unittest
+import io
+import textwrap
 from unittest import mock
 import subprocess
 
-import codemetrics.internals
+import pandas as pd
+
+import codemetrics.internals as internals
 
 
 class DefaultDatesTest(unittest.TestCase):
@@ -21,14 +25,14 @@ class DefaultDatesTest(unittest.TestCase):
                 return_value=today)
     def test_nothing_specified(self, get_now):
         """Test get_log without argument start a year ago."""
-        after, before = codemetrics.internals.handle_default_dates(None, None)
+        after, before = internals.handle_default_dates(None, None)
         get_now.assert_called_with()
         self.assertEqual(self.year_ago, after)
         self.assertIsNone(before)
 
     def test_just_today(self):
         """Test get_log without argument start a year ago."""
-        after, before = codemetrics.internals.handle_default_dates(self.today, None)
+        after, before = internals.handle_default_dates(self.today, None)
         self.assertEqual(self.today, after)
         self.assertIsNone(before)
 
@@ -41,14 +45,14 @@ class SubprocessRunTest(unittest.TestCase):
     @mock.patch('subprocess.run', autospec=True)
     def test_default_call(self, sprun):
         """Test default arguments"""
-        codemetrics.internals.run(self.cmdline)
+        internals.run(self.cmdline)
         sprun.assert_called_with(self.cmdline, check=True, errors='ignore',
                                  stdout=-1)
 
     @mock.patch('subprocess.run', autospec=True)
     def test_ignore_encoding_errors(self, sprun):
         """Test encoding errors are ignored by default"""
-        codemetrics.internals.run(self.cmdline)
+        internals.run(self.cmdline)
         args, kwargs = sprun.call_args
         self.assertIn('errors', kwargs)
         self.assertEqual(kwargs['errors'], 'ignore')
@@ -56,7 +60,7 @@ class SubprocessRunTest(unittest.TestCase):
     @mock.patch('subprocess.run', autospec=True)
     def test_custom_encoding_errors(self, sprun):
         """Test encoding errors are ignored by default"""
-        codemetrics.internals.run(self.cmdline, errors='jump')
+        internals.run(self.cmdline, errors='jump')
         args, kwargs = sprun.call_args
         self.assertIn('errors', kwargs)
         self.assertEqual(kwargs['errors'], 'jump')
@@ -66,7 +70,7 @@ class SubprocessRunTest(unittest.TestCase):
         """Test that the output is not split"""
         expected = 'a\nb\nc\n'
         sprun.return_value.stdout = expected
-        actual = codemetrics.internals.run(self.cmdline, errors='jump')
+        actual = internals.run(self.cmdline, errors='jump')
         self.assertEqual(expected, actual)
 
     @mock.patch('subprocess.run', autospec=True)
@@ -76,5 +80,34 @@ class SubprocessRunTest(unittest.TestCase):
                                                   stderr='some error')
         sprun.side_effect = [exception]
         with self.assertRaises(subprocess.CalledProcessError) as cm:
-            codemetrics.internals.run(self.cmdline)
+            internals.run(self.cmdline)
         self.assertEqual('some error', cm.exception.stderr)
+
+
+class ExtractValuesTestCase(unittest.TestCase):
+    """Test internals.extract_values behaviour."""
+
+    def test_dataframe(self):
+        data = pd.DataFrame(data={'revision': ['1'] * 2,
+                                  'path': ['file.py'] * 2 })
+        revision, path = internals.extract_values(data, ['revision', 'path'])
+        self.assertEqual('1', revision)
+        self.assertEqual('file.py', path)
+
+    def test_series(self):
+        data = pd.Series(data={'revision': '1', 'path': 'file.py'})
+        revision, path = internals.extract_values(data, ['revision', 'path'])
+        self.assertEqual('1', revision)
+        self.assertEqual('file.py', path)
+
+    def test_list_of_labels_of_size_one(self):
+        data = pd.DataFrame(data={'revision': ['1'] * 2,
+                                  'path': ['file.py'] * 2 })
+        revision = internals.extract_values(data, ['revision'])
+        self.assertEqual('1', revision)
+
+    def test_label_as_scalar(self):
+        data = pd.DataFrame(data={'revision': ['1'] * 2,
+                                  'path': ['file.py'] * 2 })
+        revision = internals.extract_values(data, 'revision')
+        self.assertEqual('1', revision)

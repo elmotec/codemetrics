@@ -220,7 +220,7 @@ def get_svn_log(path: str = '.',
                              progress_bar=progress_bar)
 
 
-class _SvnDownloader:
+class SvnDownloader(scm.ScmDownloader):
     """Download files from Subversion."""
 
     def __init__(self, command, svn_client: str = 'svn'):
@@ -229,37 +229,31 @@ class _SvnDownloader:
         Args:
             svn_client: name of svn client.
         """
-        self.svn_client = svn_client
-        self.command = f'{svn_client} {command}'
+        super().__init__(command, client=svn_client)
 
-    def download(self, revision, path):
-        """Download revision and specific path if requested."""
-        command = f"{self.command} {revision}"
-        if path is not None:
-            command += f" {path}"
+    def _download(self, revision: str, path: str) -> scm.DownloadResult:
+        """Download specific file and revision from git."""
+        command = f'{self.command} {revision}'
+        if path:
+            command += f' {path}'
         content = internals.run(command)
         return scm.DownloadResult(revision, path, content)
 
 
-def download_file(data: typing.Union[pd.DataFrame, pd.Series],
-                  svn_client: str = 'svn') -> typing.Sequence[scm.DownloadResult]:
-    """Downloads files from Subversion.
+def download(data: typing.Union[pd.DataFrame, pd.Series],
+             svn_client: str = 'svn') -> scm.DownloadResult:
+    """Download results from Subversion.
 
     Args:
-        data: log data containing at least revision and path values.
+        data: pd.Series containing at least revision and path.
         svn_client: Subversion client executable. Defaults to svn.
 
     Returns:
-         list of file locations.
+         list of file contents.
 
     """
-    if isinstance(data, pd.DataFrame):
-        assert len(data) == 1
-        data = data.iloc[0]
-    assert 'revision' in data.index
-    assert 'path' in data.index
-    revision, path = data['revision'], data['path']
-    downloader = _SvnDownloader('cat -r', svn_client=svn_client)
+    downloader = SvnDownloader('cat -r', svn_client=svn_client)
+    revision, path = internals.extract_values(data, ['revision', 'path'])
     return downloader.download(revision, path)
 
 
@@ -298,19 +292,13 @@ def get_diff_stats(data: pd.DataFrame,
         ...
 
     """
-    data = data.copy()  # prevents messing with input frame.
+    data = data.reset_index()  # prevents messing with input frame.
     try:
-        assert 1 <= data.ndim <= 2
-        if data.ndim == 2:
-            revisions = data['revision'].drop_duplicates()
-            assert len(revisions) == 1
-            revision = revisions.iloc[0]
-        else:
-            revision = data['revision']
+        revision = internals.extract_values(data, ['revision'])
     except Exception as err:
         log.warning('cannot find revision in group: %s\n%s', str(err), data)
         return None
-    downloader = _SvnDownloader('diff --git -c', svn_client=svn_client)
+    downloader = SvnDownloader('diff --git -c', svn_client=svn_client)
     try:
         downloaded = downloader.download(revision, None)
     except subprocess.CalledProcessError as err:

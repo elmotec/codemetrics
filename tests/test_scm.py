@@ -6,9 +6,12 @@
 import unittest
 import datetime as dt
 import textwrap
+import types
+import unittest.mock as mock
+
+import pandas as pd
 
 import codemetrics.scm as scm
-
 import tests.utils as utils
 
 
@@ -46,3 +49,24 @@ class TestLogEntriesToDataFrame(unittest.TestCase):
         abc,Agatha,2019-01-13T00:00:00.000000Z,dir/file.txt,,file,M
         abd,Agatha,2019-02-01T00:00:00.000000Z,dir/file.txt,,file,M'''))
         self.assertEqual(expected, actual)
+
+
+class ScmDownloadTestCase:
+    """Test interface of download functions.
+
+    Common test case for all SCM download functions. Inherit from it *and*
+    from unittest.TestCase.
+
+    See https://stackoverflow.com/questions/1323455/ for design rationale.
+
+    """
+
+    @mock.patch('codemetrics.internals.run', autospec=True,
+                return_value='dummy content')
+    def test_download_return_single_result(self, _):
+        """Makes sure the download function returns a DownloadResult."""
+        actual = self.download(pd.DataFrame({'revision': ['abcd'],
+                                             'path': ['/some/file']}))
+        expected = scm.DownloadResult('abcd', '/some/file', 'dummy content')
+        self.assertEqual(expected, actual)
+

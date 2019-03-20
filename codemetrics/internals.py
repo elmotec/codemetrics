@@ -130,3 +130,27 @@ def _check_columns(df: pd.DataFrame, names: typing.Sequence[str]) -> None:
             raise ValueError(f"'{expected}' column not found in input")
     return
 
+
+def extract_values(data: typing.Union[pd.DataFrame, pd.Series],
+                   columns: typing.Union[str, typing.Sequence[str]]) -> typing.Tuple:
+    """Extract the specific columns in data.
+
+    Args:
+        data: can be either a pandas.DataFrame-like object or pandas.Series.
+        columns: scalar str or column list for a frame, label for a series. Note
+        we Handles list of just one element as if it were just a scalar.
+
+
+    Returns:
+        tuple of the size of args with one value for each argument.
+
+    """
+    assert 0 < data.ndim <= 2, 'series or dataframe expected'
+    if data.ndim == 2:
+        s = data.iloc[0]
+    else:
+        s = data
+    if hasattr(columns, '__len__') and len(columns) == 1:
+        return s.loc[columns[0]]
+    return s.loc[columns]
+

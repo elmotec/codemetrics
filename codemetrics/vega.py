@@ -35,7 +35,7 @@ def build_hierarchy(data: pd.DataFrame,
         the id 0 is the root. The columns other than col_name are discarded.
 
     """
-    assert isinstance(data, pd.DataFrame), 'DataFrame expected'
+    assert data.ndim == 2, 'DataFrame-like object expected'
     if not col_name:
         col_name = data.columns[0]
     parent = get_parent.__name__
@@ -268,6 +268,6 @@ def vis_ages(df: pd.DataFrame,
 
     """
     df['days'] = df['age'].astype('int32')
-    df = df.rename(columns={'code': 'lines'})
-    return _vis_generic(df, size_column='lines', color_column='days',
+    df = df.rename(columns={'code': 'loc'})
+    return _vis_generic(df, size_column='loc', color_column='days',
                         colorscheme=colorscheme, width=width, height=height)

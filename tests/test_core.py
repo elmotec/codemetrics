@@ -82,6 +82,8 @@ class AgeReportTestCase(SimpleRepositoryFixture):
         self.get_now_patcher = mock.patch('codemetrics.internals.get_now',
                                           autospec=True, return_value=self.now)
         self.get_now = self.get_now_patcher.start()
+        self.expected = pd.DataFrame(data={'path': ['requirements.txt', 'stats.py'],
+                                           'age': [3.531817, 1.563889]})
 
     def tearDown(self):
         self.get_now_patcher.stop()
@@ -89,34 +91,13 @@ class AgeReportTestCase(SimpleRepositoryFixture):
     def test_ages(self):
         """The age report generates data based on the SCM log data"""
         actual = cm.get_ages(self.log)
-        expected = pd.read_csv(io.StringIO(textwrap.dedent('''
-        path,age
-        requirements.txt,3.531817
-        stats.py,1.563889
-        ''')))
-        self.assertEqual(expected, actual)
+        self.assertEqual(self.expected, actual)
 
     def test_ages_enriched_with_kind(self):
         """Allow to use additional columns in age report."""
-        actual = cm.get_ages(self.log, by=['path', 'kind'])[['path', 'kind', 'age']]
-        expected = pd.read_csv(io.StringIO(textwrap.dedent('''
-        path,kind,age
-        requirements.txt,file,3.531817
-        stats.py,file,1.563889
-        ''')))
-        self.assertEqual(expected, actual)
-
-    def test_age_report_enriched_with_component(self):
-        """Allow one to enrich the log before generating the age report."""
-        log = self.log
-        log['component'] = 'blah'
-        actual = cm.get_ages(log, by=['path', 'component'])
-        expected = pd.read_csv(io.StringIO(textwrap.dedent('''
-        path,component,age
-        requirements.txt,blah,3.531817
-        stats.py,blah,1.563889
-        ''')))
-        self.assertEqual(expected, actual)
+        actual = cm.get_ages(self.log, by=['path', 'kind'])[['path', 'age', 'kind']]
+        self.expected['kind'] = 'file'
+        self.assertEqual(self.expected, actual)
 
     def test_key_parameter(self):
         """Ignore files_df if nothing in it is relevant"""
@@ -126,6 +107,11 @@ class AgeReportTestCase(SimpleRepositoryFixture):
         component,kind,age
         kernel,file,1.563889''')))
         self.assertEqual(expected, actual)
+
+    def test_ages_when_revision_in_index(self):
+        """Handle when inpput has path in index."""
+        actual = cm.get_ages(self.log.set_index(['revision', 'path']))
+        self.assertEqual(self.expected, actual)
 
 
 class HotSpotReportTestCase(SimpleRepositoryFixture):
@@ -336,25 +322,36 @@ class ComplexityTestCase(DataFrameTestCase):
         def scm_download_file(_):
             return cm.scm.DownloadResult(rev, file_name, '')
 
-        actual = self.get_complexity(scm_download_file).reset_index()
+        actual = self.get_complexity(scm_download_file).\
+            reset_index().\
+            pipe(pd.Series.astype, 'str')
         columns = 'revision path function'.split() + \
                   cm.core._lizard_fields + \
-                  'file_tokens file_nloc'.split()
-        expected = pd.DataFrame(data={k: [] for k in columns})
+                   'file_tokens file_nloc'.split()
+        expected = pd.DataFrame(data={k: [] for k in columns}, dtype='object')
         self.assertEqual(expected, actual)
 
     @mock.patch('codemetrics.internals.run', autospec=True,
                 side_effect=[file_content_1, file_content_1, file_content_2])
     def test_analysis_with_groupby_svn_download(self, _):
         """Check interface with svn."""
-        actual = self.get_complexity(cm.svn.download_file)
+        actual = self.get_complexity(cm.svn.download)
         expected = pd.read_csv(io.StringIO(textwrap.dedent("""\
         revision,path,function,cyclomatic_complexity,nloc,token_count,name,long_name,start_line,end_line,top_nesting_level,length,fan_in,fan_out,general_fan_out,file_tokens,file_nloc
         r1,f.py,0,2,4,16,test,test( ),1,4,0,4,0,0,0,17,4
         r2,f.py,0,1,2,8,test,test( ),1,2,0,2,0,0,0,18,4
-        r2,f.py,0,1,2,8,other,other( ),4,5,0,2,0,0,0,18,4
+        r2,f.py,1,1,2,8,other,other( ),4,5,0,2,0,0,0,18,4
         """))).set_index(['revision', 'path', 'function'])
         self.assertEqual(expected, actual)
+
+    @mock.patch('codemetrics.internals.run', autospec=True,
+                return_value=None)
+    def test_analysis_empty_input_return_empty_output(self, _):
+        """Empty input returns and empty dataframe."""
+        self.log = self.log.iloc[:0]
+        actual = cm.get_complexity(self.log, download_func=cm.svn.download)
+        self.assertTrue(actual.empty)
+
 
 
 if __name__ == '__main__':

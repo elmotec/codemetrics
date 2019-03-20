@@ -202,14 +202,7 @@ def get_git_log(path: str = '.',
                              progress_bar=progress_bar)
 
 
-def _download_file(base_command, filename, revision) -> scm.DownloadResult:
-    """Download specific file and revision from git."""
-    command = f'{base_command} {revision}:{filename}'
-    content = internals.run(command)
-    yield scm.DownloadResult(revision, filename, content)
-
-
-class _GitFileDownloader:
+class _GitFileDownloader(scm.ScmDownloader):
     """Download files from Subversion."""
 
     def __init__(self, git_client: str = 'git'):
@@ -219,27 +212,17 @@ class _GitFileDownloader:
             git_client: name of git client.
 
         """
-        self.command = f'{git_client} show '
+        super().__init__(client=git_client, command='show')
 
-    def download_files(self,
-                       df: pd.DataFrame) -> typing.Sequence[scm.DownloadResult]:
-        """Downloads files from Subversion.
-
-        Args:
-            df: dataframe containing at least a (path, revision) columns to
-                identify the files to download.
-
-        Returns:
-             list of file locations.
-
-        """
-        for _, (filename, revision) in df[['path', 'revision']].iterrows():
-            yield from _download_file(self.command, filename, revision)
-        return
+    def _download(self, revision: str, path: str) -> scm.DownloadResult:
+        """Download specific file and revision from git."""
+        command = f'{self.command} {revision}:{path}'
+        content = internals.run(command)
+        return scm.DownloadResult(revision, path, content)
 
 
-def download_files(df: pd.DataFrame,
-                   git_client: str = 'git') -> typing.Sequence[scm.DownloadResult]:
+def download(data: pd.DataFrame,
+             git_client: str = 'git') -> scm.DownloadResult:
     """Downloads files from Subversion.
 
     Args:
@@ -252,4 +235,5 @@ def download_files(df: pd.DataFrame,
 
     """
     downloader = _GitFileDownloader(git_client=git_client)
-    yield from downloader.download_files(df)
+    revision, path = internals.extract_values(data, ['revision', 'path'])
+    return downloader.download(revision, path)

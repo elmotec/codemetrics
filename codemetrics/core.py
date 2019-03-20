@@ -45,15 +45,15 @@ def get_mass_change_sets(log, min_changes):
     return massive
 
 
-def get_ages(log: pd.DataFrame,
-             by: typing.Sequence[str] = None
+def get_ages(data: pd.DataFrame,
+             by: typing.Sequence[str] = None,
              ) -> pd.DataFrame:
     """Generate age of each file based on last change.
 
     Takes the output of a SCM log or just the date column and return get_ages.
 
     Args:
-        log: log or date column of log.
+        data: log or date column of log.
         by: keys used to group data before calculating the age.
             See pandas.DataFrame.groupby. Defaults to ['path'].
 
@@ -66,10 +66,9 @@ def get_ages(log: pd.DataFrame,
 
     """
     if by is None:
-        excluded = {fd for fd in scm.LogEntry.__slots__} - {'path'}
-        by = [col for col in log.columns if col not in excluded]
+        by = ['path']
     now = pd.to_datetime(internals.get_now(), utc=True)
-    rv = log[by + ['date']].groupby(by).max().reset_index()
+    rv = data.groupby(by)['date'].max().reset_index()
     rv['age'] = (now - pd.to_datetime(rv['date'], utc=True))
     rv['age'] /= pd.Timedelta(1, unit='D')
     return rv.drop(columns=['date'])
@@ -185,7 +184,7 @@ def guess_components(paths, stop_words=None, n_clusters=8):
 # Exclude the parameters field for now.
 _lizard_fields = [fld for fld in vars(lizard.FunctionInfo('', '')).keys()
                   if fld not in ['filename', 'parameters']]
-_complexity_fields = ['function'] + _lizard_fields + 'file_tokens file_nloc'.split()
+_complexity_fields = _lizard_fields + 'file_tokens file_nloc'.split()
 
 
 def get_complexity(group: typing.Union[pd.DataFrame, pd.Series],
@@ -209,27 +208,26 @@ def get_complexity(group: typing.Union[pd.DataFrame, pd.Series],
         >>> import codemetrics as cm
         >>> log = cm.get_git_log()
         >>> log.groupby(['revision', 'path']).apply(get_complexity,
-        ...     download_func=cm.git.download_file)
+        ...     download_func=cm.git.download)
 
     .. _lizard.analyze: https://github.com/terryyin/lizard
 
     """
     count = 0
+    if len(group) == 0:
+        internals.log.info('empty group %s', group)
+        return pd.DataFrame({k: [] for k in _complexity_fields})
     download = download_func(group)
     path = download.path
     content = download.content
     info = lizard.analyze_file.analyze_source_code(path, content)
+    df = pd.DataFrame(columns=_lizard_fields)
     if info.function_list:
         df = pd.DataFrame.from_records(
                 [vars(d) for d in info.function_list],
                 columns=_lizard_fields)
-        df['file_tokens'] = info.token_count
-        df['file_nloc'] = info.nloc
-        df['function'] = count
-        count += 1
-    else:
-        df = pd.DataFrame({k: [] for k in _complexity_fields})
-    # For consistency with the input.
-    return df.set_index('function')
+    df['file_tokens'] = info.token_count
+    df['file_nloc'] = info.nloc
+    return df.rename_axis('function')
 
 
