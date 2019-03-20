@@ -2,7 +2,13 @@
 History
 =======
 
-0.8.1 (2019-02-26)
+0.9 (2019-03-19)
+----------------
+
+* Started changing interfaces to leverage apply and groupby.
+* Added lines added/removed for Subversion.
+
+0.8.2 (2019-02-26)
 ------------------
 
 * Added svn.get_diff_stats to retrieve line changes stats per diff.
