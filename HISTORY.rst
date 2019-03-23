@@ -2,7 +2,7 @@
 History
 =======
 
-0.9.1 (2019-03-?)
+0.9.1 (2019-03-23)
 ----------------
 * Fixed retrieval of added and removed lines when there are spaces in a file name.
 * Fixed indexed input in `get_mass_changes`
