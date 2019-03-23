@@ -42,7 +42,8 @@ extensions = [
     'sphinx.ext.viewcode',
     'sphinx.ext.napoleon',
     'sphinx_autodoc_typehints',
-    'sphinx.ext.todo'
+    'sphinx.ext.todo',
+    'sphinx.ext.autosummary',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -166,3 +167,8 @@ texinfo_documents = [
 ]
 
 todo_include_todos = True
+
+# When backquotes references are specified without explicit target, let sphinx
+# figure the best match.
+# See also https://www.sphinx-doc.org/en/1.6/markup/inline.html
+default_role = 'any'

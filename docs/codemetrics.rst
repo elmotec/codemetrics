@@ -1,5 +1,5 @@
-codemetrics API
-===============
+API
+===
 
 Getting useful data from your source control management tool is really a 2 steps process: first
 you need to get the log entries (e.g. ``svn log`` or ``git log``) as a pandas.DataFrame, then process

@@ -211,8 +211,8 @@ def get_svn_log(path: str = '.',
 
     Example::
 
-        >>> last_year = datetime.datetime.now() - datetime.timedelta(365)
-        >>> log_df = cm.svn.get_svn_log(path='src', after=last_year)
+        last_year = datetime.datetime.now() - datetime.timedelta(365)
+        log_df = cm.svn.get_svn_log(path='src', after=last_year)
 
     """
     collector = _SvnLogCollector(svn_client=svn_client)
@@ -275,21 +275,13 @@ def get_diff_stats(data: pd.DataFrame,
 
     Example::
 
-        >>> import pandas as pd
-        >>> import codemetrics as cm
-        >>> log = cm.get_svn_log().set_index(['revision', 'path'])
-        >>> log.loc[:, ['added', 'removed']] = log.reset_index().\
-                                                groupby('revision').\
-                                                apply(cm.svn.get_diff_stats,
-                                                      chunks=False)
-        >>> log[['added', 'removed']]
-                                        added  removed
-        revision path
-        1018     estimate/stats.py       13.0     11.0
-                 requirements.txt         1.0      0.0
-        1022     estimate/cmdline.py      2.0      2.0
-        1027     estimate                 NaN      NaN
-        ...
+        import pandas as pd
+        import codemetrics as cm
+        log = cm.get_svn_log().set_index(['revision', 'path'])
+        log.loc[:, ['added', 'removed']] = log.reset_index().\\
+                                            groupby('revision').\\
+                                            apply(cm.svn.get_diff_stats,
+                                            chunks=False)
 
     """
     data = data.reset_index()  # prevents messing with input frame.
