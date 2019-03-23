@@ -13,7 +13,7 @@ import sklearn.feature_extraction.text
 from . import internals
 
 __all__ = [
-    'get_mass_change_sets',
+    'get_mass_changes',
     'get_ages',
     'get_hot_spots',
     'get_co_changes',
@@ -22,26 +22,37 @@ __all__ = [
 ]
 
 
-def get_mass_change_sets(log, min_changes):
-    """Extract mass change sets from the SCM log data frame.
+def get_mass_changes(log: pd.DataFrame,
+                     min_path: int=None,
+                     max_changes_per_path: float=None) -> pd.DataFrame:
+    """Extract mass changesets from the SCM log data frame.
 
     Calculate the number of files changed by each revision and extract that
     list according to the threshold.
 
     Args:
-        log: SCM log data.
-        min_changes: threshold of changes above which a revision is included in the output.
+        log: SCM log data is expected to contain at least revision, added,
+            removed, and path columns.
+        min_path: threshold for the number of files changed to consider the
+            revision a mass change.
+        max_changes_per_path: threshold for the number of changed lines
+            (added + removed) per file that changed.
 
     Returns:
         revisions that had more files changed than the threshold.
 
     """
-    by_rev = log[['revision', 'path']].groupby('revision').count()
-    by_rev.rename(columns={'path': 'path_count'}, inplace=True)
-    by_rev.reset_index(inplace=True)
-    massive = pd.merge(by_rev[by_rev['path_count'] > min_changes],
-                       log[['revision', 'message', 'author']].drop_duplicates())
-    return massive
+    data = log.reset_index().copy()[['revision', 'path', 'added', 'removed']]
+    data['changes'] = data['added'] + data['removed']
+    data = data[['revision', 'path', 'changes']].\
+        groupby('revision', as_index=False).\
+        agg({'path': 'count', 'changes': 'sum'})
+    data['changes_per_path'] = data['changes'] / data['path']
+    if min_path is not None:
+        data = data[data['path'] >= min_path]
+    if max_changes_per_path is not None:
+        data = data[data['changes_per_path'] <= max_changes_per_path]
+    return data
 
 
 def get_ages(data: pd.DataFrame,
@@ -204,10 +215,10 @@ def get_complexity(group: typing.Union[pd.DataFrame, pd.Series],
 
     Example::
 
-        >>> import codemetrics as cm
-        >>> log = cm.get_git_log()
-        >>> log.groupby(['revision', 'path']).apply(get_complexity,
-        ...     download_func=cm.git.download)
+        import codemetrics as cm
+        log = cm.get_git_log()
+        log.groupby(['revision', 'path']).\
+            apply(get_complexity, download_func=cm.git.download)
 
     .. _lizard.analyze: https://github.com/terryyin/lizard
 

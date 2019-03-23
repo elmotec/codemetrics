@@ -23,10 +23,10 @@ class SimpleRepositoryFixture(DataFrameTestCase):
     @staticmethod
     def get_log_df():
         csv_data = io.StringIO(textwrap.dedent('''
-        revision,author,date,textmods,kind,action,propmods,path,message
-        1016,elmotec,2018-02-26T10:28:00Z,true,file,M,false,stats.py,modified again
-        1018,elmotec,2018-02-24T11:14:11Z,true,file,M,false,stats.py,modified
-        1018,elmotec,2018-02-24T11:14:11Z,true,file,M,false,requirements.txt,modified'''))
+        revision,author,date,textmods,kind,action,propmods,path,message,added,removed
+        1016,elmotec,2018-02-26T10:28:00Z,true,file,M,false,stats.py,modified again,1,2
+        1018,elmotec,2018-02-24T11:14:11Z,true,file,M,false,stats.py,modified,3,4
+        1018,elmotec,2018-02-24T11:14:11Z,true,file,M,false,requirements.txt,modified,5,6'''))
         date_parser = (lambda d: dt.datetime.strptime(d, '%Y-%m-%dT%H:%M:%SZ').
                        replace(tzinfo=dt.timezone.utc))
         df = pd.read_csv(csv_data, parse_dates=['date'],
@@ -56,21 +56,40 @@ class SimpleRepositoryFixture(DataFrameTestCase):
         self.files = self.get_files_df()
 
 
-class RepositoryTestCase(SimpleRepositoryFixture):
+class GetMassChangesTestCase(SimpleRepositoryFixture):
     """Test non-report features."""
+
+    def setUp(self):
+        """Sets up tests"""
+        super().setUp()
+        self.log = SimpleRepositoryFixture.get_log_df()
+        self.expected = pd.read_csv(
+            io.StringIO(textwrap.dedent('''
+            revision,path,changes,changes_per_path
+            1016,1,3,3.0
+            1018,2,18,9.0
+            ''')))
 
     def test_get_mass_changes(self):
         """Retrieve mass changes easily."""
-        log = SimpleRepositoryFixture.get_log_df()
-        threshold = int(log[['revision', 'path']].groupby('revision').
-                        count().quantile(.5))
-        self.assertEqual(threshold, 1)
-        actual = cm.get_mass_change_sets(log, threshold)
-        expected = pd.read_csv(io.StringIO(textwrap.dedent('''
-        revision,path_count,message,author
-        1018,2,modified,elmotec
-        ''')))
-        self.assertEqual(expected, actual)
+        actual = cm.get_mass_changes(self.log, min_path=2)
+        self.assertEqual(self.expected.query("revision == '1018'"), actual)
+
+    def test_get_no_mass_changes(self):
+        """Handles case where no mass changes are found."""
+        actual = cm.get_mass_changes(self.log, min_path=100)
+        self.assertEqual((0, 4), actual.shape)
+
+    def test_get_mass_changes_on_indexed_log(self):
+        """The function works when the input log is indexed."""
+        log = self.log.set_index(['revision', 'path'])
+        actual = cm.get_mass_changes(log, min_path=2)
+        self.assertEqual(self.expected.query("revision == '1018'"), actual)
+
+    def test_get_mass_changes_on_changes_per_path(self):
+        """Retrieve mass changes using changes_per_path."""
+        actual = cm.get_mass_changes(self.log, max_changes_per_path=5.0)
+        self.assertEqual(self.expected.query("revision == '1016'"), actual)
 
 
 class AgeReportTestCase(SimpleRepositoryFixture):

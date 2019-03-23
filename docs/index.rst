@@ -8,6 +8,7 @@ Welcome to codemetrics's documentation!
    readme
    installation
    codemetrics
+   recipes
    contributing
    authors
    history

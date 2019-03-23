@@ -22,9 +22,9 @@
     :target: https://www.codacy.com/app/elmotec/codemetrics?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=elmotec/codemetrics&amp;utm_campaign=Badge_Grade
     :alt: Codacy
 
-============
-Code Metrics
-============
+===========
+codemetrics
+===========
 
 Mine your SCM for insight on your software. A work of love
 inspired by `Adam Tornhill`_'s books.

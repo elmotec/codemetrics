@@ -221,11 +221,11 @@ def vis_hot_spots(df: pd.DataFrame,
 
     Example::
 
-    >>> import codemetrics as cm
-    >>> from altair.vega.v4 import Vega
-    >>> hspots = cm.get_hot_spots(loc_df, log_df)
-    >>> desc = cm.vega.vis_hot_spots(hspots)
-    >>> Vega(desc)  # display the visualization inline in you notebook.
+        import codemetrics as cm
+        from altair.vega.v4 import Vega
+        hspots = cm.get_hot_spots(loc_df, log_df)
+        desc = cm.vega.vis_hot_spots(hspots)
+        Vega(desc)  # display the visualization inline in you notebook.
 
     See also:
         `Vega circle pack example`_
@@ -255,11 +255,11 @@ def vis_ages(df: pd.DataFrame,
 
     Example::
 
-    >>> import codemetrics as cm
-    >>> from altair.vega.v4 import Vega
-    >>> ages = cm.get_ages(loc_df, log_df)
-    >>> desc = cm.vega.vis_ages(ages)
-    >>> Vega(desc)  # display the visualization inline in you notebook.
+        import codemetrics as cm
+        from altair.vega.v4 import Vega
+        ages = cm.get_ages(loc_df, log_df)
+        desc = cm.vega.vis_ages(ages)
+        Vega(desc)  # display the visualization inline in you notebook.
 
     See also:
         `Vega circle pack example`_
