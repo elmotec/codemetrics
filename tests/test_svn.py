@@ -436,8 +436,6 @@ class SubversionGetDiffStatsTestCase(utils.DataFrameTestCase):
     def test_single_diff_line(self, run):
         """Direct call to cm.svn.get_diff_stats when svn returns single line"""
         run.return_value = textwrap.dedent('''
-        Index: connect_jupyter_on_desktop1.sh
-        ===================================================================
         diff --git a/estimate/connect_jupyter_on_desktop1.sh b/estimate/connect_jupyter_on_desktop1.sh
         new file mode 100644
         --- a/estimate/connect_jupyter_on_desktop1.sh   (nonexistent)
@@ -449,6 +447,24 @@ class SubversionGetDiffStatsTestCase(utils.DataFrameTestCase):
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
         path,chunk,first,last,added,removed
         connect_jupyter_on_desktop1.sh,0,1,1,1,0
+        ''')), index_col=['path', 'chunk'])
+        self.assertEqual(expected, actual)
+
+    @mock.patch('codemetrics.internals.run', autospec=True)
+    def test_handle_files_with_spaces_in_name(self, run):
+        """Files that have spaces in the name are handled correctly."""
+        run.return_value = textwrap.dedent('''
+        diff --git a/dir/contrib/file.py b/dir/contrib/file.py
+        new file mode 100644
+        --- a/estimate/contrib/file with spaces.py        (nonexistent)
+        +++ b/estimate/contrib/file with spaces.py        (revision 756)
+        @@ -0,0 +1,1 @@
+        +#!/usr/bin/env python
+        ''')
+        actual = cm.svn.get_diff_stats(self.log)
+        expected = pd.read_csv(io.StringIO(textwrap.dedent('''
+        path,chunk,first,last,added,removed
+        contrib/file with spaces.py,0,1,2,1,0
         ''')), index_col=['path', 'chunk'])
         self.assertEqual(expected, actual)
 
