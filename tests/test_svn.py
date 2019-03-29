@@ -468,6 +468,25 @@ class SubversionGetDiffStatsTestCase(utils.DataFrameTestCase):
         ''')), index_col=['path', 'chunk'])
         self.assertEqual(expected, actual)
 
+    @mock.patch('codemetrics.internals.run', autospec=True)
+    def test_deleted_files(self, run):
+        """Files that were deleted."""
+        run.return_value = textwrap.dedent('''
+        diff --git a/estimate/alembic-prod.ini b/estimate/alembic-prod.ini
+        deleted file mode 100644
+        --- a/estimate/alembic-prod.ini (revision 1035)
+        +++ b/estimate/alembic-prod.ini (nonexistent)
+        @@ -1,50 +0,0 @@
+        -# A generic, single database configuration.
+        -
+        ''')
+        actual = cm.svn.get_diff_stats(self.log)
+        expected = pd.read_csv(io.StringIO(textwrap.dedent('''
+        path,chunk,first,last,added,removed
+        alembic-prod.ini,0,0,0,0,2
+        ''')), index_col=['path', 'chunk'])
+        self.assertEqual(expected, actual)
+
 
 if __name__ == '__main__':
     unittest.main()
