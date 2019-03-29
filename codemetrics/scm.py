@@ -199,7 +199,8 @@ def parse_diff_as_tuples(download: DownloadResult) -> typing.Generator[ChunkStat
     curr_chunk, curr_path, count = None, None, 0
     for line in download.content.split('\n'):
         file_match = re.match(r'^\+\+\+ b/[^\s/]+/(.*\S)\s+\(revision \d+\)',
-                              line)
+        fm_re = r'^\+\+\+ b/[^\s/]+/(.*\S)\s+\((revision \d+|nonexistent)\)'
+        file_match = re.match(fm_re, line)
         if file_match is not None:
             if curr_chunk is not None:
                 yield curr_chunk
