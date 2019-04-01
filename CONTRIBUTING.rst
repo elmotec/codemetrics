@@ -119,11 +119,12 @@ A reminder for the maintainers on how to deploy.
 Make sure all your changes are committed (including an entry in HISTORY.rst).
 Then run::
 
-    $ bump2version patch # possible: major / minor / patch
+    $ python setup.py test  # there should be no errors.
+    $ bump2version patch  # possible: major / minor / patch.
     $ git push
     $ git push --tags
-    $ python setup.py sdist  # will generate new .tar.gz in dist folder
-    $ twine check dist/<dist>.tar.gz
+    $ python setup.py sdist  # will generate new .tar.gz in dist folder.
+    $ twine check dist/<dist>.tar.gz  # status should be Passed
     $ twine upload dist/<dist>.tar.gz
 
 Travis will then deploy to PyPI if tests pass.
