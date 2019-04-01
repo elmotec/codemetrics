@@ -350,10 +350,10 @@ class SubversionGetDiffStatsTestCase(utils.DataFrameTestCase):
     ''')), index_col='index', dtype='str')
     expected = pd.read_csv(io.StringIO(textwrap.dedent('''\
     revision,path,chunk,first,last,added,removed
-    1014,estimate/__init__.py,0,8,15,1,2
+    1014,estimate/__init__.py,0,8,15,1,1
     1014,estimate/mktdata.py,0,1042,1049,1,1
     1014,estimate/mktdata.py,1,1086,1096,4,1
-    1014,estimate/mktdata.py,2,1193,1207,3,13
+    1014,estimate/mktdata.py,2,1193,1207,3,12
     1014,setup.py,0,22,29,1,1
     ''')), dtype={'revision': 'str', 'path': 'str'})
 
@@ -436,12 +436,14 @@ class SubversionGetDiffStatsTestCase(utils.DataFrameTestCase):
     def test_single_diff_line(self, run):
         """Direct call to cm.svn.get_diff_stats when svn returns single line"""
         run.return_value = textwrap.dedent('''
+        Index: connect_jupyter_on_desktop1.sh
+        ===================================================================
         diff --git a/estimate/connect_jupyter_on_desktop1.sh b/estimate/connect_jupyter_on_desktop1.sh
         new file mode 100644
         --- a/estimate/connect_jupyter_on_desktop1.sh   (nonexistent)
         +++ b/estimate/connect_jupyter_on_desktop1.sh   (revision 899)
         @@ -0,0 +1 @@
-        +ssh -NL 8888:localhost:8888 jlecomte@desktop1
+        +ssh -NL 8888:localhost:8888 elmotec@desktop1
         ''')
         actual = cm.svn.get_diff_stats(self.log)
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
@@ -454,6 +456,8 @@ class SubversionGetDiffStatsTestCase(utils.DataFrameTestCase):
     def test_handle_files_with_spaces_in_name(self, run):
         """Files that have spaces in the name are handled correctly."""
         run.return_value = textwrap.dedent('''
+        Index: contrib/file with spaces.py
+        ===================================================================
         diff --git a/dir/contrib/file.py b/dir/contrib/file.py
         new file mode 100644
         --- a/estimate/contrib/file with spaces.py        (nonexistent)
@@ -472,6 +476,8 @@ class SubversionGetDiffStatsTestCase(utils.DataFrameTestCase):
     def test_deleted_files(self, run):
         """Files that were deleted."""
         run.return_value = textwrap.dedent('''
+        Index: alembic-prod.ini
+        ===================================================================
         diff --git a/estimate/alembic-prod.ini b/estimate/alembic-prod.ini
         deleted file mode 100644
         --- a/estimate/alembic-prod.ini (revision 1035)
@@ -484,6 +490,30 @@ class SubversionGetDiffStatsTestCase(utils.DataFrameTestCase):
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
         path,chunk,first,last,added,removed
         alembic-prod.ini,0,0,0,0,2
+        ''')), index_col=['path', 'chunk'])
+        self.assertEqual(expected, actual)
+
+    @mock.patch('codemetrics.internals.run', autospec=True)
+    def test_use_index_to_id_file_in_branches(self, run):
+        """Handles a weird bug in Subversion
+
+        Branch name is dropped with --git option in the diff command. So we
+        must rely on the Index: line above. It seems simpler anyway.
+
+        """
+        run.return_value = textwrap.dedent('''
+        Index: somedir/file.py
+        ===================================================================
+        diff --git a/project/branches/somedir/file.txt b/project/branches/somedir/file.txt
+        --- a/project/branches/somedir/file.py       (revision 1234)
+        +++ b/project/branches/somedir/file.py       (revision 1235)
+        @@ -0,0 +1,1 @@
+        +#!/usr/bin/env python
+        ''')
+        actual = cm.svn.get_diff_stats(self.log)
+        expected = pd.read_csv(io.StringIO(textwrap.dedent('''
+        path,chunk,first,last,added,removed
+        somedir/file.py,0,1,2,1,0
         ''')), index_col=['path', 'chunk'])
         self.assertEqual(expected, actual)
 
