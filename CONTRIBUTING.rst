@@ -123,6 +123,7 @@ Then run::
     $ git push
     $ git push --tags
     $ python setup.py sdist  # will generate new .tar.gz in dist folder
+    $ twine check dist/<dist>.tar.gz
     $ twine upload dist/<dist>.tar.gz
 
 Travis will then deploy to PyPI if tests pass.
