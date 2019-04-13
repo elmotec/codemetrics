@@ -14,10 +14,6 @@
     :target: https://ci.appveyor.com/project/elmotec/codemetrics
     :alt: AppVeyor status
 
-.. image:: https://img.shields.io/pypi/dm/codemetrics.svg
-    :alt: PyPi
-    :target: https://pypi.python.org/pypi/codemetrics
-
 .. image:: https://img.shields.io/librariesio/release/pypi/codemetrics.svg?label=libraries.io
     :alt: Libraries.io dependency status for latest release
     :target: https://libraries.io/pypi/codemetrics
