@@ -1,0 +1,12 @@
+environment:
+    matrix:
+        - PYTHON: Python36
+        - PYTHON: Python37
+
+install:
+    - C:\%PYTHON%\python.exe setup.py install
+
+build: off
+
+test_script:
+    - C:\%PYTHON%\python.exe setup.py test

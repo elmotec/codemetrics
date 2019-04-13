@@ -1,26 +1,35 @@
 .. image:: https://img.shields.io/pypi/v/codemetrics.svg
-    :target: https://pypi.org/pypi/codemetrics/
+    :target: https://pypi.python.org/pypi/codemetrics/
     :alt: PyPi version
 
 .. image:: https://img.shields.io/pypi/pyversions/codemetrics.svg
-    :target: https://pypi.org/pypi/codemetrics/
+    :target: https://pypi.python.org/pypi/codemetrics/
     :alt: Python compatibility
 
-.. image:: https://img.shields.io/travis/elmotec/codemetrics.svg
+.. image:: https://img.shields.io/travis/elmotec/codemetrics.svg?label=Travis
     :target: https://travis-ci.org/elmotec/codemetrics
-    :alt: Build Status
+    :alt: Travis status
 
-.. image:: https://img.shields.io/readthedocs/codemetrics.svg
-    :target: https://codemetrics.readthedocs.org/
-    :alt: Documentation
+.. image:: https://img.shields.io/appveyor/ci/elmotec/codemetrics.svg?label=AppVeyor
+    :target: https://ci.appveyor.com/project/elmotec/codemetrics
+    :alt: AppVeyor status
 
-.. image:: https://coveralls.io/repos/github/elmotec/codemetrics/badge.svg?branch=master
-    :target: https://coveralls.io/github/elmotec/codemetrics?branch=master
-    :alt: Test coverage
+.. image:: https://img.shields.io/pypi/dm/codemetrics.svg
+    :alt: PyPi
+    :target: https://pypi.python.org/pypi/codemetrics
 
-.. image:: https://api.codacy.com/project/badge/Grade/dd4a11eb66674b3bbe518d8f829b6234
-    :target: https://www.codacy.com/app/elmotec/codemetrics?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=elmotec/codemetrics&amp;utm_campaign=Badge_Grade
+.. image:: https://img.shields.io/librariesio/release/pypi/codemetrics.svg?label=libraries.io
+    :alt: Libraries.io dependency status for latest release
+    :target: https://libraries.io/pypi/codemetrics
+
+.. image:: https://coveralls.io/repos/elmotec/codemetrics/badge.svg
+    :target: https://coveralls.io/r/elmotec/codemetrics
+    :alt: Coverage
+
+.. image:: https://img.shields.io/codacy/grade/dd4a11eb66674b3bbe518d8f829b6234.svg
+    :target: https://www.codacy.com/app/elmotec/codemetrics/dashboard
     :alt: Codacy
+
 
 ===========
 codemetrics
