@@ -22,6 +22,10 @@
     :alt: Libraries.io dependency status for latest release
     :target: https://libraries.io/pypi/codemetrics
 
+.. image:: https://img.shields.io/readthedocs/codemetrics.svg
+    :target: https://codemetrics.readthedocs.org/
+    :alt: Documentation
+
 .. image:: https://coveralls.io/repos/elmotec/codemetrics/badge.svg
     :target: https://coveralls.io/r/elmotec/codemetrics
     :alt: Coverage
