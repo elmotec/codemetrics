@@ -2,6 +2,13 @@
 History
 =======
 
+0.9.4 (2019-09-02)
+------------------
+* Fixed test_core following https://github.com/pandas-dev/pandas/pull/24748 (Pandas 0.25.X)
+* Added script :ref:`cm_func_stats` that generates statistics on the function passed as argument.
+* Added appveyor support for Windows.
+* Documentation.
+
 0.9.3 (2019-04-01)
 ------------------
 * Fixed retrieval of added and removed lines when there are spaces in a file name.
