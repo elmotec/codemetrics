@@ -351,10 +351,13 @@ class ComplexityTestCase(DataFrameTestCase):
         self.assertEqual(expected, actual)
 
     @mock.patch('codemetrics.internals.run', autospec=True,
-                side_effect=[file_content_1, file_content_1, file_content_2])
-    def test_analysis_with_groupby_svn_download(self, _):
+                side_effect=[file_content_1, file_content_2])
+    def test_analysis_with_groupby_svn_download(self, run_):
         """Check interface with svn."""
         actual = self.get_complexity(cm.svn.download)
+        expected_calls = [mock.call('svn cat -r r1 f.py'),
+                          mock.call('svn cat -r r2 f.py')]
+        self.assertEqual(expected_calls, run_.call_args_list)
         expected = pd.read_csv(io.StringIO(textwrap.dedent("""\
         revision,path,function,cyclomatic_complexity,nloc,token_count,name,long_name,start_line,end_line,top_nesting_level,length,fan_in,fan_out,general_fan_out,file_tokens,file_nloc
         r1,f.py,0,2,4,16,test,test( ),1,4,0,4,0,0,0,17,4
