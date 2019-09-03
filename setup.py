@@ -36,7 +36,7 @@ setuptools.setup(
     name="codemetrics",
     description='SCM mining utility classes',
     long_description=readme + '\n\n' + history,
-    version='0.9.3',
+    version='0.9.4',
     author="Elmotec",
     author_email="elmotec@gmx.com",
     license="MIT",
