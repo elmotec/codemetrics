@@ -3,8 +3,12 @@
 '''
 Lizard extension to count occurences and span of tokens within a function.
 
-:seealso: https://www.fluentcpp.com/2018/10/23/word-counting-span/
-See https://github.com/terryyin/lizard/tree/master/lizard_ext
+:seealso:
+https://www.fluentcpp.com/2018/10/23/word-counting-span/
+https://github.com/terryyin/lizard/tree/master/lizard_ext
+
+Note the style of this module is consistent with the lizard project as we may
+move it there if it adds value.
 
 '''
 
