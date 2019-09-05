@@ -73,6 +73,7 @@ class SubprocessRunTest(unittest.TestCase):
         actual = internals.run(self.cmdline, errors='jump')
         self.assertEqual(expected, actual)
 
+<<<<<<< HEAD
     @mock.patch('subprocess.run',
                 side_effect=subprocess.CalledProcessError(1, 'command',
                                                           stderr='the error'))
@@ -91,6 +92,22 @@ class SubprocessRunTest(unittest.TestCase):
             internals.run('invalid-command')
         self.assertEqual('failed to execute invalid-command: file not found',
                          str(context.exception))
+=======
+    def test_error_shows_in_exception(self):
+        """Test can capture stderr from exception"""
+        msg = "this is the error"
+        cmd = f'''python -c "import sys; sys.stderr.write('{msg}'); sys.exit(1)'''
+        with self.assertRaises(ValueError) as context:
+            internals.run(cmd)
+        self.assertIn(f'failed to execute {cmd}: {msg}', str(context.exception))
+
+    def test_diagnostic_when_file_does_not_exist(self):
+        """Diagnostic when the file is not found should also be accessible."""
+        with self.assertRaises(ValueError) as context:
+            internals.run('invalid-command')
+        self.assertIn('failed to execute invalid-command: file not found',
+                      str(context.exception))
+>>>>>>> Factored common logic between git and svn
 
 
 class ExtractValuesTestCase(unittest.TestCase):
