@@ -11,6 +11,7 @@ import typing
 
 import pandas as pd
 
+
 log = logging.getLogger('codemetrics')
 log.addHandler(logging.NullHandler())
 
@@ -64,7 +65,8 @@ def check_run_in_root(path):
     raise ValueError(f'{candidate} does not appear to be a git or svn root')
 
 
-def run(command, **kwargs):
+def run(command: str,
+        **kwargs) -> str:
     """Execute command passed as argument and return output.
 
     Forwards the call to `subprocess.run`.
@@ -76,7 +78,10 @@ def run(command, **kwargs):
         **kwargs: additional kwargs are passed to subprocess.run().
 
     Returns:
-        Output of the command long single string
+        Output of the command.
+
+    Raise:
+        ValueError if the command is not executed properly.
 
     Note that if some process may want a list of string, others may need one
     long string so the eventual split call is pushed to the caller.
@@ -87,9 +92,15 @@ def run(command, **kwargs):
     if 'errors' not in kwargs:
         kwargs['errors'] = 'ignore'
     log.info(command)
-    result = subprocess.run(command, check=True,
-                            stdout=subprocess.PIPE,
-                            **kwargs)
+    try:
+        result = subprocess.run(command, check=True,
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE,
+                                **kwargs)
+    except subprocess.CalledProcessError as err:
+        raise ValueError(f'failed to execute {command}: {err.stderr}')
+    except FileNotFoundError as err:
+        raise ValueError(f'failed to execute {command}: file not found')
     return result.stdout  # No split. See __doc__.
 
 

@@ -196,6 +196,7 @@ def get_git_log(path: str = '.',
         log_df = cm.git.get_git_log(path='src', after=last_year)
 
     """
+    scm._default_download_func = download
     collector = _GitLogCollector(git_client=git_client, _pdb=_pdb)
     return collector.get_log(after=after, before=before, path=path,
                              progress_bar=progress_bar)

@@ -45,7 +45,7 @@ class SubprocessRunTest(unittest.TestCase):
         """Test default arguments"""
         internals.run(self.cmdline)
         sprun.assert_called_with(self.cmdline, check=True, errors='ignore',
-                                 stdout=-1)
+                                 stdout=-1, stderr=-1)
 
     @mock.patch('subprocess.run', autospec=True)
     def test_ignore_encoding_errors(self, sprun):
@@ -71,15 +71,24 @@ class SubprocessRunTest(unittest.TestCase):
         actual = internals.run(self.cmdline, errors='jump')
         self.assertEqual(expected, actual)
 
-    @mock.patch('subprocess.run', autospec=True)
-    def test_error_shows_in_log(self, sprun):
-        """Test can capture stderr from exception"""
-        exception = subprocess.CalledProcessError(1, cmd=self.cmdline,
-                                                  stderr='some error')
-        sprun.side_effect = [exception]
-        with self.assertRaises(subprocess.CalledProcessError) as cm:
-            internals.run(self.cmdline)
-        self.assertEqual('some error', cm.exception.stderr)
+    @mock.patch('subprocess.run',
+                side_effect=subprocess.CalledProcessError(1, 'command',
+                                                          stderr='the error'))
+    def test_error_shows_in_exception(self, _):
+        """internals.run raises ValueError and captures stderr from exception"""
+        cmd = 'valid-command'
+        with self.assertRaises(ValueError) as context:
+            internals.run(cmd)
+        self.assertEqual(f'failed to execute {cmd}: the error',
+                         str(context.exception))
+
+    @mock.patch('subprocess.run', side_effect=FileNotFoundError())
+    def test_diagnostic_when_file_does_not_exist(self, _):
+        """internals.run raises ValueError and captures stderr from exception"""
+        with self.assertRaises(ValueError) as context:
+            internals.run('invalid-command')
+        self.assertEqual('failed to execute invalid-command: file not found',
+                         str(context.exception))
 
 
 class ExtractValuesTestCase(unittest.TestCase):

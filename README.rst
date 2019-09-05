@@ -6,13 +6,13 @@
     :target: https://pypi.python.org/pypi/codemetrics/
     :alt: Python compatibility
 
-.. image:: https://img.shields.io/travis/elmotec/codemetrics.svg?label=Travis
+.. image:: https://img.shields.io/travis/elmotec/codemetrics/master?label=Travis
     :target: https://travis-ci.org/elmotec/codemetrics
-    :alt: Travis status
+    :alt: Travis master status
 
-.. image:: https://img.shields.io/appveyor/ci/elmotec/codemetrics.svg?label=AppVeyor
+.. image:: https://img.shields.io/appveyor/ci/elmotec/codemetrics/master?label=AppVeyor
     :target: https://ci.appveyor.com/project/elmotec/codemetrics
-    :alt: AppVeyor status
+    :alt: AppVeyor master status
 
 .. image:: https://img.shields.io/librariesio/release/pypi/codemetrics.svg?label=libraries.io
     :alt: Libraries.io dependency status for latest release

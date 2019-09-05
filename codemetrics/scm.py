@@ -14,6 +14,9 @@ import tqdm
 
 from . import pbar
 
+# Default download function will be set by cm.git or cm.svn on checkout.
+_default_download_func = None
+
 
 class LogEntry:
     """Data structure to hold git or svn data entries."""

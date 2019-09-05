@@ -11,6 +11,7 @@ import sklearn.cluster
 import sklearn.feature_extraction.text
 
 from . import internals
+from . import scm
 
 __all__ = [
     'get_mass_changes',
@@ -198,7 +199,7 @@ _complexity_fields = _lizard_fields + 'file_tokens file_nloc'.split()
 
 
 def get_complexity(group: typing.Union[pd.DataFrame, pd.Series],
-                   download_func: typing.Callable) -> pd.DataFrame:
+                   download_func: typing.Callable=None) -> pd.DataFrame:
     """Generate complexity information for files and revisions in dataframe.
 
     For each pair of (path, revision) in the input dataframe, analyze the code
@@ -226,6 +227,8 @@ def get_complexity(group: typing.Union[pd.DataFrame, pd.Series],
     if len(group) == 0:
         internals.log.info('empty group %s', group)
         return pd.DataFrame({k: [] for k in _complexity_fields})
+    if download_func is None:
+        download_func = scm._default_download_func
     download = download_func(group)
     path = download.path
     content = download.content
