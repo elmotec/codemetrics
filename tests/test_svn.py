@@ -342,7 +342,7 @@ class SubversionGetDiffStatsTestCase(utils.DataFrameTestCase):
     3,1014,setup.py
     ''')), index_col='index', dtype='str')
     expected = pd.read_csv(io.StringIO(textwrap.dedent('''\
-    revision,path,chunk,start_line,end_line,added,removed
+    revision,path,chunk,first,last,added,removed
     1014,estimate/__init__.py,0,8,15,1,1
     1014,estimate/mktdata.py,0,1042,1049,1,1
     1014,estimate/mktdata.py,1,1086,1096,4,1
@@ -421,7 +421,7 @@ class SubversionGetDiffStatsTestCase(utils.DataFrameTestCase):
         ''')
         actual = cm.svn.get_diff_stats(self.log)
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
-        path,chunk,start_line,end_line,added,removed
+        path,chunk,first,last,added,removed
         ''')), index_col=['path', 'chunk'])
         self.assertEqual(expected, actual)
 
@@ -440,7 +440,7 @@ class SubversionGetDiffStatsTestCase(utils.DataFrameTestCase):
         ''')
         actual = cm.svn.get_diff_stats(self.log)
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
-        path,chunk,start_line,end_line,added,removed
+        path,chunk,first,last,added,removed
         connect_jupyter_on_desktop1.sh,0,1,1,1,0
         ''')), index_col=['path', 'chunk'])
         self.assertEqual(expected, actual)
@@ -460,7 +460,7 @@ class SubversionGetDiffStatsTestCase(utils.DataFrameTestCase):
         ''')
         actual = cm.svn.get_diff_stats(self.log)
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
-        path,chunk,start_line,end_line,added,removed
+        path,chunk,first,last,added,removed
         contrib/file with spaces.py,0,1,2,1,0
         ''')), index_col=['path', 'chunk'])
         self.assertEqual(expected, actual)
@@ -481,7 +481,7 @@ class SubversionGetDiffStatsTestCase(utils.DataFrameTestCase):
         ''')
         actual = cm.svn.get_diff_stats(self.log)
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
-        path,chunk,start_line,end_line,added,removed
+        path,chunk,first,last,added,removed
         alembic-prod.ini,0,0,0,0,2
         ''')), index_col=['path', 'chunk'])
         self.assertEqual(expected, actual)
@@ -505,7 +505,7 @@ class SubversionGetDiffStatsTestCase(utils.DataFrameTestCase):
         ''')
         actual = cm.svn.get_diff_stats(self.log)
         expected = pd.read_csv(io.StringIO(textwrap.dedent('''
-        path,chunk,start_line,end_line,added,removed
+        path,chunk,first,last,added,removed
         somedir/file.py,0,1,2,1,0
         ''')), index_col=['path', 'chunk'])
         self.assertEqual(expected, actual)
