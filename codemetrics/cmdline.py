@@ -6,7 +6,7 @@ import click
 import sys
 
 import lizard
-from .lizard_ext.lizardtokencounts import LizardExtension, span
+from lizardtokencounts import LizardExtension, span
 
 import codemetrics as cm
 

@@ -14,6 +14,7 @@ import pandas as pd
 import lizard as lz
 
 import codemetrics as cm
+import codemetrics.scm as scm
 from tests.utils import DataFrameTestCase
 
 
@@ -294,7 +295,7 @@ class ComponentTestCase(SimpleRepositoryFixture):
         self.assertEqual(expected, actual)
 
 
-class ComplexityTestCase(DataFrameTestCase):
+class GetComplexityTestCase(DataFrameTestCase):
     """Test complexity analysis."""
 
     file_content_1 = textwrap.dedent('''\
@@ -366,13 +367,20 @@ class ComplexityTestCase(DataFrameTestCase):
         """))).set_index(['revision', 'path', 'function'])
         self.assertEqual(expected, actual)
 
-    @mock.patch('codemetrics.internals.run', autospec=True,
-                return_value=None)
+    @mock.patch('codemetrics.internals.run', autospec=True, return_value=None)
     def test_analysis_empty_input_return_empty_output(self, _):
         """Empty input returns and empty dataframe."""
         self.log = self.log.iloc[:0]
         actual = cm.get_complexity(self.log, download_func=cm.svn.download)
         self.assertTrue(actual.empty)
+
+    def test_use_default_download(self):
+        """When the default_download_func is defined, use it."""
+        download_func = mock.Mock(spec=cm.git.download,
+                                  return_value=scm.DownloadResult(1, '/', ''))
+        scm._default_download_func = download_func
+        _ = cm.get_complexity(self.log)
+        download_func.assert_called_with(self.log)
 
 
 if __name__ == '__main__':

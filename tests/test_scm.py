@@ -6,10 +6,12 @@
 import unittest
 import datetime as dt
 import textwrap
+import typing
 import unittest.mock as mock
 
 import pandas as pd
 
+import codemetrics.core as core
 import codemetrics.scm as scm
 import tests.utils as utils
 
@@ -71,4 +73,53 @@ class ScmDownloadTestCase:
                                              'path': ['/some/file']}))
         expected = scm.DownloadResult('abcd', '/some/file', 'dummy content')
         self.assertEqual(expected, actual)
+
+
+class GetLogTestCase:
+    """Test interface to get_log functions.
+
+    Common test case for all SCM get_log functions. Inherit from it *and* from
+    unittest.TestCase.
+
+    see also:
+        GetGitLogTestCase, SubversionTestCase
+
+    """
+    def setUp(self, get_log_func: typing.Callable, module) -> None:
+        """Set up common to all log getting test cases.
+
+        Adds hanlding of equality test for pandas.DataFrame and patches the
+        functions get_now for a specific date and check_run_in_root.
+
+        Args:
+            get_log_func: function that will retrieve the log from SCM tool.
+
+        """
+        utils.add_data_frame_equality_func(self)
+        self.get_log = get_log_func
+        self.module = module
+        self.now = dt.datetime(2018, 12, 6, 21, 0, tzinfo=dt.timezone.utc)
+        self.get_now_patcher = mock.patch('codemetrics.internals.get_now',
+                                          autospec=True, return_value=self.now)
+        self.get_now = self.get_now_patcher.start()
+        self.get_check_patcher = mock.patch('codemetrics.internals.check_run_in_root',
+                                            autospec=True)
+        self.check_run_in_root = self.get_check_patcher.start()
+        self.after = dt.datetime(2018, 12, 3, tzinfo=dt.timezone.utc)
+
+    def test_set_up_called(self):
+        """Makes sure GetLogTestCase.setUp() is called."""
+        self.assertIsNotNone(self.get_log)
+
+    @mock.patch('codemetrics.internals.run', autospec=True)
+    def test_get_log_updates_default_download_func(self, _):
+        """The SCM used to get the log updates the default download."""
+        self.get_log()
+        self.assertEqual(self.module.download, scm._default_download_func)
+
+    @mock.patch('codemetrics.internals.run', autospec=True)
+    def test_get_log_with_path(self, run_):
+        """get_log takes path into account."""
+        _ = self.get_log(path='my-path', after=self.after)
+        self.assertIn('my-path', str(run_.call_args[0][0]))
 

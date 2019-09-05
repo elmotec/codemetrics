@@ -45,7 +45,7 @@ class SubprocessRunTest(unittest.TestCase):
         """Test default arguments"""
         internals.run(self.cmdline)
         sprun.assert_called_with(self.cmdline, check=True, errors='ignore',
-                                 stdout=-1)
+                                 stdout=-1, stderr=-1)
 
     @mock.patch('subprocess.run', autospec=True)
     def test_ignore_encoding_errors(self, sprun):
@@ -71,15 +71,20 @@ class SubprocessRunTest(unittest.TestCase):
         actual = internals.run(self.cmdline, errors='jump')
         self.assertEqual(expected, actual)
 
-    @mock.patch('subprocess.run', autospec=True)
-    def test_error_shows_in_log(self, sprun):
+    def test_error_shows_in_exception(self):
         """Test can capture stderr from exception"""
-        exception = subprocess.CalledProcessError(1, cmd=self.cmdline,
-                                                  stderr='some error')
-        sprun.side_effect = [exception]
-        with self.assertRaises(subprocess.CalledProcessError) as cm:
-            internals.run(self.cmdline)
-        self.assertEqual('some error', cm.exception.stderr)
+        msg = "this is the error"
+        cmd = f'''python -c "import sys; sys.stderr.write('{msg}'); sys.exit(1)'''
+        with self.assertRaises(ValueError) as context:
+            internals.run(cmd)
+        self.assertIn(f'failed to execute {cmd}: {msg}', str(context.exception))
+
+    def test_diagnostic_when_file_does_not_exist(self):
+        """Diagnostic when the file is not found should also be accessible."""
+        with self.assertRaises(ValueError) as context:
+            internals.run('invalid-command')
+        self.assertIn('failed to execute invalid-command: file not found',
+                      str(context.exception))
 
 
 class ExtractValuesTestCase(unittest.TestCase):

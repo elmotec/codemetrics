@@ -77,25 +77,15 @@ def get_log():
     return retval
 
 
-class GitTestCase(unittest.TestCase):
+class GetGitLogTestCase(unittest.TestCase, test_scm.GetLogTestCase):
     """Given a BaseReport instance."""
 
     def setUp(self):
         """Prepare environment for the tests.
 
-        - Adds hanlding of equality test for pandas.DataFrame.
-        - Patches the function get_now for a specific date.
 
         """
-        utils.add_data_frame_equality_func(self)
-        self.now = dt.datetime(2018, 12, 6, 21, 0, tzinfo=dt.timezone.utc)
-        self.get_now_patcher = mock.patch('codemetrics.internals.get_now',
-                                          autospec=True, return_value=self.now)
-        self.get_now = self.get_now_patcher.start()
-        self.get_check_patcher = mock.patch('codemetrics.internals.check_run_in_root',
-                                            autospec=True)
-        self.check_run_in_root = self.get_check_patcher.start()
-        self.after = dt.datetime(2018, 12, 3, tzinfo=dt.timezone.utc)
+        test_scm.GetLogTestCase.setUp(self, cm.get_git_log, git)
 
     def tearDown(self):
         """Clean up."""

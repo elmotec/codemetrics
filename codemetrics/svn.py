@@ -17,6 +17,7 @@ import tqdm
 
 from . import internals
 from . import scm
+from . import svn
 from .internals import log
 
 
@@ -62,6 +63,7 @@ class _SvnLogCollector(scm._ScmLogCollector):
         super().__init__()
         self.svn_client = svn_client or 'svn'
         self.path = path
+        # FIXME: Can we get rid of _relative_url?
         self._relative_url = relative_url
 
     def update_urls(self):
@@ -195,7 +197,8 @@ def get_svn_log(path: str = '.',
                 after: dt.datetime = None,
                 before: dt.datetime = None,
                 progress_bar: tqdm.tqdm = None,
-                svn_client: str = 'svn') -> pd.DataFrame:
+                svn_client: str = 'svn',
+                relative_url: str = None) -> pd.DataFrame:
     """Entry point to retrieve svn log.
 
     Args:
@@ -204,6 +207,7 @@ def get_svn_log(path: str = '.',
         before: only get the log before time stamp. Defaults to now.
         progress_bar: tqdm.tqdm progress bar.
         svn_client: Subversion client executable. Defaults to svn.
+        relative_url: Subversion relative url (e.g. /project/trunk/).
 
     Returns:
         pandas.DataFrame with columns matching the fields of
@@ -215,7 +219,9 @@ def get_svn_log(path: str = '.',
         log_df = cm.svn.get_svn_log(path='src', after=last_year)
 
     """
-    collector = _SvnLogCollector(svn_client=svn_client)
+    scm._default_download_func = svn.download
+    collector = _SvnLogCollector(svn_client=svn_client,
+                                 relative_url=relative_url)
     return collector.get_log(path=path, after=after, before=before,
                              progress_bar=progress_bar)
 

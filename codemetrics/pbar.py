@@ -25,9 +25,9 @@ class ProgressBarAdapter:
         We can't really know how far we are in processing the SCM log so we
         use dates as an approximation.
 
-        If ascending is not specified, the value None is defaulted and the 
+        If ascending is not specified, the value None is defaulted and the
         class will try to figure it out on its own.
-        
+
         Args:
             progress_bar: underlying progress bar.
             after: start of days to cover. Must be tz-aware.
@@ -66,10 +66,10 @@ class ProgressBarAdapter:
 
     def update(self, current_datetime: dt.datetime):
         """Update the progress bar with current date.
-        
+
         Args:
             current_datetime: current date being processed.
-        
+
         """
         if self.progress_bar is None:
             return
@@ -79,6 +79,7 @@ class ProgressBarAdapter:
             new_count = (current_datetime - self.after).days
         else:
             new_count = (self.now - current_datetime).days
+            assert new_count >= 0, 'current_date_time is greater than now'
         diff = new_count - self.count
         if diff > 0:
             self.progress_bar.update(diff)
