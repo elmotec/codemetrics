@@ -8,7 +8,7 @@ import io
 
 import lizard
 
-from lizardtokencounts import (
+from codemetrics.lizardtokencounts import (
     TokenCount,
     LizardExtension
 )
