@@ -2,6 +2,10 @@
 History
 =======
 
+0.9.5 (2019-09-05)
+------------------
+* Factored common logic between git and svn. Bug fixes.
+
 0.9.4 (2019-09-02)
 ------------------
 * Fixed test_core following https://github.com/pandas-dev/pandas/pull/24748 (Pandas 0.25.X)
