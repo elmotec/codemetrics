@@ -91,20 +91,6 @@ class SubprocessRunTest(unittest.TestCase):
             internals.run('invalid-command')
         self.assertEqual('failed to execute invalid-command: file not found',
                          str(context.exception))
-        with self.assertRaises(ValueError) as context:
-            internals.run(cmd)
-        self.assertEqual(f'failed to execute {cmd}: the error',
-                         str(context.exception))
-
-    @mock.patch('subprocess.run', side_effect=FileNotFoundError())
-    def test_diagnostic_when_file_does_not_exist(self, _):
-        """internals.run raises ValueError and captures stderr from exception"""
-        with self.assertRaises(ValueError) as context:
-            internals.run('invalid-command')
-        self.assertIn('failed to execute invalid-command: file not found',
-                      str(context.exception))
-        self.assertEqual('failed to execute invalid-command: file not found',
-                         str(context.exception))
 
 
 class ExtractValuesTestCase(unittest.TestCase):
