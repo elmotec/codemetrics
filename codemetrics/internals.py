@@ -95,6 +95,7 @@ def run(command: str,
     log.info(command)
     try:
         cmd_list = shlex.split(command)
+        result = subprocess.run(cmd_list, check=True,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE,
                                 **kwargs)
