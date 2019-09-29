@@ -2,6 +2,10 @@
 History
 =======
 
+0.9.6 (2019-09-29)
+------------------
+* Fixed incorrect usage of subprocess.run(). See https://github.com/elmotec/codemetrics/issues/1.
+
 0.9.5 (2019-09-05)
 ------------------
 * Factored common logic between git and svn. Bug fixes.
