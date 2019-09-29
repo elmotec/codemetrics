@@ -6,6 +6,7 @@
 import datetime as dt
 import unittest
 from unittest import mock
+import shlex
 import subprocess
 
 import pandas as pd
@@ -44,7 +45,8 @@ class SubprocessRunTest(unittest.TestCase):
     def test_default_call(self, sprun):
         """Test default arguments"""
         internals.run(self.cmdline)
-        sprun.assert_called_with(self.cmdline, check=True, errors='ignore',
+        expected = shlex.split(self.cmdline)
+        sprun.assert_called_with(expected, check=True, errors='ignore',
                                  stdout=-1, stderr=-1)
 
     @mock.patch('subprocess.run', autospec=True)

@@ -8,6 +8,7 @@ import pathlib as pl
 import subprocess
 import logging
 import typing
+import shlex
 
 import pandas as pd
 
@@ -93,7 +94,8 @@ def run(command: str,
         kwargs['errors'] = 'ignore'
     log.info(command)
     try:
-        result = subprocess.run(command, check=True,
+        cmd_list = shlex.split(command)
+        result = subprocess.run(cmd_list, check=True,
                                 stdout=subprocess.PIPE,
                                 stderr=subprocess.PIPE,
                                 **kwargs)
