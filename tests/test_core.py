@@ -308,7 +308,7 @@ class GetComplexityTestCase(DataFrameTestCase):
     file_content_2 = textwrap.dedent('''\
     def test():
         print('all OK!')
-    
+
     def other():
         print('all good')
     ''')
@@ -365,6 +365,7 @@ class GetComplexityTestCase(DataFrameTestCase):
         r2,f.py,0,1,2,8,test,test( ),1,2,0,2,0,0,0,18,4
         r2,f.py,1,1,2,8,other,other( ),4,5,0,2,0,0,0,18,4
         """))).set_index(['revision', 'path', 'function'])
+        actual = actual[expected.columns]  # ignore new columns added (e.g. full_parameters)
         self.assertEqual(expected, actual)
 
     @mock.patch('codemetrics.internals.run', autospec=True, return_value=None)
@@ -385,6 +386,4 @@ class GetComplexityTestCase(DataFrameTestCase):
 
 if __name__ == '__main__':
     unittest.main()
-
-
 
