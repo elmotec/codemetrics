@@ -4,7 +4,6 @@
 """The setup script."""
 
 import os
-from typing import List
 
 import setuptools
 
@@ -30,9 +29,9 @@ def get_requirements(filename):
 
 requirements = get_requirements("requirements.txt")
 
-setup_requirements: List[str] = []
+setup_requirements = []
 
-test_requirements: List[str] = []
+test_requirements = []
 
 setuptools.setup(
     name="codemetrics",
