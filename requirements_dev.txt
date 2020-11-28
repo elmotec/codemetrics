@@ -5,7 +5,6 @@ watchdog
 flake8
 tox
 coverage
-Sphinx
 twine
 pre-commit
 black[d]
