@@ -2,6 +2,8 @@ environment:
     matrix:
         - PYTHON: Python36
         - PYTHON: Python37
+        - PYTHON: Python38
+        - PYTHON: Python39
 
 install:
     - C:\%PYTHON%\python.exe setup.py install
