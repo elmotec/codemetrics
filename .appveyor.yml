@@ -6,7 +6,7 @@ environment:
         - PYTHON: Python39
 
 install:
-    - C:\%PYTHON%\python.exe setup.py install
+    - C:\%PYTHON%\python.exe -m pip install -r requirements.txt
 
 build: off
 
