@@ -79,3 +79,4 @@ setup.bat
 
 # Pycharm
 .idea/
+/.mypy_cache/

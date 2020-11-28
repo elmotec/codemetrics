@@ -5,18 +5,19 @@
 """Test utility functions and wrappers."""
 
 
-import unittest
 import io
+import unittest
+
+import numpy as np
+import pandas as pd
+import pandas.testing as pdt
 
 import codemetrics.scm as scm
-
-import pandas as pd
-import numpy as np
-import pandas.testing as pdt
 
 
 def add_data_frame_equality_func(test):
     """Define test class to handle assertEqual with `pandas.DataFrame`."""
+
     def frame_equal(lhs, rhs, msg=None):
         """Adapter for pandas.testing.assert_frame_equal."""
         if msg:
@@ -27,6 +28,7 @@ def add_data_frame_equality_func(test):
         else:
             # Getting weird errors on categorical differences.
             pdt.assert_frame_equal(lhs, rhs, check_categorical=False)
+
     test.addTypeEqualityFunc(pd.DataFrame, frame_equal)
 
 
@@ -50,28 +52,33 @@ def csvlog_to_dataframe(csv_log: str) -> pd.DataFrame:
         csv_log: csv representation of fields of `scm.LogEntry`
 
     """
-    df = pd.read_csv(io.StringIO(csv_log), parse_dates=['date'],
-                     dtype={'revision': 'object',
-                            'author': 'object',
-                            'message': 'object',
-                            'action': 'object',
-                            'textmods': 'bool',
-                            'propmods': 'bool',
-                            'copyfromrev': 'object',
-                            'copyfrompath': 'object'},
-                     false_values=['', 'False', '0'])
+    df = pd.read_csv(
+        io.StringIO(csv_log),
+        parse_dates=["date"],
+        dtype={
+            "revision": "object",
+            "author": "object",
+            "message": "object",
+            "action": "object",
+            "textmods": "bool",
+            "propmods": "bool",
+            "copyfromrev": "object",
+            "copyfrompath": "object",
+        },
+        false_values=["", "False", "0"],
+    )
     # Adds missing float columns w/ default np.nan.
-    for column in ['added', 'removed']:
+    for column in ["added", "removed"]:
         if column not in df.columns:
             df[column] = np.nan
     # Adds missing object columns w/ default None.
-    for column in ['action', 'copyfromrev', 'copyfrompath']:
+    for column in ["action", "copyfromrev", "copyfrompath"]:
         if column not in df.columns:
             df[column] = None
-    if 'textmods' not in df.columns:
-        df['textmods'] = True
-    if 'propmods' not in df.columns:
-        df['propmods'] = False
+    if "textmods" not in df.columns:
+        df["textmods"] = True
+    if "propmods" not in df.columns:
+        df["propmods"] = False
     # Reorder columns.
     df = df[scm.LogEntry.__slots__]
     return scm._dtype_and_cats(df)

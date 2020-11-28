@@ -1,6 +1,6 @@
 #!python
 
-'''
+"""
 Lizard extension to count occurences and span of tokens within a function.
 
 :seealso:
@@ -10,16 +10,15 @@ https://github.com/terryyin/lizard/tree/master/lizard_ext
 Note the style of this module is consistent with the lizard project as we may
 move it there if it adds value.
 
-'''
+"""
 
 import functools
 
-import lizard
 from lizard_ext.keywords import IGNORED_WORDS
 
 
 def span(line_obj):
-    '''Calculate number of lines between the start_line and end_line.'''
+    """Calculate number of lines between the start_line and end_line."""
     assert line_obj.end_line is not None
     assert line_obj.start_line is not None
     return line_obj.end_line - line_obj.start_line + 1
@@ -27,9 +26,9 @@ def span(line_obj):
 
 @functools.total_ordering
 class TokenCount(object):
-    '''Holds information about token statistics.'''
+    """Holds information about token statistics."""
 
-    __slots__ =  ['word', 'count', 'end_line', 'start_line']
+    __slots__ = ["word", "count", "end_line", "start_line"]
 
     def __init__(self, word, count=None, end_line=None, start_line=None):
         self.count = count or 0
@@ -38,36 +37,46 @@ class TokenCount(object):
         self.word = word
 
     def __repr__(self):
-        return f"{__class__.__name__}('{self.word}', " \
-               f"count={self.count}, end_line={self.end_line}, start_line={self.start_line})"
+        return (
+            f"{__class__.__name__}('{self.word}', "
+            f"count={self.count}, end_line={self.end_line}, start_line={self.start_line})"
+        )
 
     def inc_count(self, line_no):
-        '''Increment count and update the end_line line seen.'''
+        """Increment count and update the end_line line seen."""
         self.end_line = line_no
         self.count += 1
         return self
 
     def __eq__(self, other):
-        return (self.count, self.end_line, self.start_line, self.word) == \
-               (other.count, other.end_line, other.start_line, other.word)
+        return (self.count, self.end_line, self.start_line, self.word) == (
+            other.count,
+            other.end_line,
+            other.start_line,
+            other.word,
+        )
 
     def __lt__(self, other):
-        return (self.count, self.end_line, self.start_line, self.word) < \
-               (other.count, other.end_line, other.start_line, other.word)
+        return (self.count, self.end_line, self.start_line, self.word) < (
+            other.count,
+            other.end_line,
+            other.start_line,
+            other.word,
+        )
 
 
 class LizardExtension(object):
-    '''Extension to collect word count and span.'''
+    """Extension to collect word count and span."""
 
     @staticmethod
     def __call__(tokens, reader):
-        '''
+        """
         The function will be used in multiple threading tasks.
         So don't store any data with an extension object.
-        '''
+        """
         ignored_words = IGNORED_WORDS
-        ignored_first_char = ('"', "'", '#')
-        ignored_words.add(' ')
+        ignored_first_char = ('"', "'", "#")
+        ignored_words.add(" ")
         occurences = {}
         for token in tokens:
             if token in ignored_words or token[0] in ignored_first_char:
@@ -81,7 +90,9 @@ class LizardExtension(object):
             if current_function not in occurences:
                 occurences[current_function] = {}
             if token not in occurences[current_function]:
-                occurences[current_function][token] = TokenCount(token, start_line=current_line)
+                occurences[current_function][token] = TokenCount(
+                    token, start_line=current_line
+                )
             occurences[current_function][token].inc_count(current_line)
             yield token
         for function in reader.context.fileinfo.function_list:
@@ -94,11 +105,11 @@ class LizardExtension(object):
         return
 
     def cross_file_process(self, fileinfos):
-        '''
+        """
         Combine the statistics from each file.
         Because the statistics came from multiple thread tasks. This function
         needs to be called to collect the combined result.
-        '''
+        """
         for fileinfo in fileinfos:
             if hasattr(fileinfo, "token_counts"):
                 for k, val in fileinfo.wordCount.items():
