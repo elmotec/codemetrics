@@ -10,6 +10,7 @@ import pandas as pd
 
 from . import internals
 
+
 __all__ = ["get_cloc"]
 
 
@@ -46,7 +47,7 @@ def get_cloc(path=".", cloc_program="cloc"):
             records.append(record[:5])
     columns = records[0]
     cloc = pd.DataFrame.from_records(records[1:], columns=columns).rename(
-        columns={"filename": "path"}
+        columns={"filename": "path"},
     )
     cloc.loc[:, "path"] = cloc["path"].str.replace("\\", "/")
-    return cloc
+    return cloc.astype({"path": "string", "language": "string"})

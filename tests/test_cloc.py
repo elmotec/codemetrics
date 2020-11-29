@@ -45,9 +45,11 @@ class SimpleDirectory(unittest.TestCase):
         actual = loc.get_cloc()
         self.run_.assert_called_with("cloc --csv --by-file .")
         usecols = "language,filename,blank,comment,code".split(",")
-        expected = pd.read_csv(io.StringIO(self.run_output), usecols=usecols).rename(
-            columns={"filename": "path"}
-        )
+        expected = pd.read_csv(
+            io.StringIO(self.run_output),
+            usecols=usecols,
+            dtype={"filename": "string", "language": "string"},
+        ).rename(columns={"filename": "path"})
         self.assertEqual(expected, actual)
 
     def test_cloc_not_found(self):
