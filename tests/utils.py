@@ -8,7 +8,6 @@
 import io
 import unittest
 
-import numpy as np
 import pandas as pd
 import pandas.testing as pdt
 
@@ -54,25 +53,16 @@ def csvlog_to_dataframe(csv_log: str) -> pd.DataFrame:
     """
     df = pd.read_csv(
         io.StringIO(csv_log),
-        parse_dates=["date"],
         dtype={
-            "revision": "object",
-            "author": "object",
-            "message": "object",
-            "action": "object",
+            "copyfromrev": "string",
             "textmods": "bool",
             "propmods": "bool",
-            "copyfromrev": "object",
-            "copyfrompath": "object",
         },
+        parse_dates=["date"],
         false_values=["", "False", "0"],
     )
-    # Adds missing float columns w/ default np.nan.
-    for column in ["added", "removed"]:
-        if column not in df.columns:
-            df[column] = np.nan
-    # Adds missing object columns w/ default None.
-    for column in ["action", "copyfromrev", "copyfrompath"]:
+    # Adds missing columns w/ default None.
+    for column in ["action", "copyfromrev", "copyfrompath", "added", "removed"]:
         if column not in df.columns:
             df[column] = None
     if "textmods" not in df.columns:
@@ -80,5 +70,5 @@ def csvlog_to_dataframe(csv_log: str) -> pd.DataFrame:
     if "propmods" not in df.columns:
         df["propmods"] = False
     # Reorder columns.
-    df = df[scm.LogEntry.__slots__]
-    return scm._dtype_and_cats(df)
+    df = df[scm.LogEntry.__slots__].pipe(scm.normalize_log)
+    return df
