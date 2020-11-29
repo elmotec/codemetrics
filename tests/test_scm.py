@@ -5,7 +5,6 @@
 
 import datetime as dt
 import textwrap
-import io
 import typing
 import unittest
 import unittest.mock as mock
@@ -27,8 +26,8 @@ class TestNormaliseLog(unittest.TestCase):
         0,dfa9d6f08,Joris,2020-11-28 15:27:20+01:00,pandas/tests/series/methods/test_convert_dtypes.py,TST: rewrite
         1,91abd0aba,Joris,2020-11-27 21:12:01+01:00,doc/source/whatsnew/v1.1.5.rst,REGR: fix"""
         )
-        df = pd.read_csv(io.StringIO(csv_data)).pipe(scm.normalize_log)
-        self.assertEqual(df["date"].dtype.name, "datetime64[ns, UTC]")
+        actual = utils.csvlog_to_dataframe(csv_data)
+        self.assertEqual("datetime64[ns, UTC]", actual["date"].dtype.name)
 
 
 class TestLogEntriesToDataFrame(unittest.TestCase):

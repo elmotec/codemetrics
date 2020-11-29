@@ -393,12 +393,22 @@ class GetComplexityTestCase(DataFrameTestCase):
                 )
             )
         )
+        self.run_expected_calls = [
+            mock.call("svn cat -r r1 f.py"),
+            mock.call("svn cat -r r2 f.py"),
+        ]
 
     def get_complexity(self, download_func):
         """Factor retrieval of complexity"""
-        df = self.log.groupby(["revision", "path"]).apply(
-            cm.get_complexity, download_func=download_func
-        )
+        with mock.patch(
+            "codemetrics.internals.run",
+            autospec=True,
+            side_effect=[self.file_content_1, self.file_content_2],
+        ) as run:
+            df = self.log.groupby(["revision", "path"]).apply(
+                cm.get_complexity, download_func=download_func
+            )
+            self.assertEqual(run.call_args_list, self.run_expected_calls)
         return df
 
     @mock.patch(
@@ -419,45 +429,16 @@ class GetComplexityTestCase(DataFrameTestCase):
             return cm.scm.DownloadResult(rev, file_name, "")
 
         actual = (
-            self.get_complexity(scm_download_file)
+            cm.get_complexity(self.log, scm_download_file)
             .reset_index()
             .pipe(pd.Series.astype, "string")
         )
         columns = (
-            "revision path function".split()
+            "function".split()
             + cm.core._lizard_fields
             + "file_tokens file_nloc".split()
         )
         expected = pd.DataFrame(data={k: [] for k in columns}, dtype="string")
-        self.assertEqual(expected, actual)
-
-    @mock.patch(
-        "codemetrics.internals.run",
-        autospec=True,
-        side_effect=[file_content_1, file_content_2],
-    )
-    def test_analysis_with_groupby_svn_download(self, run_):
-        """Check interface with svn."""
-        expected_calls = [
-            mock.call("svn cat -r r1 f.py"),
-            mock.call("svn cat -r r2 f.py"),
-        ]
-        expected = pd.read_csv(
-            io.StringIO(
-                textwrap.dedent(
-                    """\
-        revision,path,function,cyclomatic_complexity,nloc,token_count,name,long_name,start_line,end_line,top_nesting_level,length,fan_in,fan_out,general_fan_out,file_tokens,file_nloc
-        r1,f.py,0,2,4,16,test,test( ),1,4,0,4,0,0,0,17,4
-        r2,f.py,0,1,2,8,test,test( ),1,2,0,2,0,0,0,18,4
-        r2,f.py,1,1,2,8,other,other( ),4,5,0,2,0,0,0,18,4
-        """
-                )
-            ),
-            dtype={"name": "string", "long_name": "string"},
-        ).set_index(["revision", "path", "function"])
-        # Limit to the expected columns for resilience to new columns.
-        actual = self.get_complexity(cm.svn.download)[expected.columns]
-        self.assertEqual(expected_calls, run_.call_args_list)
         self.assertEqual(expected, actual)
 
     @mock.patch("codemetrics.internals.run", autospec=True, return_value=None)
@@ -476,16 +457,79 @@ class GetComplexityTestCase(DataFrameTestCase):
         _ = cm.get_complexity(self.log)
         download_func.assert_called_with(self.log)
 
-    @mock.patch(
-        "codemetrics.internals.run",
-        autospec=True,
-        side_effect=[file_content_1, file_content_2],
-    )
-    def test_complexity_dtypes(self, run_):
-        """Check the dtypes of the get_complexity return value is not object."""
-        actual = cm.get_complexity(self.log, cm.svn.download)
+    def test_analysis_with_groupby_svn_download(self):
+        """Check interface with svn."""
+        expected = pd.read_csv(
+            io.StringIO(
+                textwrap.dedent(
+                    """\
+        revision,path,function,cyclomatic_complexity,nloc,token_count,name,long_name,start_line,end_line,top_nesting_level,length,fan_in,fan_out,general_fan_out,file_tokens,file_nloc
+        r1,f.py,0,2,4,16,test,test( ),1,4,0,4,0,0,0,17,4
+        r2,f.py,0,1,2,8,test,test( ),1,2,0,2,0,0,0,18,4
+        r2,f.py,1,1,2,8,other,other( ),4,5,0,2,0,0,0,18,4
+        """
+                )
+            ),
+            dtype={"name": "string", "long_name": "string"},
+        ).set_index(["revision", "path", "function"])
+        # Limit to the expected columns for resilience to new columns.
+        actual = self.get_complexity(cm.svn.download)[expected.columns]
+        self.assertEqual(expected.T, actual.T)
+
+    def test_complexity_name_dtype(self):
+        """Check the dtypes of the get_complexity return value does not contain object dtype."""
+        actual = self.get_complexity(cm.svn.download)
         self.assertEqual("string", actual["name"].dtype.name)
+
+    def test_complexity_long_name_dtype(self):
+        """Check the dtypes of the get_complexity return value does not contain object dtype."""
+        actual = self.get_complexity(cm.svn.download)
         self.assertEqual("string", actual["long_name"].dtype.name)
+
+    def test_complexity_nloc_dtype(self):
+        """Check the dtypes of the get_complexity return value does not contain object dtype."""
+        actual = self.get_complexity(cm.svn.download)
+        self.assertEqual("Int32", actual["nloc"].dtype.name)
+
+    def test_complexity_token_count_dtype(self):
+        """Check the dtypes of the get_complexity return value does not contain object dtype."""
+        actual = self.get_complexity(cm.svn.download)
+        self.assertEqual("Int32", actual["token_count"].dtype.name)
+
+    def test_complexity_start_line_dtype(self):
+        """Check the dtypes of the get_complexity return value does not contain object dtype."""
+        actual = self.get_complexity(cm.svn.download)
+        self.assertEqual("Int32", actual["start_line"].dtype.name)
+
+    def test_complexity_end_line_dtype(self):
+        """Check the dtypes of the get_complexity return value does not contain object dtype."""
+        actual = self.get_complexity(cm.svn.download)
+        self.assertEqual("Int32", actual["end_line"].dtype.name)
+
+    def test_complexity_top_nesting_level_dtype(self):
+        """Check the dtypes of the get_complexity return value does not contain object dtype."""
+        actual = self.get_complexity(cm.svn.download)
+        self.assertEqual("Int32", actual["top_nesting_level"].dtype.name)
+
+    def test_complexity_length_dtype(self):
+        """Check the dtypes of the get_complexity return value does not contain object dtype."""
+        actual = self.get_complexity(cm.svn.download)
+        self.assertEqual("Int32", actual["length"].dtype.name)
+
+    def test_complexity_fan_in_dtype(self):
+        """Check the dtypes of the get_complexity return value does not contain object dtype."""
+        actual = self.get_complexity(cm.svn.download)
+        self.assertEqual("Int32", actual["fan_in"].dtype.name)
+
+    def test_complexity_fan_out_dtype(self):
+        """Check the dtypes of the get_complexity return value does not contain object dtype."""
+        actual = self.get_complexity(cm.svn.download)
+        self.assertEqual("Int32", actual["fan_out"].dtype.name)
+
+    def test_complexity_general_fan_out_dtype(self):
+        """Check the dtypes of the get_complexity return value does not contain object dtype."""
+        actual = self.get_complexity(cm.svn.download)
+        self.assertEqual("Int32", actual["general_fan_out"].dtype.name)
 
 
 if __name__ == "__main__":

@@ -113,6 +113,7 @@ def get_hot_spots(log, loc, by=None, count_one_change_per=None):
     c_df = c_df.rename(columns={"code": "lines"})
     columns = count_one_change_per + [by]
     ch_df = log[columns].drop_duplicates()[by].value_counts().to_frame("changes")
+    # FIXME fillna cannot be applied to non numeric columns.
     df = pd.merge(c_df, ch_df, right_index=True, left_on=by, how="outer").fillna(0.0)
     return df
 
@@ -249,9 +250,22 @@ def get_complexity(
         df = pd.DataFrame.from_records(
             [vars(d) for d in info.function_list], columns=_lizard_fields
         )
-    return (
+    df = (
         df.rename_axis("function")
+        .assign(
+            file_tokens=info.token_count,
+            file_nloc=info.nloc,
+            cyclomatic_complexity=lambda x: x["cyclomatic_complexity"].astype("Int32"),
+            nloc=lambda x: x["nloc"].astype("Int32"),
+            token_count=lambda x: x["token_count"].astype("Int32"),
+            start_line=lambda x: x["start_line"].astype("Int32"),
+            end_line=lambda x: x["end_line"].astype("Int32"),
+            top_nesting_level=lambda x: x["top_nesting_level"].astype("Int32"),
+            length=lambda x: x["length"].astype("Int32"),
+            fan_in=lambda x: x["fan_in"].astype("Int32"),
+            fan_out=lambda x: x["fan_out"].astype("Int32"),
+            general_fan_out=lambda x: x["general_fan_out"].astype("Int32"),
+        )
         .astype({"name": "string", "long_name": "string"})
-        .assign(file_tokens=info.token_count)
-        .assign(file_nloc=info.nloc)
     )
+    return df
