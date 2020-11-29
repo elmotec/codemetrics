@@ -106,30 +106,35 @@ class LogEntry:
         return (getattr(self, slot) for slot in self.__slots__)
 
 
-def _dtype_and_cats(df):
-    """Set dtype and categorize columns in the DataFrame.
+def normalize_log(df):
+    """Set dtype and categorize columns in the log DataFrame.
 
     Specifically:
-        - Make date tz-aware.
-        - Replace NaN in author and message with None to make sure they are of
-          type object.
+        - Converts date to tz-aware UTC.
+        - Replace NaN in author and message with an empty string.
         - Make added, and removed numeric (float so we can handle averages).
-        - Make textmods, kind, action, and propmods categories.
+        - Make textmods and propmods as bool (no NA).
+        - Make kind, and action categories.
 
     """
-    df["date"] = pd.to_datetime(df["date"], utc=True)
-    str_cols = ["message", "copyfromrev", "copyfrompath"]
-    df[str_cols] = df[str_cols].where(pd.notnull(df[str_cols]), "")
-    num_cols = ["added", "removed"]
-    df[num_cols] = df[num_cols].apply(pd.to_numeric, downcast="float")
-    bool_cols = ["textmods", "propmods"]
-    df[bool_cols] = df[bool_cols].astype("bool")
-    cat_cols = ["kind", "action"]
-    df[cat_cols] = df[cat_cols].astype("category")
-    return df
+    return df.assign(
+        revision=lambda x: x["revision"].astype("string"),
+        path=lambda x: x["path"].astype("string"),
+        author=lambda x: x["author"].fillna("").astype("string"),
+        date=lambda x: pd.to_datetime(x["date"], utc=True),
+        message=lambda x: x["message"].fillna("").astype("string"),
+        copyfromrev=lambda x: x["copyfromrev"].astype("string"),
+        copyfrompath=lambda x: x["copyfrompath"].astype("string"),
+        added=lambda x: pd.to_numeric(x["added"], downcast="float"),
+        removed=lambda x: pd.to_numeric(x["removed"], downcast="float"),
+        textmods=lambda x: x["textmods"].astype("bool"),
+        propmods=lambda x: x["propmods"].astype("bool"),
+        kind=lambda x: x["kind"].astype("category"),
+        action=lambda x: x["action"].astype("category"),
+    )
 
 
-def _to_dataframe(log_entries: typing.Sequence[LogEntry]) -> pd.DataFrame:
+def to_frame(log_entries: typing.Sequence[LogEntry]) -> pd.DataFrame:
     """Convert log entries to a pandas DataFrame.
 
     Args:
@@ -140,9 +145,10 @@ def _to_dataframe(log_entries: typing.Sequence[LogEntry]) -> pd.DataFrame:
 
     """
     columns = LogEntry.__slots__
-    tuples = [log_entry.astuple() for log_entry in log_entries]
-    result = pd.DataFrame.from_records(tuples, columns=columns)
-    return _dtype_and_cats(result)
+    result = pd.DataFrame.from_records(
+        (log_entry.astuple() for log_entry in log_entries), columns=columns
+    )
+    return normalize_log(result)
 
 
 class ScmLogCollector(abc.ABC):
@@ -193,7 +199,7 @@ class ScmLogCollector(abc.ABC):
             for entry in self.process_log_entries(cmd_output):
                 log_entries.append(entry)
                 tqdm_pbar.update(entry.date)
-        df = _to_dataframe(log_entries)
+        df = to_frame(log_entries)
         return df
 
     @abc.abstractmethod

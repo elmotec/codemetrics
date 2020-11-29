@@ -261,9 +261,9 @@ class GetSvnLogTestCase(unittest.TestCase, test_scm.GetLogTestCase):
         """
             )
         )
-        df = self.get_log(after=self.after, relative_url="/project/trunk")
+        actual = self.get_log(after=self.after, relative_url="/project/trunk")
         call.assert_called_with("svn log --xml -v -r {2018-12-03}:HEAD .")
-        self.assertEqual(expected, df)
+        self.assertEqual(expected.T, actual.T)
 
 
 class SubversionDownloadTestCase(unittest.TestCase, test_scm.ScmDownloadTestCase):
