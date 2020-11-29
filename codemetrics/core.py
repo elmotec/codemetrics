@@ -201,7 +201,7 @@ def guess_components(paths, stop_words=None, n_clusters=8):
 _lizard_fields = [
     fld
     for fld in vars(lizard.FunctionInfo("", "")).keys()
-    if fld not in ["filename", "parameters"]
+    if fld not in ["filename", "parameters", "full_parameters"]
 ]
 _complexity_fields = _lizard_fields + "file_tokens file_nloc".split()
 
@@ -249,6 +249,9 @@ def get_complexity(
         df = pd.DataFrame.from_records(
             [vars(d) for d in info.function_list], columns=_lizard_fields
         )
-    df["file_tokens"] = info.token_count
-    df["file_nloc"] = info.nloc
-    return df.rename_axis("function")
+    return (
+        df.rename_axis("function")
+        .astype({"name": "string", "long_name": "string"})
+        .assign(file_tokens=info.token_count)
+        .assign(file_nloc=info.nloc)
+    )

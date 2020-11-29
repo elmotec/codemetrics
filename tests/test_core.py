@@ -421,14 +421,14 @@ class GetComplexityTestCase(DataFrameTestCase):
         actual = (
             self.get_complexity(scm_download_file)
             .reset_index()
-            .pipe(pd.Series.astype, "str")
+            .pipe(pd.Series.astype, "string")
         )
         columns = (
             "revision path function".split()
             + cm.core._lizard_fields
             + "file_tokens file_nloc".split()
         )
-        expected = pd.DataFrame(data={k: [] for k in columns}, dtype="object")
+        expected = pd.DataFrame(data={k: [] for k in columns}, dtype="string")
         self.assertEqual(expected, actual)
 
     @mock.patch(
@@ -452,7 +452,8 @@ class GetComplexityTestCase(DataFrameTestCase):
         r2,f.py,1,1,2,8,other,other( ),4,5,0,2,0,0,0,18,4
         """
                 )
-            )
+            ),
+            dtype={"name": "string", "long_name": "string"},
         ).set_index(["revision", "path", "function"])
         # Limit to the expected columns for resilience to new columns.
         actual = self.get_complexity(cm.svn.download)[expected.columns]
@@ -474,6 +475,17 @@ class GetComplexityTestCase(DataFrameTestCase):
         scm.default_download_func = download_func
         _ = cm.get_complexity(self.log)
         download_func.assert_called_with(self.log)
+
+    @mock.patch(
+        "codemetrics.internals.run",
+        autospec=True,
+        side_effect=[file_content_1, file_content_2],
+    )
+    def test_complexity_dtypes(self, run_):
+        """Check the dtypes of the get_complexity return value is not object."""
+        actual = cm.get_complexity(self.log, cm.svn.download)
+        self.assertEqual("string", actual["name"].dtype.name)
+        self.assertEqual("string", actual["long_name"].dtype.name)
 
 
 if __name__ == "__main__":
