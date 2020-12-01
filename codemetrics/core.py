@@ -39,7 +39,8 @@ def get_mass_changes(
             (added + removed) per file that changed.
 
     Returns:
-        revisions that had more files changed than the threshold.
+        revisions that had more files changed than the threshold as a pd.DataFrame
+        with columns revision, path, changes and changes_per_path.
 
     """
     data = log.reset_index().copy()[["revision", "path", "added", "removed"]]
@@ -48,6 +49,7 @@ def get_mass_changes(
         data[["revision", "path", "changes"]]
         .groupby("revision", as_index=False)
         .agg({"path": "count", "changes": "sum"})
+        .assign(revision=lambda x: x["revision"].astype("string"))
     )
     data["changes_per_path"] = data["changes"] / data["path"]
     if min_path is not None:
@@ -113,8 +115,11 @@ def get_hot_spots(log, loc, by=None, count_one_change_per=None):
     c_df = c_df.rename(columns={"code": "lines"})
     columns = count_one_change_per + [by]
     ch_df = log[columns].drop_duplicates()[by].value_counts().to_frame("changes")
-    # FIXME fillna cannot be applied to non numeric columns.
-    df = pd.merge(c_df, ch_df, right_index=True, left_on=by, how="outer").fillna(0.0)
+    df = pd.merge(c_df, ch_df, right_index=True, left_on=by, how="outer").reset_index(
+        drop=True
+    )
+    num_columns = df.select_dtypes(include=["number"]).columns
+    df[num_columns] = df[num_columns].fillna(0)
     return df
 
 

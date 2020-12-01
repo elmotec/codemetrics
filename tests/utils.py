@@ -19,16 +19,29 @@ def add_data_frame_equality_func(test):
 
     def frame_equal(lhs, rhs, msg=None):
         """Adapter for pandas.testing.assert_frame_equal."""
-        if msg:
-            try:
-                pdt.assert_frame_equal(lhs, rhs)
-            except AssertionError:
-                raise test.failureException(msg)
-        else:
-            # Getting weird errors on categorical differences.
+        try:
             pdt.assert_frame_equal(lhs, rhs, check_categorical=False)
+        except AssertionError as err:
+            if not msg:
+                msg = str(err)
+            raise test.failureException(msg)
 
     test.addTypeEqualityFunc(pd.DataFrame, frame_equal)
+
+
+def add_series_equality_func(test):
+    """Define test class to handle assertEqual with `pandas.Series`."""
+
+    def series_equal(lhs, rhs, msg=None):
+        """Adapter for pandas.testing.assert_frame_equal."""
+        try:
+            pdt.assert_series_equal(lhs, rhs, check_categorical=False)
+        except AssertionError as err:
+            if not msg:
+                msg = str(err)
+            raise test.failureException(msg)
+
+    test.addTypeEqualityFunc(pd.Series, series_equal)
 
 
 class DataFrameTestCase(unittest.TestCase):
@@ -37,6 +50,7 @@ class DataFrameTestCase(unittest.TestCase):
     def setUp(self):
         """Calls add_data_frame_equality_func"""
         add_data_frame_equality_func(self)
+        add_series_equality_func(self)
 
 
 def csvlog_to_dataframe(csv_log: str) -> pd.DataFrame:

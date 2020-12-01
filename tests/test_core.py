@@ -15,30 +15,22 @@ import pandas as pd
 
 import codemetrics as cm
 import codemetrics.scm as scm
-from tests.utils import DataFrameTestCase
+import tests.utils as utils
 
 
-class SimpleRepositoryFixture(DataFrameTestCase):
+class SimpleRepositoryFixture(utils.DataFrameTestCase):
     """Given a repository of a few records."""
 
     @staticmethod
     def get_log_df():
-        csv_data = io.StringIO(
-            textwrap.dedent(
-                """
+        csv_data = textwrap.dedent(
+            """
         revision,author,date,textmods,kind,action,propmods,path,message,added,removed
         1016,elmotec,2018-02-26T10:28:00Z,true,file,M,false,stats.py,modified again,1,2
         1018,elmotec,2018-02-24T11:14:11Z,true,file,M,false,stats.py,modified,3,4
         1018,elmotec,2018-02-24T11:14:11Z,true,file,M,false,requirements.txt,modified,5,6"""
-            )
         )
-
-        def date_parser(d: str):
-            return dt.datetime.strptime(d, "%Y-%m-%dT%H:%M:%SZ").replace(
-                tzinfo=dt.timezone.utc
-            )
-
-        df = pd.read_csv(csv_data, parse_dates=["date"], date_parser=date_parser)
+        df = utils.csvlog_to_dataframe(csv_data)
         return df
 
     @staticmethod
@@ -66,7 +58,8 @@ class SimpleRepositoryFixture(DataFrameTestCase):
         Unknown,requirements.txt,0,0,3
         """
                 )
-            )
+            ),
+            dtype={"language": "string", "path": "string"},
         )
 
     def setUp(self):
@@ -92,7 +85,13 @@ class GetMassChangesTestCase(SimpleRepositoryFixture):
             1018,2,18,9.0
             """
                 )
-            )
+            ),
+            dtype={
+                "revision": "string",
+                "path": "int64",
+                "changes": "float32",
+                "changes_per_path": "float64",
+            },
         )
 
     def test_get_mass_changes(self):
@@ -142,8 +141,9 @@ class AgeReportTestCase(SimpleRepositoryFixture):
     def test_ages_enriched_with_kind(self):
         """Allow to use additional columns in age report."""
         actual = cm.get_ages(self.log, by=["path", "kind"])[["path", "age", "kind"]]
-        self.expected["kind"] = "file"
-        self.assertEqual(self.expected, actual)
+        self.assertEqual(
+            self.expected.assign(kind="file").astype({"kind": "category"}), actual
+        )
 
     def test_key_parameter(self):
         """Ignore files_df if nothing in it is relevant"""
@@ -156,7 +156,8 @@ class AgeReportTestCase(SimpleRepositoryFixture):
         component,kind,age
         kernel,file,1.563889"""
                 )
-            )
+            ),
+            dtype={"kind": "category"},
         )
         self.assertEqual(expected, actual)
 
@@ -171,13 +172,7 @@ class HotSpotReportTestCase(SimpleRepositoryFixture):
 
     def setUp(self):
         super().setUp()
-
-    def test_hot_spot_report(self):
-        """Generate a report to find hot spots."""
-        after = dt.datetime(2018, 2, 26, tzinfo=dt.timezone.utc)
-        log = self.log.loc[self.log["date"] >= after, :]
-        actual = cm.get_hot_spots(log, self.loc)
-        expected = pd.read_csv(
+        self.expected = pd.read_csv(
             io.StringIO(
                 textwrap.dedent(
                     """
@@ -186,25 +181,50 @@ class HotSpotReportTestCase(SimpleRepositoryFixture):
         Unknown,requirements.txt,0,0,3,0
         """
                 )
-            )
+            ),
+            dtype={"language": "string", "changes": "Int64"},
         )
-        self.assertEqual(expected, actual)
+
+    def test_hot_spot_report(self):
+        """Generate a report to find hot spots."""
+        after = dt.datetime(2018, 2, 26, tzinfo=dt.timezone.utc)
+        log = self.log.loc[self.log["date"] >= after, :]
+        actual = cm.get_hot_spots(log, self.loc)
+        self.assertEqual(self.expected, actual)
 
     def test_hot_spot_with_custom_change_metric(self):
-        """Generate report with a different change metric than revision."""
-        # force all rows to the same date.
+        """Generate report with a different change metric than revision.
+
+        Force all rows to the same date and count only one change per day to
+        make sure the number of changes is 1 instead of 2.
+
+        """
         self.log["day"] = dt.datetime(2018, 2, 24, tzinfo=dt.timezone.utc)
         actual = cm.get_hot_spots(self.log, self.loc, count_one_change_per=["day"])
-        expected = pd.read_csv(
-            io.StringIO(
-                textwrap.dedent(
-                    """
-        language,path,blank,comment,lines,changes
-        Python,stats.py,28,84,100,1
-        Unknown,requirements.txt,0,0,3,1
-        """
-                )
+        self.expected.loc[1, "changes"] = 1  # from 2 changes.
+        self.assertEqual(self.expected, actual)
+
+    def test_hot_spot_with_na(self):
+        """Generate a hot spot report with NA to make sure we don't try to assign 0.0"""
+        after = dt.datetime(2018, 2, 26, tzinfo=dt.timezone.utc)
+        log = self.log.loc[self.log["date"] >= after, :].assign(path="other")
+        # not sure why the assign call turns path "string" dtype to "object".
+        log = log.astype({"path": "string"})
+        actual = cm.get_hot_spots(log, self.loc).query("path == 'other'")
+        expected = (
+            self.expected.append(
+                {
+                    "language": pd.NA,
+                    "path": "other",
+                    "blank": 0.0,
+                    "comment": 0.0,
+                    "lines": 0.0,
+                    "changes": 1,
+                },
+                ignore_index=True,
             )
+            .astype({"language": "string"})
+            .query("path == 'other'")
         )
         self.assertEqual(expected, actual)
 
@@ -359,7 +379,7 @@ class ComponentTestCase(SimpleRepositoryFixture):
         self.assertEqual(expected, actual)
 
 
-class GetComplexityTestCase(DataFrameTestCase):
+class GetComplexityTestCase(utils.DataFrameTestCase):
     """Test complexity analysis."""
 
     file_content_1 = textwrap.dedent(
