@@ -85,7 +85,7 @@ To retrieve the number of lines changed by revision with Subversion:
                                            groupby('revision').\
                                            apply(cm.svn.get_diff_stats, chunks=False)
 
-See `module documentation`_ for more advanced functions or the `example notebook`_
+See `module documentation`_ for more advanced functions or the `example notebook`_ (`html export of pandas`_).
 
 
 License
@@ -109,4 +109,7 @@ Credits
 .. _MIT License: https://en.wikipedia.org/wiki/MIT_License
 .. _Adam Tornhill: https://www.adamtornhill.com/
 .. _module documentation: https://codemetrics.readthedocs.org/
-.. _example notebook: https://github.com/elmotec/codemetrics/tree/master/notebooks
+.. _example notebook: https://github.com/elmotec/codemetrics/tree/master/notebooks/
+.. _html export of pandas: https://github.com/elmotec/codemetrics/tree/master/notebooks/pandas.html
+
+
