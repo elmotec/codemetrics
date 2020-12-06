@@ -5,6 +5,7 @@
 
 import csv
 import pathlib as pl
+import dataclasses
 
 import pandas as pd
 
@@ -12,6 +13,15 @@ from . import internals
 
 
 __all__ = ["get_cloc"]
+
+
+@dataclasses.dataclass
+class ClocEntry:
+    language: str
+    filename: str
+    blank: int
+    comment: int
+    code: int
 
 
 def get_cloc(path=".", cloc_program="cloc"):
@@ -29,7 +39,7 @@ def get_cloc(path=".", cloc_program="cloc"):
     """
     internals.check_run_in_root(path)
     cmdline = f"{cloc_program} --csv --by-file {path}"
-    records = []
+    cloc_entries = []
     try:
         output = internals.run(cmdline).split("\n")
     except FileNotFoundError as err:
@@ -40,14 +50,30 @@ def get_cloc(path=".", cloc_program="cloc"):
         raise FileNotFoundError(msg)
     reader = csv.reader(output)
     for record in reader:
-        if len(record) >= 5 and record[0]:
-            if record[0].strip() != "language":
-                record[1] = str(pl.Path(record[1]))
-                record[2:5] = [int(val) for val in record[2:5]]
-            records.append(record[:5])
-    columns = records[0]
-    cloc = pd.DataFrame.from_records(records[1:], columns=columns).rename(
-        columns={"filename": "path"},
+        if len(record) < 5 or not record[0]:
+            continue
+        if record[0].strip() == "language":
+            continue
+        # If the record contains more than 5 columns, concat the extra columns in the filename.
+        last_filename_col = len(record) - 3
+        filename = pl.Path(",".join(record[1:last_filename_col])).as_posix()
+        cloc_entry = ClocEntry(
+            language=record[0],
+            filename=filename,
+            blank=int(record[-3]),
+            comment=int(record[-2]),
+            code=int(record[-1]),
+        )
+        cloc_entries.append(cloc_entry)
+    columns = [f.name for f in dataclasses.fields(ClocEntry)]
+    cloc = (
+        pd.DataFrame.from_records(
+            (dataclasses.astuple(ce) for ce in cloc_entries),
+            columns=columns,
+        )
+        .rename(
+            columns={"filename": "path"},
+        )
+        .astype({"path": "string", "language": "string"})
     )
-    cloc.loc[:, "path"] = cloc["path"].str.replace("\\", "/")
-    return cloc.astype({"path": "string", "language": "string"})
+    return cloc

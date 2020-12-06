@@ -26,6 +26,7 @@ class SimpleDirectory(unittest.TestCase):
         Python,internals.py,55,50,130
         Python,tests.py,29,92,109
         Python,setup.py,4,2,30
+        C#,.NETFramework,Version=v4.7.2.AssemblyAttributes.cs,0,1,3
         """
         )
         cmi = "codemetrics.internals."
@@ -44,12 +45,20 @@ class SimpleDirectory(unittest.TestCase):
         """cloc is called and reads the output csv file."""
         actual = loc.get_cloc()
         self.run_.assert_called_with("cloc --csv --by-file .")
-        usecols = "language,filename,blank,comment,code".split(",")
         expected = pd.read_csv(
-            io.StringIO(self.run_output),
-            usecols=usecols,
-            dtype={"filename": "string", "language": "string"},
-        ).rename(columns={"filename": "path"})
+            io.StringIO(
+                textwrap.dedent(
+                    """\
+            language,path,blank,comment,code
+            Python,internals.py,55,50,130
+            Python,tests.py,29,92,109
+            Python,setup.py,4,2,30
+            C#,".NETFramework,Version=v4.7.2.AssemblyAttributes.cs",0,1,3
+            """
+                )
+            ),
+            dtype={"path": "string", "language": "string"},
+        )
         self.assertEqual(expected, actual)
 
     def test_cloc_not_found(self):
