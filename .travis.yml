@@ -9,8 +9,8 @@ python:
     - "3.9"
 
 install:
-    - pip install -r requirements.txt coverage python-coveralls
     - python setup.py --quiet install
+    - pip install coverage python-coveralls
 
 script:
     - python setup.py test
