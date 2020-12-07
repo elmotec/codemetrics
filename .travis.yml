@@ -1,4 +1,4 @@
-# Config file for automatic testing at travis-ci.org
+# Config file for automatic testing at travis-ci.com
 
 dist: xenial
 language: python
@@ -10,9 +10,7 @@ python:
 
 install:
     - python -m pip install pip -U
-    - python -m pip install .
-    - python setup.py --quiet install
-    - python -m pip coverage python-coveralls
+    - python -m pip install .  coverage python-coveralls
 
 script:
     - python setup.py test
