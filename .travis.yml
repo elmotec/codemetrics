@@ -9,8 +9,10 @@ python:
     - "3.9"
 
 install:
+    - python -m pip install pip -U
+    - python -m pip install .
     - python setup.py --quiet install
-    - pip install coverage python-coveralls
+    - python -m pip coverage python-coveralls
 
 script:
     - python setup.py test
