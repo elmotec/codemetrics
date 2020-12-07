@@ -4,13 +4,12 @@
 """cloc related functions."""
 
 import csv
-import pathlib as pl
 import dataclasses
+import pathlib as pl
 
 import pandas as pd
 
 from . import internals
-
 
 __all__ = ["get_cloc"]
 
