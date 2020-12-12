@@ -6,9 +6,9 @@
     :target: https://pypi.python.org/pypi/codemetrics/
     :alt: Python compatibility
 
-.. image:: https://img.shields.io/travis/elmotec/codemetrics/master?label=Travis
-    :target: https://travis-ci.org/elmotec/codemetrics
-    :alt: Travis master status
+.. image:: https://img.shields.io/github/workflow/status/elmotec/codemetrics/Python%20application
+    :target: https://github.com/elmotec/codemetrics/actions?query=workflow%3A%22Python+application%22
+    :alt: GitHub Workflow Python application
 
 .. image:: https://img.shields.io/appveyor/ci/elmotec/codemetrics/master?label=AppVeyor
     :target: https://ci.appveyor.com/project/elmotec/codemetrics
