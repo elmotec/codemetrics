@@ -113,15 +113,19 @@ class SubprocessRunTest(unittest.TestCase):
 class TestCheckRunInRoot(unittest.TestCase):
     """Test check_run_in_root function"""
 
-    def test_basic_check_run_in_root_works_in_parent_directory(self):
-        """Works when running in the parent directory because it is the project root."""
-        internals.check_run_in_root("..")
-        pass
+    @mock.patch("pathlib.Path.glob", autospec=True, return_value=".git")
+    def test_basic_check_run_in_root_works_in_parent_directory(self, glob):
+        """Test that the presence of a .git folder validates the git check."""
+        internals.check_run_in_root("/some/path")
+        glob.assert_called_with(mock.ANY, pattern=".git")
 
-    def test_basic_check_run_in_root_fails_in_tests_directory(self):
-        """Fails when running in the current directory because it is not a project root."""
+    @mock.patch("pathlib.Path.glob", autospec=True)
+    def test_basic_check_run_in_root_fails_in_tests_directory(self, glob):
+        """Internal check should fail when running in a non-git, non-svn project root."""
         with self.assertRaises(ValueError) as context:
-            internals.check_run_in_root(".")
+            internals.check_run_in_root("/some/path")
+        n_supported_scm = 2
+        self.assertEqual(glob.call_count, n_supported_scm)
         self.assertIn("git or svn root", str(context.exception))
 
     def test_basic_check_run_in_root_fails_in_temp_directory(self):

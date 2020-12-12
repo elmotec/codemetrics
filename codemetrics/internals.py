@@ -57,7 +57,7 @@ def get_files(path=None, pattern=None):
 def check_run_in_root(path):
     """Throw an exception if path is not a root directory."""
     candidate = pl.Path.cwd() / path
-    for _ in candidate.glob(pattern=".gitattributes"):
+    for _ in candidate.glob(pattern=".git"):
         return
     for _ in candidate.glob(pattern=".svn"):
         return
