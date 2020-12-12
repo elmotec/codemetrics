@@ -2,6 +2,14 @@
 History
 =======
 
+0.10.0 (2020-12-12)
+-------------------
+* Fixed handling of files with commas in the name.
+* Fixed visualization of pandas example as html.
+* Leveraged new pandas dtypes.
+* Introduced type hints in code base.
+* Switched backend to GitHub actions from travis-ci.
+
 0.9.6 (2019-09-29)
 ------------------
 * Fixed incorrect usage of subprocess.run(). See https://github.com/elmotec/codemetrics/issues/1.
