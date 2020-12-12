@@ -4,16 +4,14 @@
 """Metrics offer a bunch of function useful to analyze a code base."""
 
 import datetime as dt
+import logging
 import pathlib as pl
 import subprocess
-import logging
 import typing
-import shlex
 
 import pandas as pd
 
-
-log = logging.getLogger('codemetrics')
+log = logging.getLogger("codemetrics")
 log.addHandler(logging.NullHandler())
 
 
@@ -47,27 +45,26 @@ def get_year_ago(from_date: dt.datetime = None):
 def get_files(path=None, pattern=None):
     """Retrieve the list of the files currently in the directory."""
     if path is None:
-        path = '.'
+        path = "."
     if pattern is None:
-        pattern = '**/*'
+        pattern = "**/*"
     # noinspection SpellCheckingInspection
     fnames = pl.Path(path).glob(pattern)
     files = [(str(fname),) for fname in fnames]
-    return pd.DataFrame.from_records(files, columns=['path'])
+    return pd.DataFrame.from_records(files, columns=["path"])
 
 
 def check_run_in_root(path):
     """Throw an exception if path is not a root directory."""
     candidate = pl.Path.cwd() / path
-    for _ in candidate.glob(pattern='.gitattributes'):
+    for _ in candidate.glob(pattern=".git"):
         return
-    for _ in candidate.glob(pattern='.svn'):
+    for _ in candidate.glob(pattern=".svn"):
         return
-    raise ValueError(f'{candidate} does not appear to be a git or svn root')
+    raise ValueError(f"{candidate} does not appear to be a git or svn root")
 
 
-def run(command: str,
-        **kwargs) -> str:
+def run(cmd_list: typing.List[str], **kwargs) -> str:
     """Execute command passed as argument and return output.
 
     Forwards the call to `subprocess.run`.
@@ -75,7 +72,7 @@ def run(command: str,
     If the command does not return 0, will throw subprocess.CalledProcessError.
 
     Args:
-        command: command to execute.
+        cmd_list: command to execute.
         **kwargs: additional kwargs are passed to subprocess.run().
 
     Returns:
@@ -84,30 +81,38 @@ def run(command: str,
     Raise:
         ValueError if the command is not executed properly.
 
-    Note that if some process may want a list of string, others may need one
-    long string so the eventual split call is pushed to the caller.
+    If interested in the actual call made to the operating system, use
+    `codemetrics.log` like:
+
+    ```
+    codemetrics.log.setHandler(logging.StreamHandler()).setLevel(logging.INFO)
+    ```
 
     _subprocess.run:: https://docs.python.org/3/library/subprocess.html
 
     """
-    if 'errors' not in kwargs:
-        kwargs['errors'] = 'ignore'
+    if "errors" not in kwargs:
+        kwargs["errors"] = "ignore"
+    command = " ".join(cmd_list)
     log.info(command)
     try:
-        cmd_list = shlex.split(command)
-        result = subprocess.run(cmd_list, check=True,
-                                stdout=subprocess.PIPE,
-                                stderr=subprocess.PIPE,
-                                **kwargs)
+        result = subprocess.run(
+            cmd_list,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            **kwargs,
+        )
     except subprocess.CalledProcessError as err:
-        raise ValueError(f'failed to execute {command}: {err.stderr}')
-    except FileNotFoundError as err:
-        raise ValueError(f'failed to execute {command}: file not found')
+        raise ValueError(f"failed to execute {command}: {err.stderr}")
+    except FileNotFoundError:
+        raise ValueError(f"failed to execute {command}: file not found")
     return result.stdout  # No split. See __doc__.
 
 
-def handle_default_dates(after: typing.Union[dt.datetime, None],
-                         before: typing.Union[dt.datetime, None]):
+def handle_default_dates(
+    after: typing.Optional[dt.datetime], before: typing.Optional[dt.datetime]
+) -> typing.Tuple[dt.datetime, typing.Optional[dt.datetime]]:
     """Handles defaults when before, after is None.
 
     Also checks that the dates are tz-aware and that after.
@@ -122,9 +127,11 @@ def handle_default_dates(after: typing.Union[dt.datetime, None],
     """
     for date in [after, before]:
         if date and date.tzinfo is None:
-            raise ValueError('dates are expected to be tzinfo-aware')
+            raise ValueError("dates are expected to be tzinfo-aware")
     if not after:
         after = get_year_ago(from_date=before)
+    assert after is not None, "None found where dt.datetime expected"
+    assert after.tzinfo is not None, "after is not tzinfo-aware"
     return after, before
 
 
@@ -142,29 +149,3 @@ def _check_columns(df: pd.DataFrame, names: typing.Sequence[str]) -> None:
         if expected not in df.columns:
             raise ValueError(f"'{expected}' column not found in input")
     return
-
-
-def extract_values(data: typing.Union[pd.DataFrame, pd.Series],
-                   columns: typing.Union[str, typing.Sequence[str]]) -> typing.Tuple:
-    """Extract the specific columns in data.
-
-    Args:
-        data: can be either a pandas.DataFrame-like object or pandas.Series.
-        columns: scalar str or column list for a frame, label for a series. Note
-        we Handles list of just one element as if it were just a scalar.
-
-
-    Returns:
-        tuple of the size of args with one value for each argument.
-
-    """
-    assert 0 < data.ndim <= 2, 'series or dataframe expected'
-    if data.ndim == 2:
-        s = data.iloc[0]
-    else:
-        s = data
-    # FIXME Probably go: let client retrieve a tuple in all case.
-    if hasattr(columns, '__len__') and len(columns) == 1:
-        return s.loc[columns[0]]
-    return s.loc[columns]
-

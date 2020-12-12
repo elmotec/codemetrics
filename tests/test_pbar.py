@@ -6,7 +6,9 @@
 import datetime as dt
 import unittest
 from unittest import mock
+
 import tqdm
+
 import codemetrics.pbar as pbar
 
 
@@ -16,14 +18,16 @@ class ProgressBarAdapterTest(unittest.TestCase):
     def setUp(self):
         pass
 
-    @mock.patch('codemetrics.internals.get_now', autospec=True,
-                return_value=dt.datetime(2018, 2, 13, tzinfo=dt.timezone.utc))
-    @mock.patch('tqdm.tqdm', autospec=True)
+    @mock.patch(
+        "codemetrics.internals.get_now",
+        autospec=True,
+        return_value=dt.datetime(2018, 2, 13, tzinfo=dt.timezone.utc),
+    )
+    @mock.patch("tqdm.tqdm", autospec=True)
     def test_initialization(self, tqdm_, _):
         """Test initialization of progress bar."""
         after = dt.datetime(2018, 2, 1, tzinfo=dt.timezone.utc)
-        with pbar.ProgressBarAdapter(tqdm.tqdm(),
-                                     after=after, ascending=True) as pb:
+        with pbar.ProgressBarAdapter(tqdm.tqdm(), after=after, ascending=True) as pb:
             pb.update(pb.now - dt.timedelta(3))
             pb.update(pb.now - dt.timedelta(1))
         expected = [mock.call(9), mock.call(2), mock.call(1)]

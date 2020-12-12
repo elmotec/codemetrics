@@ -1,7 +1,0 @@
-numpy
-click>=6.0
-pandas
-tqdm
-python-dateutil
-scikit-learn
-lizard

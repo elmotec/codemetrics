@@ -14,31 +14,55 @@ import tqdm
 
 from . import pbar
 
+DownloadResult = collections.namedtuple(
+    "DownloadResult", ["revision", "path", "content"]
+)
+
+ChunkStats = collections.namedtuple(
+    "ChunkStats", ["path", "chunk", "first", "last", "added", "removed"]
+)
+
+
 # Default download function will be set by cm.git or cm.svn on checkout.
-_default_download_func = None
+DownloadFuncType = typing.Optional[typing.Callable[[pd.DataFrame], DownloadResult]]
+default_download_func: DownloadFuncType = None
 
 
 class LogEntry:
     """Data structure to hold git or svn data entries."""
 
-    __slots__ = ['revision', 'author', 'date', 'path', 'message', 'kind',
-                 'action', 'textmods', 'propmods', 'copyfromrev',
-                 'copyfrompath', 'added', 'removed']
+    __slots__ = [
+        "revision",
+        "author",
+        "date",
+        "path",
+        "message",
+        "kind",
+        "action",
+        "textmods",
+        "propmods",
+        "copyfromrev",
+        "copyfrompath",
+        "added",
+        "removed",
+    ]
 
-    def __init__(self,
-                 revision: str,
-                 author: str,
-                 date: dt.datetime,
-                 path: typing.Union[str, None],
-                 message: str,
-                 kind,
-                 action=None,
-                 textmods: bool = True,
-                 propmods: bool = False,
-                 copyfromrev: str = None,
-                 copyfrompath: str = None,
-                 added: int = None,
-                 removed: int = None):
+    def __init__(
+        self,
+        revision: str,
+        author: typing.Optional[str],
+        date: dt.datetime,
+        path: typing.Optional[str] = None,
+        message: typing.Optional[str] = None,
+        kind: typing.Optional[str] = None,
+        action: typing.Optional[str] = None,
+        textmods: bool = True,
+        propmods: bool = False,
+        copyfromrev: str = None,
+        copyfrompath: str = None,
+        added: int = None,
+        removed: int = None,
+    ):
         """Initializes LogEntry
 
         Args:
@@ -82,30 +106,35 @@ class LogEntry:
         return (getattr(self, slot) for slot in self.__slots__)
 
 
-def _dtype_and_cats(df):
-    """Set dtype and categorize columns in the DataFrame.
+def normalize_log(df):
+    """Set dtype and categorize columns in the log DataFrame.
 
     Specifically:
-        - Make date tz-aware.
-        - Replace NaN in author and message with None to make sure they are of
-          type object.
+        - Converts date to tz-aware UTC.
+        - Replace NaN in author and message with an empty string.
         - Make added, and removed numeric (float so we can handle averages).
-        - Make textmods, kind, action, and propmods categories.
+        - Make textmods and propmods as bool (no NA).
+        - Make kind, and action categories.
 
     """
-    df['date'] = pd.to_datetime(df['date'], utc=True)
-    str_cols = ['message', 'copyfromrev', 'copyfrompath']
-    df[str_cols] = df[str_cols].where(pd.notnull(df[str_cols]), '')
-    num_cols = ['added', 'removed']
-    df[num_cols] = df[num_cols].apply(pd.to_numeric, downcast='float')
-    bool_cols = ['textmods', 'propmods']
-    df[bool_cols] = df[bool_cols].astype('bool')
-    cat_cols = ['kind', 'action']
-    df[cat_cols] = df[cat_cols].astype('category')
-    return df
+    return df.assign(
+        revision=lambda x: x["revision"].astype("string"),
+        path=lambda x: x["path"].astype("string"),
+        author=lambda x: x["author"].fillna("").astype("string"),
+        date=lambda x: pd.to_datetime(x["date"], utc=True),
+        message=lambda x: x["message"].fillna("").astype("string"),
+        copyfromrev=lambda x: x["copyfromrev"].astype("string"),
+        copyfrompath=lambda x: x["copyfrompath"].astype("string"),
+        added=lambda x: pd.to_numeric(x["added"], downcast="float"),
+        removed=lambda x: pd.to_numeric(x["removed"], downcast="float"),
+        textmods=lambda x: x["textmods"].astype("bool"),
+        propmods=lambda x: x["propmods"].astype("bool"),
+        kind=lambda x: x["kind"].astype("category"),
+        action=lambda x: x["action"].astype("category"),
+    )
 
 
-def _to_dataframe(log_entries: typing.Sequence[LogEntry]) -> pd.DataFrame:
+def to_frame(log_entries: typing.Sequence[LogEntry]) -> pd.DataFrame:
     """Convert log entries to a pandas DataFrame.
 
     Args:
@@ -116,12 +145,13 @@ def _to_dataframe(log_entries: typing.Sequence[LogEntry]) -> pd.DataFrame:
 
     """
     columns = LogEntry.__slots__
-    tuples = [log_entry.astuple() for log_entry in log_entries]
-    result = pd.DataFrame.from_records(tuples, columns=columns)
-    return _dtype_and_cats(result)
+    result = pd.DataFrame.from_records(
+        (log_entry.astuple() for log_entry in log_entries), columns=columns
+    )
+    return normalize_log(result)
 
 
-class _ScmLogCollector(abc.ABC):
+class ScmLogCollector(abc.ABC):
     """Base class for svn and git.
 
     See `get_log` functions.
@@ -145,10 +175,12 @@ class _ScmLogCollector(abc.ABC):
         """
         pass
 
-    def process_log_output_to_df(self,
-                                 cmd_output: typing.Sequence[str],
-                                 after: dt.datetime = None,
-                                 progress_bar: tqdm.tqdm = None):
+    def process_log_output_to_df(
+        self,
+        cmd_output: typing.Sequence[str],
+        after: dt.datetime,
+        progress_bar: tqdm.tqdm = None,
+    ):
         """Factor creation of dataframe from output of command.
 
         Args:
@@ -167,7 +199,7 @@ class _ScmLogCollector(abc.ABC):
             for entry in self.process_log_entries(cmd_output):
                 log_entries.append(entry)
                 tqdm_pbar.update(entry.date)
-        df = _to_dataframe(log_entries)
+        df = to_frame(log_entries)
         return df
 
     @abc.abstractmethod
@@ -181,15 +213,9 @@ class _ScmLogCollector(abc.ABC):
         pass
 
 
-DownloadResult = collections.namedtuple('DownloadResult',
-                                        ['revision', 'path', 'content'])
-
-ChunkStats = collections.namedtuple('ChunkStats',
-                                    ['path', 'chunk', 'first', 'last',
-                                     'added', 'removed'])
-
-
-def parse_diff_as_tuples(download: DownloadResult) -> typing.Generator[ChunkStats, None, None]:
+def parse_diff_as_tuples(
+    download: DownloadResult,
+) -> typing.Generator[ChunkStats, None, None]:
     """Parse download result looking for diff chunks.
 
     Args:
@@ -200,9 +226,9 @@ def parse_diff_as_tuples(download: DownloadResult) -> typing.Generator[ChunkStat
 
     """
     curr_chunk, curr_path, count = None, None, 0
-    for line in download.content.split('\n'):
-        fm_re = r'Index: (.*)'
-        #fm_re = r'^\+\+\+ b/[^\s/]+/(.*\S)\s+\((revision \d+|nonexistent)\)'
+    for line in download.content.split("\n"):
+        fm_re = r"Index: (.*)"
+        # fm_re = r'^\+\+\+ b/[^\s/]+/(.*\S)\s+\((revision \d+|nonexistent)\)'
         file_match = re.match(fm_re, line)
         if file_match is not None:
             if curr_chunk is not None:
@@ -211,7 +237,7 @@ def parse_diff_as_tuples(download: DownloadResult) -> typing.Generator[ChunkStat
             curr_path = file_match.group(1)
             count = 0
             continue
-        chunk_match = re.match(r'^@@ -\d+,\d+ \+(\d+)(?:,(\d+))? @@', line)
+        chunk_match = re.match(r"^@@ -\d+,\d+ \+(\d+)(?:,(\d+))? @@", line)
         if chunk_match is not None:
             if curr_chunk is not None:
                 yield curr_chunk
@@ -221,16 +247,15 @@ def parse_diff_as_tuples(download: DownloadResult) -> typing.Generator[ChunkStat
             else:
                 length = 0
             assert curr_path is not None
-            curr_chunk = ChunkStats(curr_path, count,
-                                    begin, begin + length, 0, 0)
+            curr_chunk = ChunkStats(curr_path, count, begin, begin + length, 0, 0)
             count += 1
             continue
         if curr_chunk is None or not line:
             continue
-        if line[0] == '-':
-            curr_chunk = curr_chunk._replace(removed=curr_chunk.removed + 1)
-        elif line[0] == '+':
-            curr_chunk = curr_chunk._replace(added=curr_chunk.added + 1)
+        if line[0] == "-":
+            curr_chunk = curr_chunk._replace(removed=curr_chunk.removed + 1)  # noqa
+        elif line[0] == "+":
+            curr_chunk = curr_chunk._replace(added=curr_chunk.added + 1)  # noqa
     if curr_chunk is not None:
         yield curr_chunk
     return
@@ -246,12 +271,13 @@ def parse_diff_chunks(download: DownloadResult) -> pd.DataFrame:
 class ScmDownloader(abc.ABC):
     """Abstract class that defines a common interface for SCM downloaders."""
 
-    def __init__(self, command, client):
+    def __init__(self, command: typing.List[str], client: str):
         """Aggregates the client and the command in one variable."""
-        self.command = f'{client} {command}'
+        self.command = [client] + command
 
-    def download(self, revision: str,
-                 path: typing.Union[None, str]) -> DownloadResult:
+    def download(
+        self, revision: str, path: typing.Optional[str] = None
+    ) -> DownloadResult:
         """Download content specific to a revision and path.
 
         Runs checks and forward the call to _download (template method).
@@ -262,20 +288,25 @@ class ScmDownloader(abc.ABC):
                 are to be retrieved.
 
         """
-        assert revision is None or isinstance(revision, str), \
-            f'expected string, got {type(revision)}'
-        assert path is None or isinstance(path, str), \
-            f'expected a string, got {type(path)}'
+        assert revision is None or isinstance(
+            revision, str
+        ), f"expected string, got {type(revision)}"
+        assert path is None or isinstance(
+            path, str
+        ), f"expected a string, got {type(path)}"
         dr = self._download(revision, path)
         return dr
 
     @abc.abstractmethod
-    def _download(self, revision: str, path: str) -> DownloadResult:
+    def _download(self, revision: str, path: typing.Optional[str]) -> DownloadResult:
         """Download content specific to a revision and path.
+
+        Args:
+            revision id: revision to download.
+            path: some SCM (e.g. Subversion) requires a path but not all do.
 
         Return:
             May return more than one item (e.g. multiple chunks) as generator.
 
         """
         pass
-

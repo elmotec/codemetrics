@@ -5,19 +5,17 @@
 
 import datetime as dt
 import re
+import subprocess
 import typing
+
 # noinspection PyPep8Naming,PyPep8Naming
 import xml.etree.ElementTree as ET
-import subprocess
 
-import dateutil as du
 import numpy as np
 import pandas as pd
 import tqdm
 
-from . import internals
-from . import scm
-from . import svn
+from . import internals, scm, svn
 from .internals import log
 
 
@@ -30,49 +28,52 @@ def to_date(datestr: str):
     added and removed columns are set to np.nan for now.
 
     """
-    return du.parser.parse(datestr).replace(tzinfo=dt.timezone.utc)
+    from dateutil import parser
+
+    return parser.parse(datestr).replace(tzinfo=dt.timezone.utc)
 
 
 def to_bool(bool_str: str):
     """Convert str to bool."""
     bool_str_lc = bool_str.lower()
-    if bool_str_lc in ('true', '1', 't'):
+    if bool_str_lc in ("true", "1", "t"):
         return True
-    if bool_str_lc in ('false', '0', 'f', ''):
+    if bool_str_lc in ("false", "0", "f", ""):
         return False
-    raise ValueError(f'cannot interpret {bool_str} as a bool')
+    raise ValueError(f"cannot interpret {bool_str} as a bool")
 
 
-class _SvnLogCollector(scm._ScmLogCollector):
+class _SvnLogCollector(scm.ScmLogCollector):
     """_ScmLogCollector interface adapter for _SvnLogCollector."""
 
-    _args = 'log --xml -v'
+    _args = "log --xml -v".split()
 
-    def __init__(self,
-                 svn_client: str = 'svn',
-                 path: str = '.',
-                 relative_url: str = None):
+    def __init__(
+        self,
+        svn_client: str = "svn",
+        path: str = ".",
+        relative_url: typing.Optional[str] = None,
+    ):
         """Initialize.
 
-        Args:
-            svn_client: name of svn client.
-            path: top of the checked out directory.
-            relative_url: Subversion relative url (e.g. /project/trunk/).
-`
+                Args:
+                    svn_client: name of svn client.
+                    path: top of the checked out directory.
+                    relative_url: Subversion relative url (e.g. /project/trunk/).
+        `
         """
         super().__init__()
-        self.svn_client = svn_client or 'svn'
+        self.svn_client = svn_client or "svn"
         self.path = path
         # FIXME: Can we get rid of _relative_url?
         self._relative_url = relative_url
 
     def update_urls(self):
         """Relative URL so we can generate local paths."""
-        rel_url_re = re.compile(r'^Relative URL: \^(.*)/?$')
+        rel_url_re = re.compile(r"^Relative URL: \^(.*)/?$")
         if not self._relative_url:
             # noinspection PyPep8
-            for line in internals.run(
-                f'{self.svn_client} info {self.path}').split('\n'):
+            for line in internals.run([self.svn_client, "info", self.path]).split("\n"):
                 match = rel_url_re.match(line)
                 if match:
                     self._relative_url = match.group(1)
@@ -91,8 +92,22 @@ class _SvnLogCollector(scm._ScmLogCollector):
             self.update_urls()
         return self._relative_url
 
-    def process_entry(self,
-                      log_entry: str):
+    @staticmethod
+    def _extract(
+        elem: ET.Element, sub: str, log_entry: str, on_error=None
+    ) -> typing.Optional[str]:
+        """Extract subelement from element."""
+        try:
+            subel = elem.find(f"./{sub}")
+            if subel is not None:
+                return subel.text
+        except (AttributeError, SyntaxError) as err:
+            log.warning("failed to retrieve %s in %s: %s", sub, log_entry, err)
+            if on_error == "raise":
+                raise
+        return None
+
+    def process_entry(self, log_entry: str):
         """Convert a single xml <logentry/> element to csv rows.
 
         Args:
@@ -103,64 +118,79 @@ class _SvnLogCollector(scm._ScmLogCollector):
 
         """
         elem = ET.fromstring(log_entry)
-        rev = elem.attrib['revision']
-        values = {}
-        for sub in ['author', 'date', 'msg']:
-            try:
-                values[sub] = elem.find(f'./{sub}').text
-            except (AttributeError, SyntaxError):
-                log.warning('failed to retrieve %s in %s', sub, log_entry)
-                values[sub] = None
-        if values['msg']:
-            values['msg'] = values['msg'].replace('\n', ' ')
-        rel_url_slash = self.relative_url + '/'
-        for path_elem in elem.findall('*/path'):
+        rev = elem.attrib["revision"]
+        author = self._extract(elem, "author", log_entry)
+        date = self._extract(elem, "date", log_entry, "raise")
+        message = self._extract(elem, "msg", log_entry)
+        if message is not None:
+            message = message.replace("\n", " ")
+        rel_url_slash = self.relative_url + "/"
+        for path_elem in elem.findall("*/path"):
             other = {}
-            for sub in ['text-mods', 'kind', 'action', 'prop-mods',
-                        'copyfrom-rev', 'copyfrom-path']:
+            for sub in [
+                "text-mods",
+                "kind",
+                "action",
+                "prop-mods",
+                "copyfrom-rev",
+                "copyfrom-path",
+            ]:
                 try:
                     other[sub] = path_elem.attrib[sub]
                 except (AttributeError, SyntaxError, KeyError):
                     other[sub] = np.nan
             try:
-                path = path_elem.text.replace(rel_url_slash, '')
+                path_elem_text = path_elem.text
+                assert path_elem_text is not None
+                path = path_elem_text.replace(rel_url_slash, "")
             except (AttributeError, SyntaxError, ValueError) as err:
-                log.warning(f'{err} processing rev {rev}')
-                path = None
-            entry = scm.LogEntry(rev, values['author'], to_date(values['date']),
-                                 path=path, message=values['msg'],
-                                 textmods=to_bool(other['text-mods']),
-                                 kind=other['kind'], action=other['action'],
-                                 propmods=to_bool(other['prop-mods']),
-                                 copyfromrev=other['copyfrom-rev'],
-                                 copyfrompath=other['copyfrom-path'],
-                                 added=np.nan, removed=np.nan)
+                msg = f"{err} processing rev {rev}"
+                log.warning(msg)
+                path = msg
+            assert date is not None, "expected datetime got None"
+            entry = scm.LogEntry(
+                rev,
+                author,
+                to_date(date),
+                path=path,
+                message=message,
+                textmods=to_bool(other["text-mods"]),
+                kind=other["kind"],
+                action=other["action"],
+                propmods=to_bool(other["prop-mods"]),
+                copyfromrev=other["copyfrom-rev"],
+                copyfrompath=other["copyfrom-path"],
+                added=np.nan,
+                removed=np.nan,
+            )
             yield entry
 
     def process_log_entries(self, xml):
         # See parent.
-        log_entry = ''
+        log_entry = ""
         for line in xml:
-            if line.startswith('<logentry'):
+            if line.startswith("<logentry"):
                 log_entry += line
                 continue
             if not log_entry:
                 continue
             log_entry += line
-            if not line.startswith('</logentry>'):
+            if not line.startswith("</logentry>"):
                 continue
             yield from self.process_entry(log_entry)
-            log_entry = ''
+            log_entry = ""
 
-    def get_log(self,
-                path: str = '.',
-                after: dt.datetime = None,
-                before: dt.datetime = None,
-                progress_bar: tqdm.tqdm = None) -> pd.DataFrame:
+    def get_log(
+        self,
+        path: str = ".",
+        after: dt.datetime = None,
+        before: dt.datetime = None,
+        progress_bar: tqdm.tqdm = None,
+    ) -> pd.DataFrame:
         """Entry point to retrieve _SvnLogCollector log.
 
         Call svn log --xml -v and return the output as a DataFrame.
-        
+
         Args:
             path: location of checked out subversion repository root.
             after: only get the log after time stamp. Defaults to one year ago.
@@ -179,26 +209,30 @@ class _SvnLogCollector(scm._ScmLogCollector):
         """
         internals.check_run_in_root(path)
         after, before = internals.handle_default_dates(after, before)
-        before_str = 'HEAD'
+        before_str = "HEAD"
         if before:
-            before_str = '{' + f'{before:%Y-%m-%d}' + '}'
-        after_str = '{' + f'{after:%Y-%m-%d}' + '}'
+            before_str = "{" + f"{before:%Y-%m-%d}" + "}"
+        after_str = "{" + f"{after:%Y-%m-%d}" + "}"
         # noinspection PyPep8
-        command = \
-            f'{self.svn_client} {_SvnLogCollector._args} ' \
-                f'-r {after_str}:{before_str}'
-        command_with_path = f'{command} {path}'
-        results = internals.run(command_with_path).split('\n')
-        return self.process_log_output_to_df(results, after=after,
-                                             progress_bar=progress_bar)
+        command = (
+            [self.svn_client]
+            + _SvnLogCollector._args
+            + ["-r", f"{after_str}:{before_str}", path]
+        )
+        results = internals.run(command).split("\n")
+        return self.process_log_output_to_df(
+            results, after=after, progress_bar=progress_bar
+        )
 
 
-def get_svn_log(path: str = '.',
-                after: dt.datetime = None,
-                before: dt.datetime = None,
-                progress_bar: tqdm.tqdm = None,
-                svn_client: str = 'svn',
-                relative_url: str = None) -> pd.DataFrame:
+def get_svn_log(
+    path: str = ".",
+    after: dt.datetime = None,
+    before: dt.datetime = None,
+    progress_bar: tqdm.tqdm = None,
+    svn_client: str = "svn",
+    relative_url: str = None,
+) -> pd.DataFrame:
     """Entry point to retrieve svn log.
 
     Args:
@@ -219,17 +253,17 @@ def get_svn_log(path: str = '.',
         log_df = cm.svn.get_svn_log(path='src', after=last_year)
 
     """
-    scm._default_download_func = svn.download
-    collector = _SvnLogCollector(svn_client=svn_client,
-                                 relative_url=relative_url)
-    return collector.get_log(path=path, after=after, before=before,
-                             progress_bar=progress_bar)
+    scm.default_download_func = svn.download
+    collector = _SvnLogCollector(svn_client=svn_client, relative_url=relative_url)
+    return collector.get_log(
+        path=path, after=after, before=before, progress_bar=progress_bar
+    )
 
 
 class SvnDownloader(scm.ScmDownloader):
     """Download files from Subversion."""
 
-    def __init__(self, command, svn_client: str = 'svn'):
+    def __init__(self, command: typing.List[str], svn_client: str = "svn"):
         """Initialize downloader.
 
         Args:
@@ -237,36 +271,39 @@ class SvnDownloader(scm.ScmDownloader):
         """
         super().__init__(command, client=svn_client)
 
-    def _download(self, revision: str, path: str) -> scm.DownloadResult:
+    def _download(
+        self, revision: str, path: typing.Optional[str]
+    ) -> scm.DownloadResult:
         """Download specific file and revision from git."""
-        command = f'{self.command} {revision}'
-        if path:
-            command += f' {path}'
+        command = self.command + [revision]
+        if path is not None:
+            command += [path]
         content = internals.run(command)
         return scm.DownloadResult(revision, path, content)
 
 
-def download(data: typing.Union[pd.DataFrame, pd.Series],
-             svn_client: str = 'svn') -> scm.DownloadResult:
+def download(data: pd.DataFrame, svn_client: str = "svn") -> scm.DownloadResult:
     """Download results from Subversion.
 
     Args:
-        data: pd.Series containing at least revision and path.
+        data: pd.DataFrame containing at least revision and path.
         svn_client: Subversion client executable. Defaults to svn.
 
     Returns:
          list of file contents.
 
     """
-    downloader = SvnDownloader('cat -r', svn_client=svn_client)
-    revision, path = internals.extract_values(data, ['revision', 'path'])
+    downloader = SvnDownloader(["cat", "-r"], svn_client=svn_client)
+    df = data[["revision", "path"]]
+    if isinstance(df, pd.Series):
+        df = df.to_frame().T
+    revision, path = next(df.itertuples(index=False))
     return downloader.download(revision, path)
 
 
-def get_diff_stats(data: pd.DataFrame,
-                   svn_client: str = 'svn',
-                   chunks=None
-                   ) -> typing.Union[None, pd.DataFrame]:
+def get_diff_stats(
+    data: pd.DataFrame, svn_client: str = "svn", chunks=None
+) -> typing.Union[None, pd.DataFrame]:
     """Download diff chunks statistics from Subversion.
 
     Args:
@@ -292,22 +329,22 @@ def get_diff_stats(data: pd.DataFrame,
     """
     data = data.reset_index()  # prevents messing with input frame.
     try:
-        revision = internals.extract_values(data, ['revision'])
+        revision = data.iloc[0]["revision"]
     except Exception as err:
-        log.warning('cannot find revision in group: %s\n%s', str(err), data)
+        log.warning("cannot find revision in group: %s\n%s", str(err), data)
         return None
-    downloader = SvnDownloader('diff --git -c', svn_client=svn_client)
+    downloader = SvnDownloader(["diff", "--git", "-c"], svn_client=svn_client)
     try:
-        downloaded = downloader.download(revision, None)
+        downloaded = downloader.download(revision)
     except subprocess.CalledProcessError as err:
-        message = f'cannot retrieve diff for {revision}: {err}: {err.stderr}'
+        message = f"cannot retrieve diff for {revision}: {err}: {err.stderr}"
         log.warning(message)
         return None
     df = scm.parse_diff_chunks(downloaded)
     if chunks is None:
-        chunks = (data.ndim == 2)
+        chunks = data.ndim == 2
     if not chunks:
-        df = df[['path', 'added', 'removed']].groupby(['path']).sum()
+        df = df[["path", "added", "removed"]].groupby(["path"]).sum()
     else:
-        df = df.set_index(['path', 'chunk'])
+        df = df.set_index(["path", "chunk"])
     return df

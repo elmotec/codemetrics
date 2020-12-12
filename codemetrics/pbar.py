@@ -16,10 +16,9 @@ class ProgressBarAdapter:
     Also acts as a context manager.
     """
 
-    def __init__(self,
-                 progress_bar: tqdm.tqdm,
-                 after: dt.datetime,
-                 ascending: bool = None):
+    def __init__(
+        self, progress_bar: tqdm.tqdm, after: dt.datetime, ascending: bool = None
+    ):
         """Creates adapter to update the progress bar based on days retrieved.
 
         We can't really know how far we are in processing the SCM log so we
@@ -37,10 +36,10 @@ class ProgressBarAdapter:
 
         self.progress_bar = progress_bar
         if self.progress_bar is not None:
-            self.progress_bar.unit = 'day'
+            self.progress_bar.unit = "day"
         self.now = cm.internals.get_now()
         self.count = 0
-        assert after.tzinfo is not None, 'requires tz aware datetime'
+        assert after.tzinfo is not None, "requires tz aware datetime"
         self.after = after
         self.reset(self.after)
         self.ascending = ascending
@@ -79,10 +78,9 @@ class ProgressBarAdapter:
             new_count = (current_datetime - self.after).days
         else:
             new_count = (self.now - current_datetime).days
-            assert new_count >= 0, 'current_date_time is greater than now'
+            assert new_count >= 0, "current_date_time is greater than now"
         diff = new_count - self.count
         if diff > 0:
             self.progress_bar.update(diff)
             self.count = new_count
         return
-

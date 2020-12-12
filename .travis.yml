@@ -1,14 +1,16 @@
-# Config file for automatic testing at travis-ci.org
+# Config file for automatic testing at travis-ci.com
 
 dist: xenial
 language: python
 python:
     - "3.6"
     - "3.7"
+    - "3.8"
+    - "3.9"
 
 install:
-    - pip install -r requirements.txt coverage python-coveralls
-    - python setup.py --quiet install
+    - python -m pip install pip -U
+    - python -m pip install .  coverage python-coveralls
 
 script:
     - python setup.py test

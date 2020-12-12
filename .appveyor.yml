@@ -2,9 +2,10 @@ environment:
     matrix:
         - PYTHON: Python36
         - PYTHON: Python37
+        - PYTHON: Python38
 
 install:
-    - C:\%PYTHON%\python.exe setup.py install
+    - C:\%PYTHON%\python.exe -m pip install .
 
 build: off
 

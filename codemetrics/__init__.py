@@ -1,25 +1,32 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+# flake8: noqa
 
 """Top-level module for codemetrics package."""
 
 # noinspection SpellCheckingInspection
 __author__ = """Elmotec"""
-__email__ = 'elmotec@gmx.com'
-__version__ = '0.9.6'
+__email__ = "elmotec@gmx.com"
+__version__ = "0.9.6"
 
-# Convenience import.
-from .core import *
-from .git import *
-from .svn import *
-from .cloc import *
-
+from .cloc import get_cloc
+from .core import (
+    get_ages,
+    get_co_changes,
+    get_complexity,
+    get_hot_spots,
+    get_mass_changes,
+    guess_components,
+)
+from .git import get_git_log
+from .internals import log
+from .svn import get_svn_log
 
 __doc__ = """"
 codemetrics
 ===========
 
-Code metrics is a simple Python module that leverage your source control 
+Code metrics is a simple Python module that leverage your source control
 management (SCM) tool and pandas to generate insight on your code base.
 
 """

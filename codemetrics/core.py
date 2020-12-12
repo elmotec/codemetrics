@@ -4,28 +4,27 @@
 import os.path
 import typing
 
-import pandas as pd
 import lizard
+import pandas as pd
 import sklearn
 import sklearn.cluster
 import sklearn.feature_extraction.text
 
-from . import internals
-from . import scm
+from . import internals, scm
 
 __all__ = [
-    'get_mass_changes',
-    'get_ages',
-    'get_hot_spots',
-    'get_co_changes',
-    'guess_components',
-    'get_complexity',
+    "get_mass_changes",
+    "get_ages",
+    "get_hot_spots",
+    "get_co_changes",
+    "guess_components",
+    "get_complexity",
 ]
 
 
-def get_mass_changes(log: pd.DataFrame,
-                     min_path: int=None,
-                     max_changes_per_path: float=None) -> pd.DataFrame:
+def get_mass_changes(
+    log: pd.DataFrame, min_path: int = None, max_changes_per_path: float = None
+) -> pd.DataFrame:
     """Extract mass changesets from the SCM log data frame.
 
     Calculate the number of files changed by each revision and extract that
@@ -40,25 +39,30 @@ def get_mass_changes(log: pd.DataFrame,
             (added + removed) per file that changed.
 
     Returns:
-        revisions that had more files changed than the threshold.
+        revisions that had more files changed than the threshold as a pd.DataFrame
+        with columns revision, path, changes and changes_per_path.
 
     """
-    data = log.reset_index().copy()[['revision', 'path', 'added', 'removed']]
-    data['changes'] = data['added'] + data['removed']
-    data = data[['revision', 'path', 'changes']].\
-        groupby('revision', as_index=False).\
-        agg({'path': 'count', 'changes': 'sum'})
-    data['changes_per_path'] = data['changes'] / data['path']
+    data = log.reset_index().copy()[["revision", "path", "added", "removed"]]
+    data["changes"] = data["added"] + data["removed"]
+    data = (
+        data[["revision", "path", "changes"]]
+        .groupby("revision", as_index=False)
+        .agg({"path": "count", "changes": "sum"})
+        .assign(revision=lambda x: x["revision"].astype("string"))
+    )
+    data["changes_per_path"] = data["changes"] / data["path"]
     if min_path is not None:
-        data = data[data['path'] >= min_path]
+        data = data[data["path"] >= min_path]
     if max_changes_per_path is not None:
-        data = data[data['changes_per_path'] <= max_changes_per_path]
+        data = data[data["changes_per_path"] <= max_changes_per_path]
     return data
 
 
-def get_ages(data: pd.DataFrame,
-             by: typing.Sequence[str] = None,
-             ) -> pd.DataFrame:
+def get_ages(
+    data: pd.DataFrame,
+    by: typing.Sequence[str] = None,
+) -> pd.DataFrame:
     """Generate age of each file based on last change.
 
     Takes the output of a SCM log or just the date column and return get_ages.
@@ -77,12 +81,12 @@ def get_ages(data: pd.DataFrame,
 
     """
     if by is None:
-        by = ['path']
+        by = ["path"]
     now = pd.to_datetime(internals.get_now(), utc=True)
-    rv = data.groupby(by)['date'].max().reset_index()
-    rv['age'] = (now - pd.to_datetime(rv['date'], utc=True))
-    rv['age'] /= pd.Timedelta(1, unit='D')
-    return rv.drop(columns=['date'])
+    rv = data.groupby(by)["date"].max().reset_index()
+    rv["age"] = now - pd.to_datetime(rv["date"], utc=True)
+    rv["age"] /= pd.Timedelta(1, unit="D")
+    return rv.drop(columns=["date"])
 
 
 def get_hot_spots(log, loc, by=None, count_one_change_per=None):
@@ -104,16 +108,18 @@ def get_hot_spots(log, loc, by=None, count_one_change_per=None):
     """
 
     if by is None:
-        by = 'path'
+        by = "path"
     if count_one_change_per is None:
-        count_one_change_per = ['revision']
+        count_one_change_per = ["revision"]
     c_df = loc.copy()
-    c_df = c_df.rename(columns={'code': 'lines'})
+    c_df = c_df.rename(columns={"code": "lines"})
     columns = count_one_change_per + [by]
-    ch_df = log[columns].drop_duplicates()[by]. \
-        value_counts().to_frame('changes')
-    df = pd.merge(c_df, ch_df, right_index=True, left_on=by, how='outer'). \
-        fillna(0.0)
+    ch_df = log[columns].drop_duplicates()[by].value_counts().to_frame("changes")
+    df = pd.merge(c_df, ch_df, right_index=True, left_on=by, how="outer").reset_index(
+        drop=True
+    )
+    num_columns = df.select_dtypes(include=["number"]).columns
+    df[num_columns] = df[num_columns].fillna(0)
     return df
 
 
@@ -135,19 +141,24 @@ def get_co_changes(log=None, by=None, on=None):
 
     """
     if by is None:
-        by = 'path'
+        by = "path"
     if on is None:
-        on = 'revision'
+        on = "revision"
     df = log[[on, by]].drop_duplicates()
-    sj = pd.merge(df, df, on=on).\
-        rename(columns={by + '_x': by, by + '_y': 'dependency'}).\
-        groupby([by, 'dependency']).count().reset_index()
-    result = pd.merge(sj[sj[by] == sj['dependency']][[by, on]],
-                      sj[sj[by] != sj['dependency']], on=by). \
-        rename(columns={on + '_x': 'changes', on + '_y': 'cochanges'})
-    result['coupling'] = result['cochanges'] / result['changes']
-    return result[[by, 'dependency', 'changes', 'cochanges', 'coupling']]. \
-        sort_values(by='coupling', ascending=False)
+    sj = (
+        pd.merge(df, df, on=on)
+        .rename(columns={by + "_x": by, by + "_y": "dependency"})
+        .groupby([by, "dependency"])
+        .count()
+        .reset_index()
+    )
+    result = pd.merge(
+        sj[sj[by] == sj["dependency"]][[by, on]], sj[sj[by] != sj["dependency"]], on=by
+    ).rename(columns={on + "_x": "changes", on + "_y": "cochanges"})
+    result["coupling"] = result["cochanges"] / result["changes"]
+    return result[[by, "dependency", "changes", "cochanges", "coupling"]].sort_values(
+        by="coupling", ascending=False
+    )
 
 
 def guess_components(paths, stop_words=None, n_clusters=8):
@@ -166,40 +177,45 @@ def guess_components(paths, stop_words=None, n_clusters=8):
         sklearn.cluster.MiniBatchKMeans
 
     """
-    data = list([p for p in paths])
-    dirs = [os.path.dirname(p.replace('\\', '/')) for p in data]
-    vectorizer = sklearn.feature_extraction.text.TfidfVectorizer(
-        stop_words=stop_words)
+    dirs = [os.path.dirname(p.replace("\\", "/")) for p in paths]
+    vectorizer = sklearn.feature_extraction.text.TfidfVectorizer(stop_words=stop_words)
     transformed_dirs = vectorizer.fit_transform(dirs)
     algo = sklearn.cluster.MiniBatchKMeans
     clustering = algo(compute_labels=True, n_clusters=n_clusters)
     clustering.fit(transformed_dirs)
 
     def __cluster_name(center, threshold):
-        df = pd.DataFrame(data={'feature': vectorizer.get_feature_names(),
-                                'weight': center})
-        df.sort_values(by=['weight', 'feature'], ascending=False, inplace=True)
-        if (df['weight'] <= threshold).all():
-            return ''
-        df = df[df['weight'] > threshold]
-        return '.'.join(df['feature'].tolist())
+        df = pd.DataFrame(
+            data={"feature": vectorizer.get_feature_names(), "weight": center}
+        )
+        df.sort_values(by=["weight", "feature"], ascending=False, inplace=True)
+        if (df["weight"] <= threshold).all():
+            return ""
+        df = df[df["weight"] > threshold]
+        return ".".join(df["feature"].tolist())
 
-    cluster_names = [__cluster_name(center, 0.4)
-                     for center in clustering.cluster_centers_]
+    cluster_names = [
+        __cluster_name(center, 0.4) for center in clustering.cluster_centers_
+    ]
     components = [cluster_names[lbl] for lbl in clustering.labels_]
-    rv = pd.DataFrame(data={'path': data, 'component': components})
-    rv.sort_values(by='component', inplace=True)
+    rv = pd.DataFrame(data={"path": paths, "component": components})
+    rv.sort_values(by="component", inplace=True)
     return rv
 
 
 # Exclude the parameters field for now.
-_lizard_fields = [fld for fld in vars(lizard.FunctionInfo('', '')).keys()
-                  if fld not in ['filename', 'parameters']]
-_complexity_fields = _lizard_fields + 'file_tokens file_nloc'.split()
+_lizard_fields = [
+    fld
+    for fld in vars(lizard.FunctionInfo("", "")).keys()
+    if fld not in ["filename", "parameters", "full_parameters"]
+]
+_complexity_fields = _lizard_fields + "file_tokens file_nloc".split()
 
 
-def get_complexity(group: typing.Union[pd.DataFrame, pd.Series],
-                   download_func: typing.Callable=None) -> pd.DataFrame:
+def get_complexity(
+    group: typing.Union[pd.DataFrame, pd.Series],
+    download_func: typing.Optional[scm.DownloadFuncType] = None,
+) -> pd.DataFrame:
     """Generate complexity information for files and revisions in dataframe.
 
     For each pair of (path, revision) in the input dataframe, analyze the code
@@ -225,10 +241,11 @@ def get_complexity(group: typing.Union[pd.DataFrame, pd.Series],
 
     """
     if len(group) == 0:
-        internals.log.info('empty group %s', group)
+        internals.log.info("empty group %s", group)
         return pd.DataFrame({k: [] for k in _complexity_fields})
     if download_func is None:
-        download_func = scm._default_download_func
+        download_func = scm.default_download_func
+    assert download_func is not None
     download = download_func(group)
     path = download.path
     content = download.content
@@ -236,10 +253,24 @@ def get_complexity(group: typing.Union[pd.DataFrame, pd.Series],
     df = pd.DataFrame(columns=_lizard_fields)
     if info.function_list:
         df = pd.DataFrame.from_records(
-                [vars(d) for d in info.function_list],
-                columns=_lizard_fields)
-    df['file_tokens'] = info.token_count
-    df['file_nloc'] = info.nloc
-    return df.rename_axis('function')
-
-
+            [vars(d) for d in info.function_list], columns=_lizard_fields
+        )
+    df = (
+        df.rename_axis("function")
+        .assign(
+            file_tokens=info.token_count,
+            file_nloc=info.nloc,
+            cyclomatic_complexity=lambda x: x["cyclomatic_complexity"].astype("Int32"),
+            nloc=lambda x: x["nloc"].astype("Int32"),
+            token_count=lambda x: x["token_count"].astype("Int32"),
+            start_line=lambda x: x["start_line"].astype("Int32"),
+            end_line=lambda x: x["end_line"].astype("Int32"),
+            top_nesting_level=lambda x: x["top_nesting_level"].astype("Int32"),
+            length=lambda x: x["length"].astype("Int32"),
+            fan_in=lambda x: x["fan_in"].astype("Int32"),
+            fan_out=lambda x: x["fan_out"].astype("Int32"),
+            general_fan_out=lambda x: x["general_fan_out"].astype("Int32"),
+        )
+        .astype({"name": "string", "long_name": "string"})
+    )
+    return df
