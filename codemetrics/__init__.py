@@ -19,6 +19,7 @@ from .core import (
     guess_components,
 )
 from .git import get_git_log
+from .internals import log
 from .svn import get_svn_log
 
 __doc__ = """"

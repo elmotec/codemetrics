@@ -414,8 +414,8 @@ class GetComplexityTestCase(utils.DataFrameTestCase):
             )
         )
         self.run_expected_calls = [
-            mock.call("svn cat -r r1 f.py"),
-            mock.call("svn cat -r r2 f.py"),
+            mock.call("svn cat -r r1 f.py".split()),
+            mock.call("svn cat -r r2 f.py".split()),
         ]
 
     def get_complexity(self, download_func):

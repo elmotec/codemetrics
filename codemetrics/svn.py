@@ -46,7 +46,7 @@ def to_bool(bool_str: str):
 class _SvnLogCollector(scm.ScmLogCollector):
     """_ScmLogCollector interface adapter for _SvnLogCollector."""
 
-    _args = "log --xml -v"
+    _args = "log --xml -v".split()
 
     def __init__(
         self,
@@ -73,9 +73,7 @@ class _SvnLogCollector(scm.ScmLogCollector):
         rel_url_re = re.compile(r"^Relative URL: \^(.*)/?$")
         if not self._relative_url:
             # noinspection PyPep8
-            for line in internals.run(f"{self.svn_client} info {self.path}").split(
-                "\n"
-            ):
+            for line in internals.run([self.svn_client, "info", self.path]).split("\n"):
                 match = rel_url_re.match(line)
                 if match:
                     self._relative_url = match.group(1)
@@ -217,11 +215,11 @@ class _SvnLogCollector(scm.ScmLogCollector):
         after_str = "{" + f"{after:%Y-%m-%d}" + "}"
         # noinspection PyPep8
         command = (
-            f"{self.svn_client} {_SvnLogCollector._args} "
-            f"-r {after_str}:{before_str}"
+            [self.svn_client]
+            + _SvnLogCollector._args
+            + ["-r", f"{after_str}:{before_str}", path]
         )
-        command_with_path = f"{command} {path}"
-        results = internals.run(command_with_path).split("\n")
+        results = internals.run(command).split("\n")
         return self.process_log_output_to_df(
             results, after=after, progress_bar=progress_bar
         )
@@ -265,7 +263,7 @@ def get_svn_log(
 class SvnDownloader(scm.ScmDownloader):
     """Download files from Subversion."""
 
-    def __init__(self, command, svn_client: str = "svn"):
+    def __init__(self, command: typing.List[str], svn_client: str = "svn"):
         """Initialize downloader.
 
         Args:
@@ -277,9 +275,9 @@ class SvnDownloader(scm.ScmDownloader):
         self, revision: str, path: typing.Optional[str]
     ) -> scm.DownloadResult:
         """Download specific file and revision from git."""
-        command = f"{self.command} {revision}"
-        if path:
-            command += f" {path}"
+        command = self.command + [revision]
+        if path is not None:
+            command += [path]
         content = internals.run(command)
         return scm.DownloadResult(revision, path, content)
 
@@ -295,7 +293,7 @@ def download(data: pd.DataFrame, svn_client: str = "svn") -> scm.DownloadResult:
          list of file contents.
 
     """
-    downloader = SvnDownloader("cat -r", svn_client=svn_client)
+    downloader = SvnDownloader(["cat", "-r"], svn_client=svn_client)
     df = data[["revision", "path"]]
     if isinstance(df, pd.Series):
         df = df.to_frame().T
@@ -335,7 +333,7 @@ def get_diff_stats(
     except Exception as err:
         log.warning("cannot find revision in group: %s\n%s", str(err), data)
         return None
-    downloader = SvnDownloader("diff --git -c", svn_client=svn_client)
+    downloader = SvnDownloader(["diff", "--git", "-c"], svn_client=svn_client)
     try:
         downloaded = downloader.download(revision)
     except subprocess.CalledProcessError as err:

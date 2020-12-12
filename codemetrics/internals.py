@@ -6,7 +6,6 @@
 import datetime as dt
 import logging
 import pathlib as pl
-import shlex
 import subprocess
 import typing
 
@@ -65,7 +64,7 @@ def check_run_in_root(path):
     raise ValueError(f"{candidate} does not appear to be a git or svn root")
 
 
-def run(command: str, **kwargs) -> str:
+def run(cmd_list: typing.List[str], **kwargs) -> str:
     """Execute command passed as argument and return output.
 
     Forwards the call to `subprocess.run`.
@@ -73,7 +72,7 @@ def run(command: str, **kwargs) -> str:
     If the command does not return 0, will throw subprocess.CalledProcessError.
 
     Args:
-        command: command to execute.
+        cmd_list: command to execute.
         **kwargs: additional kwargs are passed to subprocess.run().
 
     Returns:
@@ -82,17 +81,21 @@ def run(command: str, **kwargs) -> str:
     Raise:
         ValueError if the command is not executed properly.
 
-    Note that if some process may want a list of string, others may need one
-    long string so the eventual split call is pushed to the caller.
+    If interested in the actual call made to the operating system, use
+    `codemetrics.log` like:
+
+    ```
+    codemetrics.log.setHandler(logging.StreamHandler()).setLevel(logging.INFO)
+    ```
 
     _subprocess.run:: https://docs.python.org/3/library/subprocess.html
 
     """
     if "errors" not in kwargs:
         kwargs["errors"] = "ignore"
+    command = " ".join(cmd_list)
     log.info(command)
     try:
-        cmd_list = shlex.split(command)
         result = subprocess.run(
             cmd_list,
             check=True,

@@ -23,7 +23,7 @@ class ClocEntry:
     code: int
 
 
-def get_cloc(path=".", cloc_program="cloc"):
+def get_cloc(path: str = ".", cloc_program: str = "cloc") -> pd.DataFrame:
     """Retrieve lines of code (LOC) using cloc.pl
 
     For more information about cloc.pl, see http://cloc.sourceforge.net/.
@@ -33,11 +33,12 @@ def get_cloc(path=".", cloc_program="cloc"):
         cloc_program: name of the program.
 
     Returns:
-        pandas.DataFrame.
+        Output of cloc with columns language, filename (posix), blank,
+        comment and code counts.
 
     """
     internals.check_run_in_root(path)
-    cmdline = f"{cloc_program} --csv --by-file {path}"
+    cmdline = [cloc_program, "--csv", "--by-file", path]
     cloc_entries = []
     try:
         output = internals.run(cmdline).split("\n")

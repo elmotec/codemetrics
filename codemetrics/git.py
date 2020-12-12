@@ -18,7 +18,12 @@ from .internals import log
 class _GitLogCollector(scm.ScmLogCollector):
     """Collect log from Git."""
 
-    _args = 'log --pretty=format:"[%h] [%an] [%ad] [%s]" --date=iso --numstat'
+    _args = [
+        "log",
+        '--pretty=format:"[%h] [%an] [%ad] [%s]"',
+        "--date=iso",
+        "--numstat",
+    ]
 
     def __init__(self, git_client="git", _pdb=False):
         """Initialize.
@@ -178,13 +183,13 @@ class _GitLogCollector(scm.ScmLogCollector):
         after, before = internals.handle_default_dates(after, before)
         if progress_bar is not None and after is None:
             raise ValueError("progress_bar requires 'after' parameter")
-        command = f"{self.git_client} {self._args}"
+        command = [self.git_client] + self._args
         if after:
-            command += f" --after {after:%Y-%m-%d}"
+            command += ["--after", f"{after:%Y-%m-%d}"]
         if before:
-            command += f" --before {before:%Y-%m-%d}"
-        command_with_path = f"{command} {path}"
-        results = internals.run(command_with_path).split("\n")
+            command += ["--before", f"{before:%Y-%m-%d}"]
+        command.append(path)
+        results = internals.run(command).split("\n")
         return self.process_log_output_to_df(
             results, after=after, progress_bar=progress_bar
         )
@@ -235,13 +240,13 @@ class _GitFileDownloader(scm.ScmDownloader):
             git_client: name of git client.
 
         """
-        super().__init__(client=git_client, command="show")
+        super().__init__(client=git_client, command=["show"])
 
     def _download(
         self, revision: str, path: typing.Optional[str]
     ) -> scm.DownloadResult:
         """Download specific file and revision from git."""
-        command = f"{self.command} {revision}:{path}"
+        command = self.command + [f"{revision}:{path}"]
         content = internals.run(command)
         return scm.DownloadResult(revision, path, content)
 

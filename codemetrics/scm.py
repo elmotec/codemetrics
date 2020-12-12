@@ -271,9 +271,9 @@ def parse_diff_chunks(download: DownloadResult) -> pd.DataFrame:
 class ScmDownloader(abc.ABC):
     """Abstract class that defines a common interface for SCM downloaders."""
 
-    def __init__(self, command, client):
+    def __init__(self, command: typing.List[str], client: str):
         """Aggregates the client and the command in one variable."""
-        self.command = f"{client} {command}"
+        self.command = [client] + command
 
     def download(
         self, revision: str, path: typing.Optional[str] = None

@@ -88,11 +88,13 @@ class GetGitLogTestCase(unittest.TestCase, test_scm.GetLogTestCase):
         mock.patch.stopall()
 
     @mock.patch("codemetrics.internals.run", side_effect=[get_log()], autospec=True)
-    def test_git_arguments(self, call):
+    def test_git_arguments(self, run):
         """Check that git is called with the expected parameters."""
         git.get_git_log(".", after=self.after)
-        call.assert_called_with(
-            f"git {git._GitLogCollector._args} --after {self.after:%Y-%m-%d} ."
+        run.assert_called_with(
+            ["git"]
+            + git._GitLogCollector._args
+            + ["--after", f"{self.after:%Y-%m-%d}", "."]
         )
 
     # noinspection PyUnresolvedReferences,PyUnresolvedReferences,PyUnresolvedReferences
@@ -102,11 +104,17 @@ class GetGitLogTestCase(unittest.TestCase, test_scm.GetLogTestCase):
         """Simple git call returns pandas.DataFrame."""
         pb = tqdm.tqdm()
         _ = git.get_git_log(".", after=self.after, progress_bar=pb)
-        cmd = (
-            'git log --pretty=format:"[%h] [%an] [%ad] [%s]" --date=iso '
-            "--numstat --after 2018-12-03 ."
-        )
-        _run.assert_called_with(cmd)
+        expected_cmd = [
+            "git",
+            "log",
+            '--pretty=format:"[%h] [%an] [%ad] [%s]"',
+            "--date=iso",
+            "--numstat",
+            "--after",
+            "2018-12-03",
+            ".",
+        ]
+        _run.assert_called_with(expected_cmd)
         self.assertEqual(pb.total, 3)
         calls = [mock.call(1), mock.call(2)]
         pb.update.assert_has_calls(calls)
@@ -229,7 +237,7 @@ class GitDownloadTestCase(unittest.TestCase, test_scm.ScmDownloadTestCase):
         """Retrieval of one file and one revision."""
         sublog = pd.DataFrame(data={"revision": ["abc"], "path": ["file.py"]})
         actual = cm.git.download(sublog)
-        _run.assert_called_with(f"{self.git.command} abc:file.py")
+        _run.assert_called_with(self.git.command + ["abc:file.py"])
         expected = cm.scm.DownloadResult("abc", "file.py", self.content1)
         self.assertEqual(expected, actual)
 

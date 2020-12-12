@@ -44,7 +44,7 @@ class SimpleDirectory(unittest.TestCase):
     def test_cloc_reads_files(self):
         """cloc is called and reads the output csv file."""
         actual = loc.get_cloc()
-        self.run_.assert_called_with("cloc --csv --by-file .")
+        self.run_.assert_called_with("cloc --csv --by-file .".split())
         expected = pd.read_csv(
             io.StringIO(
                 textwrap.dedent(
@@ -68,11 +68,21 @@ class SimpleDirectory(unittest.TestCase):
             _ = loc.get_cloc()
         self.assertIn("cloc", str(context.exception))
 
+
+class TestClocCall(unittest.TestCase):
+    """Checking the calls made by get_cloc()"""
+
     @mock.patch("pathlib.Path.glob", autospect=True, return_value=[])
-    def test_cloc_runs_from_root(self, path_glob):
+    def test_cloc_fails_if_not_in_root(self, path_glob):
         """Make sure that command line call checks it is run from the root."""
-        self.check_patcher.stop()
         with self.assertRaises(ValueError) as context:
             loc.get_cloc()
-        path_glob.assert_called()
+        path_glob.assert_called_with(pattern=".svn")
         self.assertIn("git or svn root", str(context.exception))
+
+    @mock.patch("codemetrics.internals.check_run_in_root", autospec=True)
+    @mock.patch("codemetrics.internals.run", autospec=True)
+    def test_cloc_called_with_path(self, run, _):
+        """Make sure the path is passed as argument to cloc when passed to the function."""
+        loc.get_cloc(path="some-path")
+        run.assert_called_with(["cloc", "--csv", "--by-file", "some-path"])
