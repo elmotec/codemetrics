@@ -6,9 +6,11 @@
 import abc
 import collections
 import datetime as dt
+import pathlib as pl
 import re
 import typing
 
+import mypy_extensions as mpx
 import pandas as pd
 import tqdm
 
@@ -24,7 +26,20 @@ ChunkStats = collections.namedtuple(
 
 
 # Default download function will be set by cm.git or cm.svn on checkout.
-DownloadFuncType = typing.Optional[typing.Callable[[pd.DataFrame], DownloadResult]]
+DownloadFuncType = typing.Optional[
+    typing.Callable[
+        [
+            pd.DataFrame,
+            # See https://github.com/PyCQA/pyflakes/issues/558
+            mpx.DefaultNamedArg(str, "client"),  # noqa: F821
+            # See https://github.com/PyCQA/pyflakes/issues/558
+            mpx.DefaultNamedArg(typing.Optional[pl.Path], "cwd"),  # noqa: F821
+        ],
+        DownloadResult,
+    ]
+]
+
+# FIXME Create a context class storing the default download func and the cwd.
 default_download_func: DownloadFuncType = None
 
 
@@ -158,9 +173,14 @@ class ScmLogCollector(abc.ABC):
 
     """
 
-    def __init__(self):
-        """Initialize interface."""
-        pass
+    def __init__(self, cwd: pl.Path = None):
+        """Initialize interface.
+
+        Args:
+            cwd: root of the directory under SCM.
+
+        """
+        self.cwd = cwd or None
 
     @abc.abstractmethod
     def process_log_entries(self, cmd_output):
@@ -271,13 +291,19 @@ def parse_diff_chunks(download: DownloadResult) -> pd.DataFrame:
 class ScmDownloader(abc.ABC):
     """Abstract class that defines a common interface for SCM downloaders."""
 
-    def __init__(self, command: typing.List[str], client: str):
-        """Aggregates the client and the command in one variable."""
-        self.command = [client] + command
+    def __init__(self, command: typing.List[str], client: str, cwd: pl.Path = None):
+        """Aggregates the client and the command in one variable.
 
-    def download(
-        self, revision: str, path: typing.Optional[str] = None
-    ) -> DownloadResult:
+        Args:
+            command: argument to pass to the command line SCM client.
+            client: name of the SCM client.
+            cwd: root of the directory under SCM.
+
+        """
+        self.command = [client] + command
+        self.cwd = cwd or None
+
+    def download(self, revision: str, path: str = None) -> DownloadResult:
         """Download content specific to a revision and path.
 
         Runs checks and forward the call to _download (template method).
@@ -294,11 +320,13 @@ class ScmDownloader(abc.ABC):
         assert path is None or isinstance(
             path, str
         ), f"expected a string, got {type(path)}"
+        if path is None:
+            path = "."
         dr = self._download(revision, path)
         return dr
 
     @abc.abstractmethod
-    def _download(self, revision: str, path: typing.Optional[str]) -> DownloadResult:
+    def _download(self, revision: str, path: str) -> DownloadResult:
         """Download content specific to a revision and path.
 
         Args:

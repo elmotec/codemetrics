@@ -15,7 +15,6 @@ import pandas as pd
 import codemetrics as cm
 import tests.test_scm as test_scm
 import tests.utils as utils
-from codemetrics import svn
 
 
 def get_log(dates=None):
@@ -78,7 +77,7 @@ class SubversionLogCollectorInitializationTestCase(unittest.TestCase):
         """Collection of the relative url."""
         log_collector = cm.svn._SvnLogCollector()
         actual = log_collector.relative_url
-        run_.assert_called_with("svn info .".split())
+        run_.assert_called_with("svn info .".split(), cwd=None)
         self.assertEqual("/project/trunk", actual)
 
 
@@ -87,7 +86,7 @@ class GetSvnLogTestCase(unittest.TestCase, test_scm.GetLogTestCase):
 
     def setUp(self):
         """Calls parent GetLogTestCase.setUp."""
-        test_scm.GetLogTestCase.setUp(self, cm.get_svn_log, svn)
+        test_scm.GetLogTestCase.setUp(self, cm.get_svn_log, module=cm.svn, cwd="<root>")
 
     def tearDown(self):
         mock.patch.stopall()
@@ -114,10 +113,22 @@ class GetSvnLogTestCase(unittest.TestCase, test_scm.GetLogTestCase):
         self.assertEqual(actual, expected)
 
     @mock.patch("codemetrics.internals.run", side_effect=[get_log()], autospec=True)
+    def test_get_log_with_root_path(self, run_):
+        """Simple svn run_ returns pandas.DataFrame."""
+        _ = cm.get_svn_log(
+            after=self.after, relative_url="/project/trunk", cwd="<root>"
+        )
+        run_.assert_called_with(
+            "svn log --xml -v -r {2018-12-03}:HEAD .".split(), cwd="<root>"
+        )
+
+    @mock.patch("codemetrics.internals.run", side_effect=[get_log()], autospec=True)
     def test_get_log(self, run_):
         """Simple svn run_ returns pandas.DataFrame."""
-        actual = self.get_log(after=self.after, relative_url="/project/trunk")
-        run_.assert_called_with("svn log --xml -v -r {2018-12-03}:HEAD .".split())
+        actual = self.get_log_func(after=self.after, relative_url="/project/trunk")
+        run_.assert_called_with(
+            "svn log --xml -v -r {2018-12-03}:HEAD .".split(), cwd=None
+        )
         expected = utils.csvlog_to_dataframe(
             textwrap.dedent(
                 """
@@ -141,7 +152,7 @@ class GetSvnLogTestCase(unittest.TestCase, test_scm.GetLogTestCase):
     def test_get_log_with_progress(self, _, new_tqdm):
         """The progress bar if set is called as appropriate."""
         progress_bar = new_tqdm()
-        _ = self.get_log(
+        _ = self.get_log_func(
             after=self.after, progress_bar=progress_bar, relative_url="/project/trunk"
         )
         self.assertEqual(progress_bar.total, 3)
@@ -170,7 +181,7 @@ class GetSvnLogTestCase(unittest.TestCase, test_scm.GetLogTestCase):
     )
     def test_get_log_no_msg(self, _):
         """Simple svn call returns pandas.DataFrame."""
-        df = self.get_log(after=self.after, relative_url="/project/trunk")
+        df = self.get_log_func(after=self.after, relative_url="/project/trunk")
         expected = utils.csvlog_to_dataframe(
             textwrap.dedent(
                 """
@@ -208,23 +219,27 @@ class GetSvnLogTestCase(unittest.TestCase, test_scm.GetLogTestCase):
         1018,,2018-02-24T11:14:11.000000Z,stats.py,i am invisible!,file,M,true,false"""
             )
         )
-        actual = self.get_log(after=self.after, relative_url="/project/trunk")
-        call.assert_called_with("svn log --xml -v -r {2018-12-03}:HEAD .".split())
+        actual = self.get_log_func(after=self.after, relative_url="/project/trunk")
+        call.assert_called_with(
+            "svn log --xml -v -r {2018-12-03}:HEAD .".split(), cwd=None
+        )
         self.assertEqual(expected, actual)
 
     @mock.patch("codemetrics.internals.run", autospec=True)
     def test_program_name(self, run):
         """Test program_name taken into account."""
-        self.get_log(
+        self.get_log_func(
             after=self.after, svn_client="svn-1.7", relative_url="/project/trunk"
         )
-        run.assert_called_with("svn-1.7 log --xml -v -r {2018-12-03}:HEAD .".split())
+        run.assert_called_with(
+            "svn-1.7 log --xml -v -r {2018-12-03}:HEAD .".split(), cwd=None
+        )
 
     def test_assert_when_no_tzinfo(self):
         """Test we get a proper message when the start date is not tz-aware."""
         after_no_tzinfo = self.after.replace(tzinfo=None)
         with self.assertRaises(ValueError) as context:
-            self.get_log(after=after_no_tzinfo)
+            self.get_log_func(after=after_no_tzinfo)
         self.assertIn("tzinfo-aware", str(context.exception))
 
     @mock.patch(
@@ -261,8 +276,10 @@ class GetSvnLogTestCase(unittest.TestCase, test_scm.GetLogTestCase):
         """
             )
         )
-        actual = self.get_log(after=self.after, relative_url="/project/trunk")
-        call.assert_called_with("svn log --xml -v -r {2018-12-03}:HEAD .".split())
+        actual = self.get_log_func(after=self.after, relative_url="/project/trunk")
+        call.assert_called_with(
+            "svn log --xml -v -r {2018-12-03}:HEAD .".split(), cwd=None
+        )
         self.assertEqual(expected.T, actual.T)
 
 
@@ -295,7 +312,7 @@ class SubversionDownloadTestCase(unittest.TestCase, test_scm.ScmDownloadTestCase
     @mock.patch("codemetrics.internals.run", autospec=True, return_value=content1)
     def test_svn_arguments(self, _run):
         cm.svn.download(self.sublog.iloc[0])
-        _run.assert_called_with(self.svn.command + ["1", "file.py"])
+        _run.assert_called_with(self.svn.command + ["1", "file.py"], cwd=None)
 
     @mock.patch("codemetrics.internals.run", autospec=True, return_value=content1)
     def test_single_revision_download(self, _run):
@@ -433,8 +450,8 @@ class SubversionGetDiffStatsTestCase(utils.DataFrameTestCase):
     @mock.patch("codemetrics.internals.run", autospec=True, return_value=diffs)
     def test_called_command_line(self, run_):
         """Can retrieve chunk statistics from Subversion"""
-        cm.svn.get_diff_stats(self.log)
-        run_.assert_called_once_with("svn diff --git -c 1014".split())
+        cm.svn.get_diff_stats(self.log, cwd="<root>")
+        run_.assert_called_once_with("svn diff --git -c 1014 .".split(), cwd="<root>")
 
     @mock.patch("codemetrics.internals.run", autospec=True, return_value=diffs)
     def test_direct_call(self, _):

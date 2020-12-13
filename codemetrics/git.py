@@ -4,6 +4,7 @@
 """Git related functions."""
 
 import datetime as dt
+import pathlib as pl
 import re
 import typing
 
@@ -25,17 +26,18 @@ class _GitLogCollector(scm.ScmLogCollector):
         "--numstat",
     ]
 
-    def __init__(self, git_client="git", _pdb=False):
+    def __init__(self, git_client="git", cwd: pl.Path = None, _pdb=False):
         """Initialize.
 
         Compiles regular expressions to be used during parsing of log.
 
         Args:
+            cwd: root of the directory under SCM.
             git_client: name of git client.
             _pdb: drop in debugger when output cannot be parsed.
 
         """
-        super().__init__()
+        super().__init__(cwd=cwd)
         self._pdb = _pdb
         self.git_client = git_client
         self.log_moved_re = re.compile(
@@ -120,10 +122,6 @@ class _GitLogCollector(scm.ScmLogCollector):
                 added, removed, relpath, copyfrompath = self.parse_path_elem(path_elem)
             except ValueError as err:
                 log.error(f"failed to parse {path_elem}: {err}")
-                if self._pdb:
-                    import pdb
-
-                    pdb.set_trace()
                 continue
             # - indicate binary files.
             entry = scm.LogEntry(
@@ -144,6 +142,9 @@ class _GitLogCollector(scm.ScmLogCollector):
         """See :member:`_ScmLogCollector.process_log_entries`."""
         log_entry = []
         for line in text:
+            # Unquote output. Not sure if anything is escaped though...
+            if len(line) > 2 and line[0] == '"' and line[-1] == '"':
+                line = line[1:-1]
             if line.startswith("["):
                 if log_entry:
                     yield from self.process_entry(log_entry)
@@ -179,7 +180,7 @@ class _GitLogCollector(scm.ScmLogCollector):
             codemetrics.scm.LogEntry.
 
         """
-        internals.check_run_in_root(path)
+        internals.check_run_in_root(path, self.cwd)
         after, before = internals.handle_default_dates(after, before)
         if progress_bar is not None and after is None:
             raise ValueError("progress_bar requires 'after' parameter")
@@ -189,7 +190,11 @@ class _GitLogCollector(scm.ScmLogCollector):
         if before:
             command += ["--before", f"{before:%Y-%m-%d}"]
         command.append(path)
-        results = internals.run(command).split("\n")
+        if self._pdb:
+            import pdb
+
+            pdb.set_trace()
+        results = internals.run(command, cwd=self.cwd).split("\n")
         return self.process_log_output_to_df(
             results, after=after, progress_bar=progress_bar
         )
@@ -201,16 +206,18 @@ def get_git_log(
     before: dt.datetime = None,
     progress_bar: tqdm.tqdm = None,
     git_client: str = "git",
+    cwd: pl.Path = None,
     _pdb: bool = False,
 ) -> pd.DataFrame:
     """Entry point to retrieve git log.
 
     Args:
-        path: location of checked out subversion repository root. Defaults to .
+        path: location of checked out file/directory to get the log for.
         after: only get the log after time stamp. Defaults to one year ago.
         before: only get the log before time stamp. Defaults to now.
         git_client: git client executable (defaults to git).
         progress_bar: tqdm.tqdm progress bar.
+        cwd: root of the directory in SCM.
         _pdb: drop in debugger on parsing errors.
 
     Returns:
@@ -224,7 +231,7 @@ def get_git_log(
 
     """
     scm.default_download_func = download
-    collector = _GitLogCollector(git_client=git_client, _pdb=_pdb)
+    collector = _GitLogCollector(git_client=git_client, cwd=cwd, _pdb=_pdb)
     return collector.get_log(
         after=after, before=before, path=path, progress_bar=progress_bar
     )
@@ -233,36 +240,41 @@ def get_git_log(
 class _GitFileDownloader(scm.ScmDownloader):
     """Download files from Subversion."""
 
-    def __init__(self, git_client: str = "git"):
+    def __init__(self, git_client: str = "git", cwd: pl.Path = None):
         """Initialize downloader.
 
         Args:
             git_client: name of git client.
 
         """
-        super().__init__(client=git_client, command=["show"])
+        super().__init__(client=git_client, command=["show"], cwd=cwd)
 
     def _download(
         self, revision: str, path: typing.Optional[str]
     ) -> scm.DownloadResult:
         """Download specific file and revision from git."""
         command = self.command + [f"{revision}:{path}"]
-        content = internals.run(command)
+        content = internals.run(command, cwd=self.cwd)
         return scm.DownloadResult(revision, path, content)
 
 
-def download(data: pd.DataFrame, git_client: str = "git") -> scm.DownloadResult:
+def download(
+    data: pd.DataFrame, client: str = None, cwd: pl.Path = None
+) -> scm.DownloadResult:
     """Downloads files from Subversion.
 
     Args:
         data: dataframe containing at least a (path, revision) columns to
               identify the files to download.
-        git_client: Subversion client executable. Defaults to git.
+        client: Git client executable. Defaults to git.
+        cwd: working directory, typically the root of the directory under SCM.
 
     Returns:
          list of scm.DownloadResult.
 
     """
-    downloader = _GitFileDownloader(git_client=git_client)
+    if not client:
+        client = "git"
+    downloader = _GitFileDownloader(git_client=client, cwd=cwd)
     revision, path = next(data[["revision", "path"]].itertuples(index=False))
     return downloader.download(revision, path)

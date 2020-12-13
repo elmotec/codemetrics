@@ -54,9 +54,18 @@ def get_files(path=None, pattern=None):
     return pd.DataFrame.from_records(files, columns=["path"])
 
 
-def check_run_in_root(path):
-    """Throw an exception if path is not a root directory."""
-    candidate = pl.Path.cwd() / path
+def check_run_in_root(path, cwd=None):
+    """Throw an exception if path is not a root directory.
+
+    Args:
+        path: path to work in.
+        cwd: current working directory.
+
+    """
+    if cwd is None:
+        candidate = pl.Path(path)
+    else:
+        candidate = (pl.Path(cwd) / path).absolute()
     for _ in candidate.glob(pattern=".git"):
         return
     for _ in candidate.glob(pattern=".svn"):
@@ -73,7 +82,9 @@ def run(cmd_list: typing.List[str], **kwargs) -> str:
 
     Args:
         cmd_list: command to execute.
-        **kwargs: additional kwargs are passed to subprocess.run().
+        **kwargs: additional kwargs are passed to subprocess.run(). In particular:
+        cwd: path in which to execute the command.
+
 
     Returns:
         Output of the command.
@@ -93,7 +104,8 @@ def run(cmd_list: typing.List[str], **kwargs) -> str:
     """
     if "errors" not in kwargs:
         kwargs["errors"] = "ignore"
-    command = " ".join(cmd_list)
+    cwd = pl.Path(kwargs.get("cwd", ".")).absolute()
+    command = " ".join(cmd_list) + f" (in {cwd})"
     log.info(command)
     try:
         result = subprocess.run(

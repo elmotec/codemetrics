@@ -76,18 +76,21 @@ class SubprocessRunTest(unittest.TestCase):
     )
     def test_error_shows_in_exception(self, _):
         """internals.run raises ValueError and captures stderr from exception"""
-        cmd = "valid-command"
         with self.assertRaises(ValueError) as context:
-            internals.run([cmd])
-        self.assertEqual(f"failed to execute {cmd}: the error", str(context.exception))
+            internals.run(["valid-command"])
+        self.assertRegex(
+            str(context.exception),
+            r"failed to execute valid-command \(in .*\): the error",
+        )
 
     @mock.patch("subprocess.run", side_effect=FileNotFoundError())
     def test_diagnostic_when_file_does_not_exist(self, _):
         """internals.run raises ValueError and captures stderr from exception"""
         with self.assertRaises(ValueError) as context:
             internals.run(["invalid-command"])
-        self.assertEqual(
-            "failed to execute invalid-command: file not found", str(context.exception)
+        self.assertRegex(
+            str(context.exception),
+            r"failed to execute invalid-command \(in .*\): file not found",
         )
 
     @mock.patch("subprocess.run")
@@ -95,7 +98,8 @@ class SubprocessRunTest(unittest.TestCase):
     def test_logging(self, log, _):
         """Check the command is logged to the logger"""
         internals.run(["some", "command"])
-        log.info.assert_called_with("some command")
+        self.assertTrue(log.info.called)
+        self.assertRegex(log.info.call_args_list[0][0][0], r"some command \(in .*\)")
 
     @mock.patch("subprocess.run")
     def test_command_with_backslashes(self, run):

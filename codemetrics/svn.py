@@ -4,6 +4,7 @@
 """_SvnLogCollector related functions."""
 
 import datetime as dt
+import pathlib as pl
 import re
 import subprocess
 import typing
@@ -50,30 +51,31 @@ class _SvnLogCollector(scm.ScmLogCollector):
 
     def __init__(
         self,
+        cwd: pl.Path = None,
         svn_client: str = "svn",
-        path: str = ".",
-        relative_url: typing.Optional[str] = None,
-    ):
+        relative_url: str = None,
+    ) -> None:
         """Initialize.
 
-                Args:
-                    svn_client: name of svn client.
-                    path: top of the checked out directory.
-                    relative_url: Subversion relative url (e.g. /project/trunk/).
-        `
+        Args:
+            cwd: root of the directory under SCM.
+            svn_client: name of svn client.
+            relative_url: Subversion relative url (e.g. /project/trunk/).
+
         """
-        super().__init__()
+        super().__init__(cwd=cwd)
         self.svn_client = svn_client or "svn"
-        self.path = path
         # FIXME: Can we get rid of _relative_url?
         self._relative_url = relative_url
 
-    def update_urls(self):
+    def update_urls(self) -> typing.Optional[str]:
         """Relative URL so we can generate local paths."""
         rel_url_re = re.compile(r"^Relative URL: \^(.*)/?$")
         if not self._relative_url:
             # noinspection PyPep8
-            for line in internals.run([self.svn_client, "info", self.path]).split("\n"):
+            for line in internals.run(
+                [self.svn_client, "info", "."], cwd=self.cwd
+            ).split("\n"):
                 match = rel_url_re.match(line)
                 if match:
                     self._relative_url = match.group(1)
@@ -192,7 +194,7 @@ class _SvnLogCollector(scm.ScmLogCollector):
         Call svn log --xml -v and return the output as a DataFrame.
 
         Args:
-            path: location of checked out subversion repository root.
+            path: local to get the log for.
             after: only get the log after time stamp. Defaults to one year ago.
             before: only get the log before time stamp. Defaults to now.
             progress_bar: tqdm.tqdm progress bar.
@@ -207,7 +209,7 @@ class _SvnLogCollector(scm.ScmLogCollector):
             log_df = cm.git.get_git_log(path='src', after=last_year)
 
         """
-        internals.check_run_in_root(path)
+        internals.check_run_in_root(path, self.cwd)
         after, before = internals.handle_default_dates(after, before)
         before_str = "HEAD"
         if before:
@@ -219,7 +221,7 @@ class _SvnLogCollector(scm.ScmLogCollector):
             + _SvnLogCollector._args
             + ["-r", f"{after_str}:{before_str}", path]
         )
-        results = internals.run(command).split("\n")
+        results = internals.run(command, cwd=self.cwd).split("\n")
         return self.process_log_output_to_df(
             results, after=after, progress_bar=progress_bar
         )
@@ -232,16 +234,18 @@ def get_svn_log(
     progress_bar: tqdm.tqdm = None,
     svn_client: str = "svn",
     relative_url: str = None,
+    cwd: pl.Path = None,
 ) -> pd.DataFrame:
     """Entry point to retrieve svn log.
 
     Args:
-        path: location of checked out subversion repository root.
+        path: location to retrieve the log for.
         after: only get the log after time stamp. Defaults to one year ago.
         before: only get the log before time stamp. Defaults to now.
         progress_bar: tqdm.tqdm progress bar.
         svn_client: Subversion client executable. Defaults to svn.
         relative_url: Subversion relative url (e.g. /project/trunk/).
+        cwd: location of checked out subversion repository root.
 
     Returns:
         pandas.DataFrame with columns matching the fields of
@@ -254,7 +258,9 @@ def get_svn_log(
 
     """
     scm.default_download_func = svn.download
-    collector = _SvnLogCollector(svn_client=svn_client, relative_url=relative_url)
+    collector = _SvnLogCollector(
+        cwd=cwd, svn_client=svn_client, relative_url=relative_url
+    )
     return collector.get_log(
         path=path, after=after, before=before, progress_bar=progress_bar
     )
@@ -263,37 +269,49 @@ def get_svn_log(
 class SvnDownloader(scm.ScmDownloader):
     """Download files from Subversion."""
 
-    def __init__(self, command: typing.List[str], svn_client: str = "svn"):
+    def __init__(
+        self, command: typing.List[str], svn_client: str = "svn", cwd: pl.Path = None
+    ) -> None:
         """Initialize downloader.
 
         Args:
             svn_client: name of svn client.
         """
-        super().__init__(command, client=svn_client)
+        super().__init__(command, client=svn_client, cwd=cwd)
 
-    def _download(
-        self, revision: str, path: typing.Optional[str]
-    ) -> scm.DownloadResult:
-        """Download specific file and revision from git."""
+    def _download(self, revision: str, path: str = None) -> scm.DownloadResult:
+        """Download specific file and revision from git.
+
+        Args:
+            revision: revision number of the change set.
+            path (optional): specific path to look up in this revision.
+
+        Return:
+            Result of svn command (e.g. show, diff, ...)
+
+        """
         command = self.command + [revision]
-        if path is not None:
+        if path:
             command += [path]
-        content = internals.run(command)
+        content = internals.run(command, cwd=self.cwd)
         return scm.DownloadResult(revision, path, content)
 
 
-def download(data: pd.DataFrame, svn_client: str = "svn") -> scm.DownloadResult:
+def download(
+    data: pd.DataFrame, client: str = "svn", cwd: pl.Path = None
+) -> scm.DownloadResult:
     """Download results from Subversion.
 
     Args:
         data: pd.DataFrame containing at least revision and path.
         svn_client: Subversion client executable. Defaults to svn.
+        cwd: root of the directory controlled by svn.
 
     Returns:
          list of file contents.
 
     """
-    downloader = SvnDownloader(["cat", "-r"], svn_client=svn_client)
+    downloader = SvnDownloader(["cat", "-r"], svn_client=client, cwd=cwd)
     df = data[["revision", "path"]]
     if isinstance(df, pd.Series):
         df = df.to_frame().T
@@ -302,7 +320,7 @@ def download(data: pd.DataFrame, svn_client: str = "svn") -> scm.DownloadResult:
 
 
 def get_diff_stats(
-    data: pd.DataFrame, svn_client: str = "svn", chunks=None
+    data: pd.DataFrame, svn_client: str = "svn", chunks=None, cwd: pl.Path = None
 ) -> typing.Union[None, pd.DataFrame]:
     """Download diff chunks statistics from Subversion.
 
@@ -312,6 +330,7 @@ def get_diff_stats(
         chunks: if True, return statistics by chunk. Otherwise, return just
             added, and removed column for each path. If chunk is None, defaults
             to true for data frame and false for series.
+        cwd: root of the directory under SCM.
 
     Returns:
         Dataframe containing the statistics for each chunk.
@@ -333,7 +352,7 @@ def get_diff_stats(
     except Exception as err:
         log.warning("cannot find revision in group: %s\n%s", str(err), data)
         return None
-    downloader = SvnDownloader(["diff", "--git", "-c"], svn_client=svn_client)
+    downloader = SvnDownloader(["diff", "--git", "-c"], svn_client=svn_client, cwd=cwd)
     try:
         downloaded = downloader.download(revision)
     except subprocess.CalledProcessError as err:

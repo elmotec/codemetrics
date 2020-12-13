@@ -23,7 +23,9 @@ class ClocEntry:
     code: int
 
 
-def get_cloc(path: str = ".", cloc_program: str = "cloc") -> pd.DataFrame:
+def get_cloc(
+    path: str = ".", cloc_program: str = "cloc", cwd: pl.Path = None
+) -> pd.DataFrame:
     """Retrieve lines of code (LOC) using cloc.pl
 
     For more information about cloc.pl, see http://cloc.sourceforge.net/.
@@ -31,17 +33,18 @@ def get_cloc(path: str = ".", cloc_program: str = "cloc") -> pd.DataFrame:
     Args:
         path: path from which to gather statistics.
         cloc_program: name of the program.
+        cwd: current working directory, typically the root of the tree under SCM.
 
     Returns:
         Output of cloc with columns language, filename (posix), blank,
         comment and code counts.
 
     """
-    internals.check_run_in_root(path)
+    internals.check_run_in_root(path, cwd)
     cmdline = [cloc_program, "--csv", "--by-file", path]
     cloc_entries = []
     try:
-        output = internals.run(cmdline).split("\n")
+        output = internals.run(cmdline, cwd=cwd).split("\n")
     except FileNotFoundError as err:
         msg = (
             f"{err}. Is {cloc_program} available? Please pass "

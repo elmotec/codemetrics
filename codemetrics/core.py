@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import os.path
+import pathlib as pl
 import typing
 
 import lizard
@@ -215,6 +216,7 @@ _complexity_fields = _lizard_fields + "file_tokens file_nloc".split()
 def get_complexity(
     group: typing.Union[pd.DataFrame, pd.Series],
     download_func: typing.Optional[scm.DownloadFuncType] = None,
+    cwd: pl.Path = None,
 ) -> pd.DataFrame:
     """Generate complexity information for files and revisions in dataframe.
 
@@ -226,6 +228,7 @@ def get_complexity(
         download_func: callable that downloads a path on a given revision in
             a temporary directory and return that file in an object of type
             `codemetrics.scm.DownloadResult`.
+        cwd: root of the directory under SCM.
 
     Returns:
         Dataframe containing output of function-level lizard.analyze_
@@ -246,7 +249,7 @@ def get_complexity(
     if download_func is None:
         download_func = scm.default_download_func
     assert download_func is not None
-    download = download_func(group)
+    download = download_func(group, cwd=cwd)
     path = download.path
     content = download.content
     info = lizard.analyze_file.analyze_source_code(path, content)

@@ -44,7 +44,7 @@ class SimpleDirectory(unittest.TestCase):
     def test_cloc_reads_files(self):
         """cloc is called and reads the output csv file."""
         actual = loc.get_cloc()
-        self.run_.assert_called_with("cloc --csv --by-file .".split())
+        self.run_.assert_called_with("cloc --csv --by-file .".split(), cwd=None)
         expected = pd.read_csv(
             io.StringIO(
                 textwrap.dedent(
@@ -85,4 +85,4 @@ class TestClocCall(unittest.TestCase):
     def test_cloc_called_with_path(self, run, _):
         """Make sure the path is passed as argument to cloc when passed to the function."""
         loc.get_cloc(path="some-path")
-        run.assert_called_with(["cloc", "--csv", "--by-file", "some-path"])
+        run.assert_called_with(["cloc", "--csv", "--by-file", "some-path"], cwd=None)

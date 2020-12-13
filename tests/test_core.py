@@ -414,8 +414,8 @@ class GetComplexityTestCase(utils.DataFrameTestCase):
             )
         )
         self.run_expected_calls = [
-            mock.call("svn cat -r r1 f.py".split()),
-            mock.call("svn cat -r r2 f.py".split()),
+            mock.call("svn cat -r r1 f.py".split(), cwd=None),
+            mock.call("svn cat -r r2 f.py".split(), cwd=None),
         ]
 
     def get_complexity(self, download_func):
@@ -445,7 +445,7 @@ class GetComplexityTestCase(utils.DataFrameTestCase):
         """Handles files with no function well."""
         file_name, rev = "f.py", 1
 
-        def scm_download_file(_):
+        def scm_download_file(_, cwd: str = None):
             return cm.scm.DownloadResult(rev, file_name, "")
 
         actual = (
@@ -475,7 +475,7 @@ class GetComplexityTestCase(utils.DataFrameTestCase):
         )
         scm.default_download_func = download_func
         _ = cm.get_complexity(self.log)
-        download_func.assert_called_with(self.log)
+        download_func.assert_called_with(self.log, cwd=None)
 
     def test_analysis_with_groupby_svn_download(self):
         """Check interface with svn."""

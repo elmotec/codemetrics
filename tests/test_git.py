@@ -3,6 +3,7 @@
 
 """Tests for `codemetrics.git`"""
 
+import datetime as dt
 import textwrap
 import unittest
 from unittest import mock
@@ -81,7 +82,7 @@ class GetGitLogTestCase(unittest.TestCase, test_scm.GetLogTestCase):
 
     def setUp(self):
         """Prepare environment for the tests."""
-        test_scm.GetLogTestCase.setUp(self, cm.get_git_log, git)
+        test_scm.GetLogTestCase.setUp(self, cm.get_git_log, cm.git, cwd="<root>")
 
     def tearDown(self):
         """Clean up."""
@@ -90,11 +91,12 @@ class GetGitLogTestCase(unittest.TestCase, test_scm.GetLogTestCase):
     @mock.patch("codemetrics.internals.run", side_effect=[get_log()], autospec=True)
     def test_git_arguments(self, run):
         """Check that git is called with the expected parameters."""
-        git.get_git_log(".", after=self.after)
+        git.get_git_log("file", after=self.after, cwd="<root>")
         run.assert_called_with(
             ["git"]
             + git._GitLogCollector._args
-            + ["--after", f"{self.after:%Y-%m-%d}", "."]
+            + ["--after", f"{self.after:%Y-%m-%d}", "file"],
+            cwd="<root>",
         )
 
     # noinspection PyUnresolvedReferences,PyUnresolvedReferences,PyUnresolvedReferences
@@ -103,7 +105,7 @@ class GetGitLogTestCase(unittest.TestCase, test_scm.GetLogTestCase):
     def test_get_log_with_progress(self, _run, _):
         """Simple git call returns pandas.DataFrame."""
         pb = tqdm.tqdm()
-        _ = git.get_git_log(".", after=self.after, progress_bar=pb)
+        _ = git.get_git_log("file", after=self.after, cwd="<root>", progress_bar=pb)
         expected_cmd = [
             "git",
             "log",
@@ -112,12 +114,11 @@ class GetGitLogTestCase(unittest.TestCase, test_scm.GetLogTestCase):
             "--numstat",
             "--after",
             "2018-12-03",
-            ".",
+            "file",
         ]
-        _run.assert_called_with(expected_cmd)
+        _run.assert_called_with(expected_cmd, cwd="<root>")
         self.assertEqual(pb.total, 3)
-        calls = [mock.call(1), mock.call(2)]
-        pb.update.assert_has_calls(calls)
+        pb.update.assert_has_calls([mock.call(1), mock.call(2)])
         pb.close.assert_called_once()
 
     @mock.patch("codemetrics.internals.run", side_effect=[get_log()], autospec=True)
@@ -127,6 +128,7 @@ class GetGitLogTestCase(unittest.TestCase, test_scm.GetLogTestCase):
         expected = utils.csvlog_to_dataframe(
             textwrap.dedent(
                 """
+
 revision,author,date,path,message,kind,action,copyfromrev,copyfrompath,added,removed
 2adcc03,elmotec,2018-12-05 23:44:38+00:00,codemetrics/core.py,Fixed Windows specific paths,f,,,,1,1
 2adcc03,elmotec,2018-12-05 23:44:38+00:00,requirements.txt,Fixed Windows specific paths,f,,,,1,1
@@ -207,6 +209,27 @@ b9fe5a6,elmotec,2018-12-04 21:49:55+00:00,tests/test_core.py,Added guess_compone
         )
         self.assertEqual(expected, actual)
 
+    def test_handle_double_quotes_in_cmd_output(self):
+        """Handles binary files which do not show added or removed lines."""
+        cmd_output = [
+            '"[dfa9d6f08] [Joris] [2020-11-28 15:27:20 +0100] [TST: rewrite]"',
+            "145\t250\ttest_convert_dtypes.py",
+            "",
+        ]
+        collector = cm.git._GitLogCollector()
+        df = collector.process_log_output_to_df(
+            cmd_output, after=dt.datetime(2020, 11, 1, tzinfo=dt.timezone.utc)
+        )
+        expected = utils.csvlog_to_dataframe(
+            textwrap.dedent(
+                """\
+        revision,author,date,path,message,kind,added,removed
+        dfa9d6f08,Joris,2020-11-28 15:27:20 +0100,test_convert_dtypes.py,TST: rewrite,f,145,250
+        """
+            )
+        )
+        self.assertEqual(expected.T, df.T)
+
 
 class GitDownloadTestCase(unittest.TestCase, test_scm.ScmDownloadTestCase):
     """Test getting historical files with git."""
@@ -237,7 +260,7 @@ class GitDownloadTestCase(unittest.TestCase, test_scm.ScmDownloadTestCase):
         """Retrieval of one file and one revision."""
         sublog = pd.DataFrame(data={"revision": ["abc"], "path": ["file.py"]})
         actual = cm.git.download(sublog)
-        _run.assert_called_with(self.git.command + ["abc:file.py"])
+        _run.assert_called_with(self.git.command + ["abc:file.py"], cwd=None)
         expected = cm.scm.DownloadResult("abc", "file.py", self.content1)
         self.assertEqual(expected, actual)
 
