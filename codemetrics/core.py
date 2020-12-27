@@ -247,7 +247,7 @@ def get_complexity(
         internals.log.info("empty group %s", group)
         return pd.DataFrame({k: [] for k in _complexity_fields})
     if download_func is None:
-        download_func = scm.default_download_func
+        download_func = scm.context.download_func
     assert download_func is not None
     download = download_func(group, cwd=cwd)
     path = download.path

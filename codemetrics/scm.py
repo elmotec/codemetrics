@@ -5,6 +5,7 @@
 
 import abc
 import collections
+import dataclasses
 import datetime as dt
 import pathlib as pl
 import re
@@ -39,8 +40,47 @@ DownloadFuncType = typing.Optional[
     ]
 ]
 
-# FIXME Create a context class storing the default download func and the cwd.
-default_download_func: DownloadFuncType = None
+
+@dataclasses.dataclass
+class Context:
+    """Stores context information about the SCM tree.
+
+    At first the attributes are initialized to None until the first request to the SCM tool.
+    The value used are cached for subsequent called so they don't have to be specified again.
+
+    Attributes:
+        download_func: function used to download information from the SCM tool.
+        cwd: working directory to run the download_func from. It would typically point to the
+            root of the directory under SCM.
+        client: name of the cient executable.
+
+    """
+
+    download_func: typing.Optional[DownloadFuncType] = None
+    cwd: typing.Optional[pl.Path] = None
+    client: typing.Optional[str] = None
+
+
+context: Context = Context()
+
+
+def update_context(
+    download_func: DownloadFuncType = None, cwd: pl.Path = None, client: str = None
+) -> None:
+    """Convenience function to update the context easily
+
+    Args:
+        same as Context attributes.
+
+    If a parameter is None, the context will not be updated.
+
+    """
+    if download_func:
+        context.download_func = download_func
+    if cwd:
+        context.cwd = cwd
+    if client:
+        context.client = client
 
 
 class LogEntry:

@@ -19,6 +19,8 @@ import tqdm
 from . import internals, scm, svn
 from .internals import log
 
+default_client = "svn"
+
 
 def to_date(datestr: str):
     """Convert str to datetime.datetime.
@@ -52,7 +54,7 @@ class _SvnLogCollector(scm.ScmLogCollector):
     def __init__(
         self,
         cwd: pl.Path = None,
-        svn_client: str = "svn",
+        svn_client: str = None,
         relative_url: str = None,
     ) -> None:
         """Initialize.
@@ -63,8 +65,10 @@ class _SvnLogCollector(scm.ScmLogCollector):
             relative_url: Subversion relative url (e.g. /project/trunk/).
 
         """
+        if not svn_client:
+            svn_client = default_client
         super().__init__(cwd=cwd)
-        self.svn_client = svn_client or "svn"
+        self.svn_client = svn_client
         # FIXME: Can we get rid of _relative_url?
         self._relative_url = relative_url
 
@@ -232,7 +236,7 @@ def get_svn_log(
     after: dt.datetime = None,
     before: dt.datetime = None,
     progress_bar: tqdm.tqdm = None,
-    svn_client: str = "svn",
+    svn_client: str = None,
     relative_url: str = None,
     cwd: pl.Path = None,
 ) -> pd.DataFrame:
@@ -257,7 +261,10 @@ def get_svn_log(
         log_df = cm.svn.get_svn_log(path='src', after=last_year)
 
     """
-    scm.default_download_func = svn.download
+    if not svn_client:
+        svn_client = default_client
+    # FIXME: Context will become project unless we need to roll back.
+    scm.update_context(download_func=svn.download, client=svn_client, cwd=cwd)  # noqa
     collector = _SvnLogCollector(
         cwd=cwd, svn_client=svn_client, relative_url=relative_url
     )
@@ -270,13 +277,15 @@ class SvnDownloader(scm.ScmDownloader):
     """Download files from Subversion."""
 
     def __init__(
-        self, command: typing.List[str], svn_client: str = "svn", cwd: pl.Path = None
+        self, command: typing.List[str], svn_client: str = None, cwd: pl.Path = None
     ) -> None:
         """Initialize downloader.
 
         Args:
             svn_client: name of svn client.
         """
+        if not svn_client:
+            svn_client = default_client
         super().__init__(command, client=svn_client, cwd=cwd)
 
     def _download(self, revision: str, path: str = None) -> scm.DownloadResult:
@@ -298,19 +307,21 @@ class SvnDownloader(scm.ScmDownloader):
 
 
 def download(
-    data: pd.DataFrame, client: str = "svn", cwd: pl.Path = None
+    data: pd.DataFrame, client: str = None, cwd: pl.Path = None
 ) -> scm.DownloadResult:
     """Download results from Subversion.
 
     Args:
         data: pd.DataFrame containing at least revision and path.
-        svn_client: Subversion client executable. Defaults to svn.
+        client: Subversion client executable. Defaults to svn.
         cwd: root of the directory controlled by svn.
 
     Returns:
          list of file contents.
 
     """
+    if not client:
+        client = default_client
     downloader = SvnDownloader(["cat", "-r"], svn_client=client, cwd=cwd)
     df = data[["revision", "path"]]
     if isinstance(df, pd.Series):
@@ -320,7 +331,7 @@ def download(
 
 
 def get_diff_stats(
-    data: pd.DataFrame, svn_client: str = "svn", chunks=None, cwd: pl.Path = None
+    data: pd.DataFrame, svn_client: str = None, chunks=None, cwd: pl.Path = None
 ) -> typing.Union[None, pd.DataFrame]:
     """Download diff chunks statistics from Subversion.
 
@@ -346,6 +357,8 @@ def get_diff_stats(
                                             chunks=False)
 
     """
+    if not svn_client:
+        svn_client = default_client
     data = data.reset_index()  # prevents messing with input frame.
     try:
         revision = data.iloc[0]["revision"]

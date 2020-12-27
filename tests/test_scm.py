@@ -188,6 +188,7 @@ class GetLogTestCase:
 
         """
         utils.add_data_frame_equality_func(self)
+        # get_log_func could be git.get_git_log or svn.get_svn_log. See subclasses setUp().
         self.get_log_func = get_log_func
         self.module = module
         self.cwd = cwd
@@ -207,13 +208,32 @@ class GetLogTestCase:
         self.assertIsNotNone(self.get_log_func)
 
     @mock.patch("codemetrics.internals.run", autospec=True)
-    def test_get_log_updates_default_download_func(self, _) -> None:
+    def test_get_log_updates_downlad_func(self, _) -> None:
         """The SCM used to get the log updates the default download."""
         self.get_log_func()
-        self.assertEqual(self.module.download, scm.default_download_func)
+        self.assertEqual(self.module.download, scm.context.download_func)
+
+    @mock.patch("codemetrics.internals.run", autospec=True)
+    def test_get_log_updates_client(self, _) -> None:
+        """The SCM used to get the log updates the default download."""
+        self.get_log_func()
+        self.assertEqual(self.module.default_client, scm.context.client)
 
     @mock.patch("codemetrics.internals.run", autospec=True)
     def test_get_log_with_path(self, run) -> None:
         """get_log_func takes path into account."""
-        _ = self.get_log_func(path="file", after=self.after, cwd="<root>")
+        self.get_log_func(path="file", after=self.after, cwd="<root>")
         run.assert_called_with(mock.ANY, cwd="<root>")
+
+
+class TestContext(unittest.TestCase):
+
+    """Test scm.Context class."""
+
+    def setUp(self) -> None:
+        """Setup"""
+        super().setUp()
+
+    def test_defaut_context_exists(self):
+        """Make sure therer always is a default context."""
+        self.assertIsNotNone(scm.context)

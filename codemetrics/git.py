@@ -15,6 +15,8 @@ import tqdm
 from . import internals, scm
 from .internals import log
 
+default_client = "git"
+
 
 class _GitLogCollector(scm.ScmLogCollector):
     """Collect log from Git."""
@@ -26,7 +28,7 @@ class _GitLogCollector(scm.ScmLogCollector):
         "--numstat",
     ]
 
-    def __init__(self, git_client="git", cwd: pl.Path = None, _pdb=False):
+    def __init__(self, git_client=default_client, cwd: pl.Path = None, _pdb=False):
         """Initialize.
 
         Compiles regular expressions to be used during parsing of log.
@@ -205,7 +207,7 @@ def get_git_log(
     after: dt.datetime = None,
     before: dt.datetime = None,
     progress_bar: tqdm.tqdm = None,
-    git_client: str = "git",
+    git_client: str = None,
     cwd: pl.Path = None,
     _pdb: bool = False,
 ) -> pd.DataFrame:
@@ -230,7 +232,9 @@ def get_git_log(
         log_df = cm.git.get_git_log(path='src', after=last_year)
 
     """
-    scm.default_download_func = download
+    if not git_client:
+        git_client = default_client
+    scm.update_context(download_func=download, client=git_client, cwd=cwd)
     collector = _GitLogCollector(git_client=git_client, cwd=cwd, _pdb=_pdb)
     return collector.get_log(
         after=after, before=before, path=path, progress_bar=progress_bar
@@ -240,13 +244,15 @@ def get_git_log(
 class _GitFileDownloader(scm.ScmDownloader):
     """Download files from Subversion."""
 
-    def __init__(self, git_client: str = "git", cwd: pl.Path = None):
+    def __init__(self, git_client: str = None, cwd: pl.Path = None):
         """Initialize downloader.
 
         Args:
             git_client: name of git client.
 
         """
+        if not git_client:
+            git_client = default_client
         super().__init__(client=git_client, command=["show"], cwd=cwd)
 
     def _download(
@@ -274,7 +280,7 @@ def download(
 
     """
     if not client:
-        client = "git"
+        client = default_client
     downloader = _GitFileDownloader(git_client=client, cwd=cwd)
     revision, path = next(data[["revision", "path"]].itertuples(index=False))
     return downloader.download(revision, path)

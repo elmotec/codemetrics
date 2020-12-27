@@ -469,12 +469,11 @@ class GetComplexityTestCase(utils.DataFrameTestCase):
         self.assertTrue(actual.empty)
 
     def test_use_default_download(self):
-        """When the default_download_func is defined, use it."""
+        """When the context.downlad_funcc is defined, use it."""
         download_func = mock.Mock(
             spec=cm.git.download, return_value=scm.DownloadResult(1, "/", "")
         )
-        scm.default_download_func = download_func
-        _ = cm.get_complexity(self.log)
+        _ = cm.get_complexity(self.log, download_func=download_func)
         download_func.assert_called_with(self.log, cwd=None)
 
     def test_analysis_with_groupby_svn_download(self):
