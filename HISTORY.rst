@@ -2,6 +2,10 @@
 History
 =======
 
+0.11.0 (2021-01-16)
+-------------------
+* Introduced GitProject and SvnProject to ease reference the tree, client and utility functions.
+
 0.10.0 (2020-12-12)
 -------------------
 * Fixed handling of files with commas in the name.
