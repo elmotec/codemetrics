@@ -2,7 +2,7 @@
 History
 =======
 
-0.11.0 (2021-01-16)
+0.11.1 (2021-01-16)
 -------------------
 * Introduced GitProject and SvnProject to ease reference the tree, client and utility functions.
 

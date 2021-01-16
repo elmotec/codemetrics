@@ -5,7 +5,6 @@
 
 import datetime as dt
 import io
-import pathlib as pl
 import textwrap
 import unittest
 import unittest.mock as mock
@@ -13,7 +12,6 @@ import unittest.mock as mock
 import lizard as lz
 import numpy as np
 import pandas as pd
-import tqdm
 
 import codemetrics as cm
 import codemetrics.scm as scm
@@ -403,23 +401,6 @@ class GetComplexityTestCase(utils.DataFrameTestCase):
     """
     )
 
-    class FakeProject(scm.Project):
-        """Fake project with pre-determined values for the download return values."""
-
-        def download(self, data: pd.DataFrame) -> scm.DownloadResult:
-            pass
-
-        def get_log(
-            self,
-            path: pl.Path = pl.Path("."),
-            after: dt.datetime = None,
-            before: dt.datetime = None,
-            progress_bar: tqdm.tqdm = None,
-            # FIXME: Why do we need path _and_ relative_url
-            relative_url: str = None,
-        ) -> pd.DataFrame:
-            pass
-
     def setUp(self):
         super().setUp()
         self.log = pd.read_csv(
@@ -435,9 +416,9 @@ class GetComplexityTestCase(utils.DataFrameTestCase):
 
     def get_complexity(self):
         """Factor retrieval of complexity"""
-        project = self.FakeProject()
+        project = utils.FakeProject()
         with mock.patch.object(
-            self.FakeProject,
+            utils.FakeProject,
             "download",
             autospec=True,
             side_effect=[
@@ -470,9 +451,9 @@ class GetComplexityTestCase(utils.DataFrameTestCase):
             + cm.core._lizard_fields
             + "file_tokens file_nloc".split()
         )
-        project = self.FakeProject()
+        project = utils.FakeProject()
         with mock.patch.object(
-            self.FakeProject,
+            utils.FakeProject,
             "download",
             autospec=True,
             return_value=scm.DownloadResult(1, "f.py", ""),
@@ -490,14 +471,14 @@ class GetComplexityTestCase(utils.DataFrameTestCase):
     def test_analysis_empty_input_return_empty_output(self, _):
         """Empty input returns and empty dataframe."""
         self.log = self.log.iloc[:0]
-        actual = cm.get_complexity(self.log, self.FakeProject())
+        actual = cm.get_complexity(self.log, utils.FakeProject())
         self.assertTrue(actual.empty)
 
     def test_use_default_download(self):
         """When the context.downlad_funcc is defined, use it."""
-        project = self.FakeProject()
+        project = utils.FakeProject()
         with mock.patch.object(
-            self.FakeProject, "download", return_value=scm.DownloadResult(1, "/", "")
+            utils.FakeProject, "download", return_value=scm.DownloadResult(1, "/", "")
         ) as download:
             _ = cm.get_complexity(self.log, project)
             download.assert_called_with(self.log)
