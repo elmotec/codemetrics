@@ -4,6 +4,7 @@
 """Tests for loc (lines of code) module."""
 
 import io
+import pathlib as pl
 import textwrap
 import unittest
 from unittest import mock
@@ -11,7 +12,8 @@ from unittest import mock
 import pandas as pd
 
 import codemetrics.cloc as loc
-from tests.utils import add_data_frame_equality_func
+
+from . import utils
 
 
 class SimpleDirectory(unittest.TestCase):
@@ -19,7 +21,7 @@ class SimpleDirectory(unittest.TestCase):
 
     def setUp(self):
         """Mocks the internal run command."""
-        add_data_frame_equality_func(self)
+        utils.add_data_frame_equality_func(self)
         self.run_output = textwrap.dedent(
             """\
         language,filename,blank,comment,code,"http://cloc.sourceforge.net"
@@ -43,8 +45,8 @@ class SimpleDirectory(unittest.TestCase):
 
     def test_cloc_reads_files(self):
         """cloc is called and reads the output csv file."""
-        actual = loc.get_cloc()
-        self.run_.assert_called_with("cloc --csv --by-file .".split(), cwd=None)
+        actual = loc.get_cloc(utils.FakeProject())
+        self.run_.assert_called_with("cloc --csv --by-file .".split(), cwd=pl.Path("."))
         expected = pd.read_csv(
             io.StringIO(
                 textwrap.dedent(
@@ -65,7 +67,7 @@ class SimpleDirectory(unittest.TestCase):
         """Clean error message when cloc is not found in the path."""
         self.run_.side_effect = [FileNotFoundError]
         with self.assertRaises(FileNotFoundError) as context:
-            _ = loc.get_cloc()
+            _ = loc.get_cloc(utils.FakeProject())
         self.assertIn("cloc", str(context.exception))
 
 
@@ -76,7 +78,7 @@ class TestClocCall(unittest.TestCase):
     def test_cloc_fails_if_not_in_root(self, path_glob):
         """Make sure that command line call checks it is run from the root."""
         with self.assertRaises(ValueError) as context:
-            loc.get_cloc()
+            loc.get_cloc(utils.FakeProject())
         path_glob.assert_called_with(pattern=".svn")
         self.assertIn("git or svn root", str(context.exception))
 
@@ -84,5 +86,7 @@ class TestClocCall(unittest.TestCase):
     @mock.patch("codemetrics.internals.run", autospec=True)
     def test_cloc_called_with_path(self, run, _):
         """Make sure the path is passed as argument to cloc when passed to the function."""
-        loc.get_cloc(path="some-path")
-        run.assert_called_with(["cloc", "--csv", "--by-file", "some-path"], cwd=None)
+        loc.get_cloc(utils.FakeProject(), path="some-path")
+        run.assert_called_with(
+            ["cloc", "--csv", "--by-file", "some-path"], cwd=pl.Path(".")
+        )

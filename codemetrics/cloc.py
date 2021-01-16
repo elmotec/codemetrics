@@ -9,7 +9,7 @@ import pathlib as pl
 
 import pandas as pd
 
-from . import internals
+from . import internals, scm
 
 __all__ = ["get_cloc"]
 
@@ -24,7 +24,7 @@ class ClocEntry:
 
 
 def get_cloc(
-    path: str = ".", cloc_program: str = "cloc", cwd: pl.Path = None
+    project: scm.Project, path: str = ".", cloc_program: str = "cloc"
 ) -> pd.DataFrame:
     """Retrieve lines of code (LOC) using cloc.pl
 
@@ -40,11 +40,11 @@ def get_cloc(
         comment and code counts.
 
     """
-    internals.check_run_in_root(path, cwd)
+    internals.check_run_in_root(path, project.cwd)
     cmdline = [cloc_program, "--csv", "--by-file", path]
     cloc_entries = []
     try:
-        output = internals.run(cmdline, cwd=cwd).split("\n")
+        output = internals.run(cmdline, cwd=project.cwd).split("\n")
     except FileNotFoundError as err:
         msg = (
             f"{err}. Is {cloc_program} available? Please pass "
