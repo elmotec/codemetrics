@@ -5,6 +5,7 @@
 
 import datetime as dt
 import io
+import pathlib as pl
 import textwrap
 import unittest
 import unittest.mock as mock
@@ -12,6 +13,7 @@ import unittest.mock as mock
 import lizard as lz
 import numpy as np
 import pandas as pd
+import tqdm
 
 import codemetrics as cm
 import codemetrics.scm as scm
@@ -401,6 +403,21 @@ class GetComplexityTestCase(utils.DataFrameTestCase):
     """
     )
 
+    class FakeProject(scm.Project):
+        def download(self, data: pd.DataFrame) -> scm.DownloadResult:
+            pass
+
+        def get_log(
+            self,
+            path: pl.Path = pl.Path("."),
+            after: dt.datetime = None,
+            before: dt.datetime = None,
+            progress_bar: tqdm.tqdm = None,
+            # FIXME: Why do we need path _and_ relative_url
+            relative_url: str = None,
+        ) -> pd.DataFrame:
+            pass
+
     def setUp(self):
         super().setUp()
         self.log = pd.read_csv(
@@ -413,22 +430,24 @@ class GetComplexityTestCase(utils.DataFrameTestCase):
                 )
             )
         )
-        self.run_expected_calls = [
-            mock.call("svn cat -r r1 f.py".split(), cwd=None),
-            mock.call("svn cat -r r2 f.py".split(), cwd=None),
-        ]
 
-    def get_complexity(self, download_func):
+    def get_complexity(self):
         """Factor retrieval of complexity"""
+        project = self.FakeProject()
         with mock.patch(
-            "codemetrics.internals.run",
+            "test_core.GetComplexityTestCase.FakeProject.download",
             autospec=True,
-            side_effect=[self.file_content_1, self.file_content_2],
-        ) as run:
+            side_effect=[
+                scm.DownloadResult("r1", "f.py", self.file_content_1),
+                scm.DownloadResult("r2", "f.py", self.file_content_2),
+            ],
+        ) as download:
             df = self.log.groupby(["revision", "path"]).apply(
-                cm.get_complexity, download_func=download_func
+                cm.get_complexity, project
             )
-            self.assertEqual(run.call_args_list, self.run_expected_calls)
+            self.assertEqual(
+                download.call_args_list, [mock.call(project, mock.ANY)] * 2
+            )
         return df
 
     @mock.patch(
@@ -441,15 +460,15 @@ class GetComplexityTestCase(utils.DataFrameTestCase):
         self.assertEqual(4, actual.nloc)
         self.assertEqual(2.0, actual.average_cyclomatic_complexity)
 
-    def test_handles_no_function(self):
+    @mock.patch(
+        "test_core.GetComplexityTestCase.FakeProject.download",
+        autospec=True,
+        return_value=scm.DownloadResult(1, "f.py", ""),
+    )
+    def test_handles_no_function(self, _):
         """Handles files with no function well."""
-        file_name, rev = "f.py", 1
-
-        def scm_download_file(_, cwd: str = None):
-            return cm.scm.DownloadResult(rev, file_name, "")
-
         actual = (
-            cm.get_complexity(self.log, scm_download_file)
+            cm.get_complexity(self.log, self.FakeProject())
             .reset_index()
             .pipe(pd.Series.astype, "string")
         )
@@ -465,16 +484,19 @@ class GetComplexityTestCase(utils.DataFrameTestCase):
     def test_analysis_empty_input_return_empty_output(self, _):
         """Empty input returns and empty dataframe."""
         self.log = self.log.iloc[:0]
-        actual = cm.get_complexity(self.log, download_func=cm.svn.download)
+        actual = cm.get_complexity(self.log, self.FakeProject())
         self.assertTrue(actual.empty)
 
-    def test_use_default_download(self):
+    @mock.patch(
+        "test_core.GetComplexityTestCase.FakeProject.download",
+        autospec=True,
+        return_value=scm.DownloadResult(1, "/", ""),
+    )
+    def test_use_default_download(self, download):
         """When the context.downlad_funcc is defined, use it."""
-        download_func = mock.Mock(
-            spec=cm.git.download, return_value=scm.DownloadResult(1, "/", "")
-        )
-        _ = cm.get_complexity(self.log, download_func=download_func)
-        download_func.assert_called_with(self.log, cwd=None)
+        project = self.FakeProject()
+        _ = cm.get_complexity(self.log, project)
+        download.assert_called_with(project, self.log)
 
     def test_analysis_with_groupby_svn_download(self):
         """Check interface with svn."""
@@ -492,62 +514,62 @@ class GetComplexityTestCase(utils.DataFrameTestCase):
             dtype={"name": "string", "long_name": "string"},
         ).set_index(["revision", "path", "function"])
         # Limit to the expected columns for resilience to new columns.
-        actual = self.get_complexity(cm.svn.download)[expected.columns]
+        actual = self.get_complexity()[expected.columns]
         self.assertEqual(expected.T, actual.T)
 
     def test_complexity_name_dtype(self):
         """Check the dtypes of the get_complexity return value does not contain object dtype."""
-        actual = self.get_complexity(cm.svn.download)
+        actual = self.get_complexity()
         self.assertEqual("string", actual["name"].dtype.name)
 
     def test_complexity_long_name_dtype(self):
         """Check the dtypes of the get_complexity return value does not contain object dtype."""
-        actual = self.get_complexity(cm.svn.download)
+        actual = self.get_complexity()
         self.assertEqual("string", actual["long_name"].dtype.name)
 
     def test_complexity_nloc_dtype(self):
         """Check the dtypes of the get_complexity return value does not contain object dtype."""
-        actual = self.get_complexity(cm.svn.download)
+        actual = self.get_complexity()
         self.assertEqual("Int32", actual["nloc"].dtype.name)
 
     def test_complexity_token_count_dtype(self):
         """Check the dtypes of the get_complexity return value does not contain object dtype."""
-        actual = self.get_complexity(cm.svn.download)
+        actual = self.get_complexity()
         self.assertEqual("Int32", actual["token_count"].dtype.name)
 
     def test_complexity_start_line_dtype(self):
         """Check the dtypes of the get_complexity return value does not contain object dtype."""
-        actual = self.get_complexity(cm.svn.download)
+        actual = self.get_complexity()
         self.assertEqual("Int32", actual["start_line"].dtype.name)
 
     def test_complexity_end_line_dtype(self):
         """Check the dtypes of the get_complexity return value does not contain object dtype."""
-        actual = self.get_complexity(cm.svn.download)
+        actual = self.get_complexity()
         self.assertEqual("Int32", actual["end_line"].dtype.name)
 
     def test_complexity_top_nesting_level_dtype(self):
         """Check the dtypes of the get_complexity return value does not contain object dtype."""
-        actual = self.get_complexity(cm.svn.download)
+        actual = self.get_complexity()
         self.assertEqual("Int32", actual["top_nesting_level"].dtype.name)
 
     def test_complexity_length_dtype(self):
         """Check the dtypes of the get_complexity return value does not contain object dtype."""
-        actual = self.get_complexity(cm.svn.download)
+        actual = self.get_complexity()
         self.assertEqual("Int32", actual["length"].dtype.name)
 
     def test_complexity_fan_in_dtype(self):
         """Check the dtypes of the get_complexity return value does not contain object dtype."""
-        actual = self.get_complexity(cm.svn.download)
+        actual = self.get_complexity()
         self.assertEqual("Int32", actual["fan_in"].dtype.name)
 
     def test_complexity_fan_out_dtype(self):
         """Check the dtypes of the get_complexity return value does not contain object dtype."""
-        actual = self.get_complexity(cm.svn.download)
+        actual = self.get_complexity()
         self.assertEqual("Int32", actual["fan_out"].dtype.name)
 
     def test_complexity_general_fan_out_dtype(self):
         """Check the dtypes of the get_complexity return value does not contain object dtype."""
-        actual = self.get_complexity(cm.svn.download)
+        actual = self.get_complexity()
         self.assertEqual("Int32", actual["general_fan_out"].dtype.name)
 
 

@@ -18,9 +18,9 @@ from .core import (
     get_mass_changes,
     guess_components,
 )
-from .git import get_git_log
+from .git import GitProject
 from .internals import log
-from .svn import get_svn_log
+from .svn import SvnProject
 
 __doc__ = """"
 codemetrics

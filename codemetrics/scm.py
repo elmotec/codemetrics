@@ -5,13 +5,11 @@
 
 import abc
 import collections
-import dataclasses
 import datetime as dt
 import pathlib as pl
 import re
 import typing
 
-import mypy_extensions as mpx
 import pandas as pd
 import tqdm
 
@@ -26,61 +24,43 @@ ChunkStats = collections.namedtuple(
 )
 
 
-# Default download function will be set by cm.git or cm.svn on checkout.
-DownloadFuncType = typing.Optional[
-    typing.Callable[
-        [
-            pd.DataFrame,
-            # See https://github.com/PyCQA/pyflakes/issues/558
-            mpx.DefaultNamedArg(str, "client"),  # noqa: F821
-            # See https://github.com/PyCQA/pyflakes/issues/558
-            mpx.DefaultNamedArg(typing.Optional[pl.Path], "cwd"),  # noqa: F821
-        ],
-        DownloadResult,
-    ]
-]
-
-
-@dataclasses.dataclass
-class Context:
+class Project(abc.ABC):
     """Stores context information about the SCM tree.
 
     At first the attributes are initialized to None until the first request to the SCM tool.
     The value used are cached for subsequent called so they don't have to be specified again.
 
     Attributes:
-        download_func: function used to download information from the SCM tool.
         cwd: working directory to run the download_func from. It would typically point to the
             root of the directory under SCM.
-        client: name of the cient executable.
 
     """
 
-    download_func: typing.Optional[DownloadFuncType] = None
-    cwd: typing.Optional[pl.Path] = None
-    client: typing.Optional[str] = None
+    def __init__(self, cwd: pl.Path = pl.Path(".")):
+        """Initializes data common to all SCM projects.
 
+        Args:
+            cwd: root directory of the project. Defaults to current directory.
 
-context: Context = Context()
+        """
+        self.cwd = cwd
 
+    @abc.abstractmethod
+    def download(self, data: pd.DataFrame) -> DownloadResult:
+        pass
 
-def update_context(
-    download_func: DownloadFuncType = None, cwd: pl.Path = None, client: str = None
-) -> None:
-    """Convenience function to update the context easily
-
-    Args:
-        same as Context attributes.
-
-    If a parameter is None, the context will not be updated.
-
-    """
-    if download_func:
-        context.download_func = download_func
-    if cwd:
-        context.cwd = cwd
-    if client:
-        context.client = client
+    @abc.abstractmethod
+    def get_log(
+        self,
+        path: str = ".",
+        after: dt.datetime = None,
+        before: dt.datetime = None,
+        progress_bar: tqdm.tqdm = None,
+        # FIXME: Why do we need path _and_ relative_url
+        relative_url: str = None,
+        _pdb=False,
+    ) -> pd.DataFrame:
+        pass
 
 
 class LogEntry:

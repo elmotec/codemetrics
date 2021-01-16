@@ -202,45 +202,6 @@ class _GitLogCollector(scm.ScmLogCollector):
         )
 
 
-def get_git_log(
-    path: str = ".",
-    after: dt.datetime = None,
-    before: dt.datetime = None,
-    progress_bar: tqdm.tqdm = None,
-    git_client: str = None,
-    cwd: pl.Path = None,
-    _pdb: bool = False,
-) -> pd.DataFrame:
-    """Entry point to retrieve git log.
-
-    Args:
-        path: location of checked out file/directory to get the log for.
-        after: only get the log after time stamp. Defaults to one year ago.
-        before: only get the log before time stamp. Defaults to now.
-        git_client: git client executable (defaults to git).
-        progress_bar: tqdm.tqdm progress bar.
-        cwd: root of the directory in SCM.
-        _pdb: drop in debugger on parsing errors.
-
-    Returns:
-        pandas.DataFrame with columns matching the fields of
-        codemetrics.scm.LogEntry.
-
-    Example::
-
-        last_year = datetime.datetime.now() - datetime.timedelta(365)
-        log_df = cm.git.get_git_log(path='src', after=last_year)
-
-    """
-    if not git_client:
-        git_client = default_client
-    scm.update_context(download_func=download, client=git_client, cwd=cwd)
-    collector = _GitLogCollector(git_client=git_client, cwd=cwd, _pdb=_pdb)
-    return collector.get_log(
-        after=after, before=before, path=path, progress_bar=progress_bar
-    )
-
-
 class _GitFileDownloader(scm.ScmDownloader):
     """Download files from Subversion."""
 
@@ -262,6 +223,73 @@ class _GitFileDownloader(scm.ScmDownloader):
         command = self.command + [f"{revision}:{path}"]
         content = internals.run(command, cwd=self.cwd)
         return scm.DownloadResult(revision, path, content)
+
+
+class GitProject(scm.Project):
+
+    """Project for git SCM."""
+
+    def __init__(self, cwd: pl.Path = pl.Path("."), client: str = "git"):
+        """Initialize a Subversion project.
+
+        Args:
+            cwd: root of the SCM project. Defaults to current directory.
+            client: git client. Defaults to git.
+
+        """
+        super().__init__(cwd)
+        self.client = client
+
+    def download(self, data: pd.DataFrame) -> scm.DownloadResult:
+        """Download results from Git.
+
+        Args:
+            data: pd.DataFrame containing at least revision and path.
+
+        Returns:
+             list of file contents.
+
+        """
+        downloader = _GitFileDownloader(git_client=self.client, cwd=self.cwd)
+        df = data[["revision", "path"]]
+        if isinstance(df, pd.Series):
+            df = df.to_frame().T
+        revision, path = next(df.itertuples(index=False))
+        return downloader.download(revision, path)
+
+    def get_log(
+        self,
+        path: str = ".",
+        after: dt.datetime = None,
+        before: dt.datetime = None,
+        progress_bar: tqdm.tqdm = None,
+        # FIXME: Why do we need path _and_ relative_url
+        relative_url: str = None,
+        _pdb=False,
+    ) -> pd.DataFrame:
+        """Entry point to retrieve git log.
+
+        Args:
+            path: location of checked out file/directory to get the log for.
+            after: only get the log after time stamp. Defaults to one year ago.
+            before: only get the log before time stamp. Defaults to now.
+            progress_bar: tqdm.tqdm progress bar.
+            _pdb: drop in debugger on parsing errors.
+
+        Returns:
+            pandas.DataFrame with columns matching the fields of
+            codemetrics.scm.LogEntry.
+
+        Example::
+
+            last_year = datetime.datetime.now() - datetime.timedelta(365)
+            log_df = cm.git.get_git_log(path='src', after=last_year)
+
+        """
+        collector = _GitLogCollector(git_client=self.client, cwd=self.cwd, _pdb=_pdb)
+        return collector.get_log(
+            after=after, before=before, path=path, progress_bar=progress_bar
+        )
 
 
 def download(

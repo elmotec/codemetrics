@@ -4,9 +4,8 @@
 """Tests for `codemetrics.scm`"""
 
 import datetime as dt
+import pathlib as pl
 import textwrap
-import types
-import typing
 import unittest
 import unittest.mock as mock
 
@@ -136,11 +135,13 @@ class TestLogEntriesToDataFrame(unittest.TestCase):
         self.assertEqual("float32", self.dtypes["removed"].name)
 
 
-class ScmDownloadTestCase:
-    """Test interface of download functions.
+class CommonProjectTestCase:
+    """Test GitProject functionalities common to all projects.
 
-    Common test case for all SCM download functions. Inherit from it *and*
-    from unittest.TestCase.
+    Common test case implemented as mixin for all SCM download functions.
+    See https://stackoverflow.com/questions/11307503/.
+
+    to use properly, inherit from it *and* from unittest.TestCase.
 
     See also:
         GitDownloadTestCase, SubversionDownloadTestCase
@@ -149,16 +150,29 @@ class ScmDownloadTestCase:
 
     """
 
+    Project = None
+
     @mock.patch(
         "codemetrics.internals.run", autospec=True, return_value="dummy content"
     )
     def test_download_return_single_result(self, _):
         """Makes sure the download function returns a DownloadResult."""
-        actual = self.download(
+        project = self.Project()
+        actual = project.download(
             pd.DataFrame({"revision": ["abcd"], "path": ["/some/file"]})
         )
         expected = scm.DownloadResult("abcd", "/some/file", "dummy content")
         self.assertEqual(expected, actual)
+
+    def test_project_constructor_takes_cwd_as_first_argument(self):
+        """Project can be instanciated with cwd as first argument."""
+        project = self.Project("/path/to/project")
+        self.assertEqual(project.cwd, "/path/to/project")
+
+    def test_project_constructor_defaults_cwd_to_current_directory(self):
+        """Project without explicit path defaults to ."""
+        project = self.Project()
+        self.assertEqual(project.cwd, pl.Path("."))
 
 
 class GetLogTestCase:
@@ -172,12 +186,7 @@ class GetLogTestCase:
 
     """
 
-    def setUp(
-        self,
-        get_log_func: typing.Callable,
-        module: types.ModuleType,
-        cwd: str,
-    ) -> None:
+    def setUp(self, project: scm.Project) -> None:
         """Set up common to all log getting test cases.
 
         Adds hanlding of equality test for pandas.DataFrame and patches the
@@ -189,9 +198,7 @@ class GetLogTestCase:
         """
         utils.add_data_frame_equality_func(self)
         # get_log_func could be git.get_git_log or svn.get_svn_log. See subclasses setUp().
-        self.get_log_func = get_log_func
-        self.module = module
-        self.cwd = cwd
+        self.project = project
         self.now = dt.datetime(2018, 12, 6, 21, 0, tzinfo=dt.timezone.utc)
         self.get_now_patcher = mock.patch(
             "codemetrics.internals.get_now", autospec=True, return_value=self.now
@@ -205,35 +212,4 @@ class GetLogTestCase:
 
     def test_set_up_called(self) -> None:
         """Makes sure GetLogTestCase.setUp() is called."""
-        self.assertIsNotNone(self.get_log_func)
-
-    @mock.patch("codemetrics.internals.run", autospec=True)
-    def test_get_log_updates_downlad_func(self, _) -> None:
-        """The SCM used to get the log updates the default download."""
-        self.get_log_func()
-        self.assertEqual(self.module.download, scm.context.download_func)
-
-    @mock.patch("codemetrics.internals.run", autospec=True)
-    def test_get_log_updates_client(self, _) -> None:
-        """The SCM used to get the log updates the default download."""
-        self.get_log_func()
-        self.assertEqual(self.module.default_client, scm.context.client)
-
-    @mock.patch("codemetrics.internals.run", autospec=True)
-    def test_get_log_with_path(self, run) -> None:
-        """get_log_func takes path into account."""
-        self.get_log_func(path="file", after=self.after, cwd="<root>")
-        run.assert_called_with(mock.ANY, cwd="<root>")
-
-
-class TestContext(unittest.TestCase):
-
-    """Test scm.Context class."""
-
-    def setUp(self) -> None:
-        """Setup"""
-        super().setUp()
-
-    def test_defaut_context_exists(self):
-        """Make sure therer always is a default context."""
-        self.assertIsNotNone(scm.context)
+        self.assertIsNotNone(self.project)
