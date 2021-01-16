@@ -404,6 +404,8 @@ class GetComplexityTestCase(utils.DataFrameTestCase):
     )
 
     class FakeProject(scm.Project):
+        """Fake project with pre-determined values for the download return values."""
+
         def download(self, data: pd.DataFrame) -> scm.DownloadResult:
             pass
 
@@ -434,8 +436,9 @@ class GetComplexityTestCase(utils.DataFrameTestCase):
     def get_complexity(self):
         """Factor retrieval of complexity"""
         project = self.FakeProject()
-        with mock.patch(
-            "test_core.GetComplexityTestCase.FakeProject.download",
+        with mock.patch.object(
+            self.FakeProject,
+            "download",
             autospec=True,
             side_effect=[
                 scm.DownloadResult("r1", "f.py", self.file_content_1),
@@ -460,23 +463,26 @@ class GetComplexityTestCase(utils.DataFrameTestCase):
         self.assertEqual(4, actual.nloc)
         self.assertEqual(2.0, actual.average_cyclomatic_complexity)
 
-    @mock.patch(
-        "test_core.GetComplexityTestCase.FakeProject.download",
-        autospec=True,
-        return_value=scm.DownloadResult(1, "f.py", ""),
-    )
-    def test_handles_no_function(self, _):
+    def test_handles_no_function(self):
         """Handles files with no function well."""
-        actual = (
-            cm.get_complexity(self.log, self.FakeProject())
-            .reset_index()
-            .pipe(pd.Series.astype, "string")
-        )
         columns = (
             "function".split()
             + cm.core._lizard_fields
             + "file_tokens file_nloc".split()
         )
+        project = self.FakeProject()
+        with mock.patch.object(
+            self.FakeProject,
+            "download",
+            autospec=True,
+            return_value=scm.DownloadResult(1, "f.py", ""),
+        ) as download:
+            actual = (
+                cm.get_complexity(self.log, project)
+                .reset_index()
+                .pipe(pd.Series.astype, "string")
+            )
+            download.assert_called_with(project, self.log)
         expected = pd.DataFrame(data={k: [] for k in columns}, dtype="string")
         self.assertEqual(expected, actual)
 
@@ -487,16 +493,14 @@ class GetComplexityTestCase(utils.DataFrameTestCase):
         actual = cm.get_complexity(self.log, self.FakeProject())
         self.assertTrue(actual.empty)
 
-    @mock.patch(
-        "test_core.GetComplexityTestCase.FakeProject.download",
-        autospec=True,
-        return_value=scm.DownloadResult(1, "/", ""),
-    )
-    def test_use_default_download(self, download):
+    def test_use_default_download(self):
         """When the context.downlad_funcc is defined, use it."""
         project = self.FakeProject()
-        _ = cm.get_complexity(self.log, project)
-        download.assert_called_with(project, self.log)
+        with mock.patch.object(
+            self.FakeProject, "download", return_value=scm.DownloadResult(1, "/", "")
+        ) as download:
+            _ = cm.get_complexity(self.log, project)
+            download.assert_called_with(self.log)
 
     def test_analysis_with_groupby_svn_download(self):
         """Check interface with svn."""
