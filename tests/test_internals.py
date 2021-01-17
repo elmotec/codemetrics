@@ -43,14 +43,14 @@ class SubprocessRunTest(unittest.TestCase):
         """Test default arguments"""
         internals.run(self.cmdline)
         run.assert_called_with(
-            self.cmdline, check=True, errors="ignore", stdout=-1, stderr=-1
+            self.cmdline, check=True, shell=False, errors="ignore", stdout=-1, stderr=-1
         )
 
     @mock.patch("subprocess.run", autospec=True)
     def test_ignore_encoding_errors(self, sprun):
         """Test encoding errors are ignored by default"""
         internals.run(self.cmdline)
-        args, kwargs = sprun.call_args
+        _, kwargs = sprun.call_args
         self.assertIn("errors", kwargs)
         self.assertEqual(kwargs["errors"], "ignore")
 
@@ -108,6 +108,7 @@ class SubprocessRunTest(unittest.TestCase):
         run.assert_called_with(
             ["some", r"..\folder\to\command"],
             check=True,
+            shell=False,  # see https://security.openstack.org/guidelines/dg_avoid-shell-true.html
             stdout=-1,
             stderr=-1,
             errors="ignore",

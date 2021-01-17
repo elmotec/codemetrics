@@ -47,7 +47,7 @@ def build_hierarchy(
     seen = {root}
     root_actually_seen = False
     count = 0
-    for ii in range(max_iter):
+    for _ in range(max_iter):
         df.loc[:, parent] = df[col_name].apply(get_parent)
         if root in df[parent].values:
             root_actually_seen = True

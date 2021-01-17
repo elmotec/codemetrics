@@ -150,8 +150,6 @@ class CommonProjectTestCase:
 
     """
 
-    Project = None
-
     @mock.patch(
         "codemetrics.internals.run", autospec=True, return_value="dummy content"
     )

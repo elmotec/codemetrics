@@ -5,14 +5,11 @@
 """Test utility functions and wrappers."""
 
 
-import datetime as dt
 import io
-import pathlib as pl
 import unittest
 
 import pandas as pd
 import pandas.testing as pdt
-import tqdm
 
 import codemetrics.scm as scm
 
@@ -97,13 +94,5 @@ class FakeProject(scm.Project):
     def download(self, data: pd.DataFrame) -> scm.DownloadResult:
         pass
 
-    def get_log(
-        self,
-        path: pl.Path = pl.Path("."),
-        after: dt.datetime = None,
-        before: dt.datetime = None,
-        progress_bar: tqdm.tqdm = None,
-        # FIXME: Why do we need path _and_ relative_url
-        relative_url: str = None,
-    ) -> pd.DataFrame:
+    def get_log(self, **kwargs) -> pd.DataFrame:
         pass

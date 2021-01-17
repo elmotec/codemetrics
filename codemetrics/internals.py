@@ -111,6 +111,7 @@ def run(cmd_list: typing.List[str], **kwargs) -> str:
         result = subprocess.run(
             cmd_list,
             check=True,
+            shell=False,  # see https://security.openstack.org/guidelines/dg_avoid-shell-true.html
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             **kwargs,

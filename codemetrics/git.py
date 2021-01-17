@@ -80,7 +80,9 @@ class _GitLogCollector(scm.ScmLogCollector):
         removed_as_int = int(removed) if removed != "-" else np.nan
         return added_as_int, removed_as_int, rel_path, copy_from_path
 
-    def process_entry(self, log_entry):
+    def process_entry(
+        self, log_entry: typing.List[str]
+    ) -> typing.Generator[scm.LogEntry, None, None]:
         """Convert a single xml <logentry/> element to csv rows.
 
         If the log includes entries about binary files, the added/removed
@@ -140,9 +142,11 @@ class _GitLogCollector(scm.ScmLogCollector):
             yield entry
         return
 
-    def process_log_entries(self, text):
+    def process_log_entries(
+        self, text: typing.List[str]
+    ) -> typing.Generator[scm.LogEntry, None, None]:
         """See :member:`_ScmLogCollector.process_log_entries`."""
-        log_entry = []
+        log_entry: typing.List[str] = []
         for line in text:
             # Unquote output. Not sure if anything is escaped though...
             if len(line) > 2 and line[0] == '"' and line[-1] == '"':
