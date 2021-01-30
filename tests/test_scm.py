@@ -11,6 +11,7 @@ import unittest.mock as mock
 
 import pandas as pd
 
+import codemetrics as cm
 import codemetrics.scm as scm
 import tests.utils as utils
 
@@ -171,6 +172,15 @@ class CommonProjectTestCase:
         """Project without explicit path defaults to ."""
         project = self.Project()
         self.assertEqual(project.cwd, pl.Path("."))
+
+    def test_project_has_get_log_interface(self):
+        """Having a consistent functional interface is preferable to a method for just get_log."""
+        project = self.Project()
+        with mock.patch.object(
+            project.__class__, "get_log", autospec=True
+        ) as get_log_method:
+            cm.get_log(project)
+            get_log_method.assert_called_with(project)
 
 
 class GetLogTestCase:

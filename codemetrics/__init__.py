@@ -20,6 +20,7 @@ from .core import (
 )
 from .git import GitProject
 from .internals import log
+from .scm import get_log
 from .svn import SvnProject
 
 __doc__ = """"

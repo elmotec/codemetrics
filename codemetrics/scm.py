@@ -63,6 +63,19 @@ class Project(abc.ABC):
         pass
 
 
+def get_log(project: Project, *args, **kwargs) -> pd.DataFrame:
+    """Convenience method to give a consistent functional interface.
+
+    Other functions (e.g. get_age) take data frames as input and eventually the project when
+    they need information about the project. It gives a functional look and feel to the interface
+    of codemetrics. We try to keepp it that way with this wrapper.
+
+    Forwards the call to project.get_log().
+
+    """
+    return project.get_log(*args, **kwargs)
+
+
 class LogEntry:
     """Data structure to hold git or svn data entries."""
 
