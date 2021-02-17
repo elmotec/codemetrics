@@ -1,6 +1,6 @@
-name: Codacy coverage report
+name: Coverage report
 
-on: [push]
+on: [push, pull_request]
 
 jobs:
   build:
@@ -23,13 +23,17 @@ jobs:
     - name: Generate coverage report
       run: |
         coverage erase
-        pytest --cov=codemetrics --cov-branch --cov-report=term-missing:skip-covered --cov-config=setup.cfg
+        pytest --cov=codemetrics --cov-branch --cov-report=xml --cov-config=setup.cfg
         coverage xml
-    - name: Codacy Coverage Reporter
-      uses: codacy/codacy-coverage-reporter-action@master
+    - name: "Upload coverage to Codecov"
+      uses: codecov/codecov-action@v1
       with:
-        project-token: ${{secrets.CODACY_PROJECT_TOKEN}}
-        coverage-reports: coverage.xml
+        fail_ci_if_error: true
+# Codacy does not seem to support coverage.xml out of the box
+#   - name: Codacy Coverage Reporter
+#     uses: codacy/codacy-coverage-reporter-action@master
+#     with:
+#       project-token: ${{secrets.CODACY_PROJECT_TOKEN}}
 
 
 
