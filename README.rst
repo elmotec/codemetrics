@@ -22,8 +22,8 @@
     :target: https://codemetrics.readthedocs.org/
     :alt: Documentation
 
-.. image:: https://coveralls.io/repos/elmotec/codemetrics/badge.svg
-    :target: https://coveralls.io/r/elmotec/codemetrics
+.. image:: https://codecov.io/gh/elmotec/codemetrics/branch/master/graph/badge.svg?token=ELJW941FET
+    :target: https://codecov.io/gh/elmotec/codemetrics
     :alt: Coverage
 
 .. image:: https://img.shields.io/codacy/grade/dd4a11eb66674b3bbe518d8f829b6234.svg
