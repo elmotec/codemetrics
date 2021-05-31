@@ -286,6 +286,28 @@ class GitDownloadTestCase(unittest.TestCase):
         ]
         self.assertEqual(expected, actual)
 
+    @mock.patch(
+        "codemetrics.internals.run",
+        autospec=True,
+        side_effect=[
+            content1,
+            ValueError("failed to execute git show ..."),
+        ],
+    )
+    def test_download_deleted_file(self, _run):
+        """Retrieval of multiple revisions returns multiple downloads."""
+        sublog = pd.DataFrame(data={"revision": ["r1", "r2"], "path": ["file.py"] * 2})
+        actual = sublog.apply(self.git_project.download, axis=1).tolist()
+        expected = [
+            cm.scm.DownloadResult("r1", "file.py", self.content1),
+            cm.scm.DownloadResult(
+                "r2",
+                "file.py",
+                "failed to execute git show ...",
+            ),
+        ]
+        self.assertEqual(expected, actual)
+
     @mock.patch("codemetrics.internals.check_run_in_root", autospec=True)
     @mock.patch("codemetrics.internals.run", autospec=True)
     def test_get_log_with_path(self, run, check_run_in_root) -> None:
