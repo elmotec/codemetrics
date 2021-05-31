@@ -119,9 +119,12 @@ A reminder for the maintainers on how to deploy.
 Make sure all your changes are committed (including an entry in HISTORY.rst).
 Then run::
 
-    $ python setup.py test  # there should be no errors.
+    $ tox -p  # there should be no errors.
+    $ vim HISTORY.rst
     $ bump2version patch  # possible: major / minor / patch.
+    $ vim setup.cfg  # bump2version does not update all references.
     $ git push
+    $ git tag vx.y.z
     $ git push --tags
     $ python setup.py sdist  # will generate new .tar.gz in dist folder.
     $ twine check dist/<dist>.tar.gz  # status should be Passed
