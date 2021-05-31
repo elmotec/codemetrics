@@ -413,6 +413,19 @@ class GetComplexityTestCase(utils.DataFrameTestCase):
                 )
             )
         )
+        self.expected = pd.read_csv(
+            io.StringIO(
+                textwrap.dedent(
+                    """\
+        revision,path,function,cyclomatic_complexity,nloc,token_count,name,long_name,start_line,end_line,top_nesting_level,length,fan_in,fan_out,general_fan_out,file_tokens,file_nloc
+        r1,f.py,0,2,4,16,test,test( ),1,4,0,4,0,0,0,17,4
+        r2,f.py,0,1,2,8,test,test( ),1,2,0,2,0,0,0,18,4
+        r2,f.py,1,1,2,8,other,other( ),4,5,0,2,0,0,0,18,4
+        """
+                )
+            ),
+            dtype={"name": "string", "long_name": "string"},
+        ).set_index(["revision", "path", "function"])
 
     def get_complexity(self):
         """Factor retrieval of complexity"""
@@ -472,7 +485,8 @@ class GetComplexityTestCase(utils.DataFrameTestCase):
         """Empty input returns and empty dataframe."""
         self.log = self.log.iloc[:0]
         actual = cm.get_complexity(self.log, utils.FakeProject())
-        self.assertTrue(actual.empty)
+        self.assertEqual(list(actual.columns), list(self.expected.columns))
+        self.assertEqual(len(actual), 0)
 
     def test_use_default_download(self):
         """When the context.downlad_funcc is defined, use it."""
@@ -485,22 +499,9 @@ class GetComplexityTestCase(utils.DataFrameTestCase):
 
     def test_analysis_with_groupby_svn_download(self):
         """Check interface with svn."""
-        expected = pd.read_csv(
-            io.StringIO(
-                textwrap.dedent(
-                    """\
-        revision,path,function,cyclomatic_complexity,nloc,token_count,name,long_name,start_line,end_line,top_nesting_level,length,fan_in,fan_out,general_fan_out,file_tokens,file_nloc
-        r1,f.py,0,2,4,16,test,test( ),1,4,0,4,0,0,0,17,4
-        r2,f.py,0,1,2,8,test,test( ),1,2,0,2,0,0,0,18,4
-        r2,f.py,1,1,2,8,other,other( ),4,5,0,2,0,0,0,18,4
-        """
-                )
-            ),
-            dtype={"name": "string", "long_name": "string"},
-        ).set_index(["revision", "path", "function"])
         # Limit to the expected columns for resilience to new columns.
-        actual = self.get_complexity()[expected.columns]
-        self.assertEqual(expected.T, actual.T)
+        actual = self.get_complexity()[self.expected.columns]
+        self.assertEqual(self.expected.T, actual.T)
 
     def test_complexity_name_dtype(self):
         """Check the dtypes of the get_complexity return value does not contain object dtype."""

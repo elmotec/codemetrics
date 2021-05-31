@@ -355,7 +355,10 @@ class ScmDownloader(abc.ABC):
         ), f"expected a string, got {type(path)}"
         if path is None:
             path = "."
-        dr = self._download(revision, path)
+        try:
+            dr = self._download(revision, path)
+        except ValueError as ex:
+            return DownloadResult(revision, path, str(ex))
         return dr
 
     @abc.abstractmethod
