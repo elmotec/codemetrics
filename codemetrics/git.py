@@ -42,8 +42,14 @@ class _GitLogCollector(scm.ScmLogCollector):
         super().__init__(cwd=cwd)
         self._pdb = _pdb
         self.git_client = git_client
+        self.log_re = re.compile(
+            r"([-\d]+)\s+([-\d]+)\s+(.*)"
+        )
         self.log_moved_re = re.compile(
-            r"([-\d]+)\s+([-\d]+)\s+(\S*)\{(\S*) => (\S*)\}(\S*)"
+            r"([-\d]+)\s+([-\d]+)\s+(.*) => (.*)"
+        )
+        self.log_curly_re = re.compile(
+            r"([-\d]+)\s+([-\d]+)\s+(.*)\{(.*) => (.*)\}(.*)"
         )
 
     def parse_path_elem(self, path_elem: str):
@@ -60,24 +66,19 @@ class _GitLogCollector(scm.ScmLogCollector):
 
         """
         copy_from_path: typing.Optional[str] = None
-        if "{" not in path_elem:
-            if "=>" in path_elem:
-                match = re.match(r"(\d+|-)\s+(\d+|-)\s+(.*?)\s+=>\s+(.*)", path_elem)
-                added, removed, copy_from_path, rel_path = match.groups()
-            else:
-                match = re.match(r"(\d+|-)\s+(\d+|-)\s+(.*)", path_elem)
-                added, removed, rel_path = match.groups()
+        match_log = self.log_re.match(path_elem)
+        match_log_moved = self.log_moved_re.match(path_elem)
+        match_log_curly = self.log_curly_re.match(path_elem)
+        if match_log_curly:
+            added, removed, base, from_mid, rel_mid, end = match_log_curly.groups()
+            rel_path = (base + rel_mid + end).replace("//", "/")
+            copy_from_path = (base + from_mid + end).replace("//", "/")
+        elif match_log_moved:
+            added, removed, copy_from_path, rel_path = match_log_moved.groups()
+        elif match_log:
+            added, removed, rel_path = match_log.groups()
         else:
-            match = self.log_moved_re.match(path_elem)
-            if not match:
-                raise ValueError(f"{path_elem} not understood")
-            added = match.group(1)
-            removed = match.group(2)
-            rel_path = match.group(3) + match.group(5) + match.group(6)
-            rel_path = rel_path.replace("//", "/")
-            copy_from_path = (match.group(3) + match.group(4) + match.group(6)).replace(
-                "//", "/"
-            )
+            raise ValueError(f"{path_elem} not understood")
         added_as_int = int(added) if added != "-" else np.nan
         removed_as_int = int(removed) if removed != "-" else np.nan
         return added_as_int, removed_as_int, rel_path, copy_from_path
