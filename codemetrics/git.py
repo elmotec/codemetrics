@@ -62,9 +62,11 @@ class _GitLogCollector(scm.ScmLogCollector):
         copy_from_path: typing.Optional[str] = None
         if "{" not in path_elem:
             if "=>" in path_elem:
-                added, removed, copy_from_path, _, rel_path = path_elem.split()
+                match = re.match(r"(\d+|-)\s+(\d+|-)\s+(.*?)\s+=>\s+(.*)", path_elem)
+                added, removed, copy_from_path, rel_path = match.groups()
             else:
-                added, removed, rel_path = path_elem.split()
+                match = re.match(r"(\d+|-)\s+(\d+|-)\s+(.*)", path_elem)
+                added, removed, rel_path = match.groups()
         else:
             match = self.log_moved_re.match(path_elem)
             if not match:
