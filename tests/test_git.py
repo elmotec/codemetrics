@@ -33,6 +33,33 @@ class PathElemParser(unittest.TestCase):
         self.assertEqual("dir/test.py", relpath)
         self.assertIsNone(copyfrompath)
 
+    def test_parse_path_elem_with_spaces(self):
+        """Parsing of path element."""
+        pe = "21        2   	dir 1/test 1.py"
+        added, removed, relpath, copyfrompath = self.git.parse_path_elem(pe)
+        self.assertEqual(21, added)
+        self.assertEqual(2, removed)
+        self.assertEqual("dir 1/test 1.py", relpath)
+        self.assertIsNone(copyfrompath)
+
+    def test_parse_renamed_path_no_curly(self):
+        """Parsing of path element."""
+        pe = "1       1       a.py => b.py"
+        added, removed, relpath, copyfrompath = self.git.parse_path_elem(pe)
+        self.assertEqual(1, added)
+        self.assertEqual(1, removed)
+        self.assertEqual("b.py", relpath)
+        self.assertEqual("a.py", copyfrompath)
+
+    def test_parse_renamed_path_no_curly_with_spaces(self):
+        """Parsing of path element."""
+        pe = "1       1       a 1.py => b 1.py"
+        added, removed, relpath, copyfrompath = self.git.parse_path_elem(pe)
+        self.assertEqual(1, added)
+        self.assertEqual(1, removed)
+        self.assertEqual("b 1.py", relpath)
+        self.assertEqual("a 1.py", copyfrompath)
+
     def test_parse_renamed_path(self):
         """Parsing of path element."""
         pe = "1       1       dir/{b/a.py => a/b.py}"
@@ -41,6 +68,15 @@ class PathElemParser(unittest.TestCase):
         self.assertEqual(1, removed)
         self.assertEqual("dir/a/b.py", relpath)
         self.assertEqual("dir/b/a.py", copyfrompath)
+
+    def test_parse_renamed_path_with_spaces(self):
+        """Parsing of path element."""
+        pe = "1       1       dir 1/{b 1/a a.py => a 1/b b.py}"
+        added, removed, relpath, copyfrompath = self.git.parse_path_elem(pe)
+        self.assertEqual(1, added)
+        self.assertEqual(1, removed)
+        self.assertEqual("dir 1/a 1/b b.py", relpath)
+        self.assertEqual("dir 1/b 1/a a.py", copyfrompath)
 
     def test_parse_renamed_path_empty_right(self):
         """Parsing of path element."""
@@ -51,6 +87,15 @@ class PathElemParser(unittest.TestCase):
         self.assertEqual("dir/test.py", relpath)
         self.assertEqual("dir/category/test.py", copyfrompath)
 
+    def test_parse_renamed_path_empty_right_with_spaces(self):
+        """Parsing of path element."""
+        pe = "21        2   	dir 1/{category 1 => }/test 1.py"
+        added, removed, relpath, copyfrompath = self.git.parse_path_elem(pe)
+        self.assertEqual(21, added)
+        self.assertEqual(2, removed)
+        self.assertEqual("dir 1/test 1.py", relpath)
+        self.assertEqual("dir 1/category 1/test 1.py", copyfrompath)
+
     def test_parse_renamed_path_empty_left(self):
         """Parsing of path element."""
         pe = "-       -       dir/{ => subdir}/file.py"
@@ -59,6 +104,15 @@ class PathElemParser(unittest.TestCase):
         self.assertTrue(np.isnan(removed))
         self.assertEqual("dir/subdir/file.py", relpath)
         self.assertEqual("dir/file.py", copyfrompath)
+
+    def test_parse_renamed_path_empty_left_with_spaces(self):
+        """Parsing of path element."""
+        pe = "-       -       dir 1/{ => subdir 1}/file 1.py"
+        added, removed, relpath, copyfrompath = self.git.parse_path_elem(pe)
+        self.assertTrue(np.isnan(added))
+        self.assertTrue(np.isnan(removed))
+        self.assertEqual("dir 1/subdir 1/file 1.py", relpath)
+        self.assertEqual("dir 1/file 1.py", copyfrompath)
 
 
 def get_log():
