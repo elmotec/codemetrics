@@ -56,7 +56,7 @@ class Project(abc.ABC):
         after: dt.datetime = None,
         before: dt.datetime = None,
         progress_bar: tqdm.tqdm = None,
-        # FIXME: Why do we need path _and_ relative_url
+        # FIXME: Needed for Subversion though may be a better way.
         relative_url: str = None,
         _pdb=False,
     ) -> pd.DataFrame:
@@ -216,7 +216,7 @@ class ScmLogCollector(abc.ABC):
         self.cwd = cwd or None
 
     @abc.abstractmethod
-    def process_log_entries(self, cmd_output):
+    def process_log_entries(self, cmd_output: typing.Sequence[str]):
         """Convert output of git log --xml -v to a csv.
 
         Args:
