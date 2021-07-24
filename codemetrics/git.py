@@ -18,6 +18,37 @@ from .internals import log
 default_client = "git"
 
 
+def _parse_path_info(path_info: str) -> typing.Tuple[str, typing.Optional[str]]:
+    """Parse path in git log
+
+    Reconstruct the relative path and the path it was copied from if " => " is found in the
+    path information.
+
+    Params:
+        path_info: git log path information. Can be a path or something like old_path => new_path
+            and variants where the common parts between old and new path are factored with braces.
+
+    Returns:
+        rel_path and copy_from_path where copy_from_path can be None.
+
+    """
+    copy_from_path: typing.Optional[str] = None
+    try:
+        left, right = path_info.split(" => ")
+        try:
+            prefix, copy_from_path = left.split("{")
+            rel_path, suffix = right.split("}")
+            copy_from_path = (prefix + copy_from_path + suffix).replace("//", "/")
+            rel_path = (prefix + rel_path + suffix).replace("//", "/")
+        except ValueError:  # no braces implies no prefix or suffix
+            copy_from_path = left
+            rel_path = right
+    except ValueError:  # => was not found, no copy from.
+        rel_path = path_info
+        copy_from_path = None
+    return rel_path, copy_from_path
+
+
 class _GitLogCollector(scm.ScmLogCollector):
     """Collect log from Git."""
 
@@ -28,7 +59,9 @@ class _GitLogCollector(scm.ScmLogCollector):
         "--numstat",
     ]
 
-    def __init__(self, git_client=default_client, cwd: pl.Path = None, _pdb=False):
+    def __init__(
+        self, git_client: str = default_client, cwd: pl.Path = None, _pdb: bool = False
+    ):
         """Initialize.
 
         Compiles regular expressions to be used during parsing of log.
@@ -44,32 +77,9 @@ class _GitLogCollector(scm.ScmLogCollector):
         self.git_client = git_client
         self.log_re = re.compile(r"^([-\d]+)\s+([-\d]+)\s+(.*)$")
 
-    def parse_path_info(self, path_info):
-        """Parse path information
-
-        Reconstruct the relative path and the path it was copied from if " => " is found in the
-        path information.
-
-        Returns:
-            rel_path and copy_from_path where copy_from_path can be None.
-
-        """
-        try:
-            left, right = path_info.split(" => ")
-            try:
-                prefix, copy_from_path = left.split("{")
-                rel_path, suffix = right.split("}")
-                copy_from_path = (prefix + copy_from_path + suffix).replace("//", "/")
-                rel_path = (prefix + rel_path + suffix).replace("//", "/")
-            except ValueError:  # no braces implies no prefix or suffix
-                copy_from_path = left
-                rel_path = right
-        except ValueError:  # => was not found, no copy from.
-            rel_path = path_info
-            copy_from_path = None
-        return rel_path, copy_from_path
-
-    def parse_path_elem(self, path_elem: str):
+    def parse_path_elem(
+        self, path_elem: str
+    ) -> typing.Tuple[int, int, str, typing.Optional[str]]:
         """Parse git output to identify lines added, removed and path.
 
         Also handle renamed path.
@@ -82,12 +92,11 @@ class _GitLogCollector(scm.ScmLogCollector):
             copy_from_path may be None.
 
         """
-        copy_from_path: typing.Optional[str] = None
         match_log = self.log_re.match(path_elem)
         if not match_log:
             raise ValueError(f"{path_elem} not understood")
         added, removed, path_info = match_log.groups()
-        rel_path, copy_from_path = self.parse_path_info(path_info)
+        rel_path, copy_from_path = _parse_path_info(path_info)
         added_as_int = int(added) if added != "-" else np.nan
         removed_as_int = int(removed) if removed != "-" else np.nan
         return added_as_int, removed_as_int, rel_path, copy_from_path
@@ -155,7 +164,7 @@ class _GitLogCollector(scm.ScmLogCollector):
         return
 
     def process_log_entries(
-        self, text: typing.List[str]
+        self, text: typing.Sequence[str]
     ) -> typing.Generator[scm.LogEntry, None, None]:
         """See :member:`_ScmLogCollector.process_log_entries`."""
         log_entry: typing.List[str] = []
@@ -279,9 +288,9 @@ class GitProject(scm.Project):
         after: dt.datetime = None,
         before: dt.datetime = None,
         progress_bar: tqdm.tqdm = None,
-        # FIXME: Why do we need path _and_ relative_url
+        # FIXME: Needed for Subversion though may be a better way.
         relative_url: str = None,
-        _pdb=False,
+        _pdb: bool = False,
     ) -> pd.DataFrame:
         """Entry point to retrieve git log.
 
