@@ -6,6 +6,7 @@ environment:
         - PYTHON: Python37-x64
         - PYTHON: Python38-x64
         - PYTHON: Python39-x64
+        - PYTHON: Python310-x64
 
 install:
     - C:\%PYTHON%\python.exe -m pip install .
