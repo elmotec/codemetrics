@@ -110,5 +110,5 @@ Credits
 .. _Adam Tornhill: https://www.adamtornhill.com/
 .. _module documentation: https://codemetrics.readthedocs.org/
 .. _example notebook: https://github.com/elmotec/codemetrics/tree/master/notebooks/
-.. _html export of pandas: https://htmlpreview.github.io/?https://github.com/elmotec/codemetrics/blob/develop/notebooks/pandas.html
+.. _html export of pandas: https://htmlpreview.github.io/?https://github.com/elmotec/codemetrics/blob/master/notebooks/pandas.html
 
