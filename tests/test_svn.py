@@ -116,7 +116,9 @@ class GetSvnLogTestCase(unittest.TestCase, test_scm.GetLogTestCase):
     @mock.patch("codemetrics.internals.run", side_effect=[get_log()], autospec=True)
     def test_get_log(self, run_):
         """Simple svn run_ returns pandas.DataFrame."""
-        actual = self.project.get_log(after=self.after, relative_url="/project/trunk")
+        actual = cm.get_log(
+            self.project, after=self.after, relative_url="/project/trunk"
+        )
         run_.assert_called_with(
             "svn log --xml -v -r {2018-12-03}:HEAD .".split(), cwd="<root>"
         )
