@@ -69,7 +69,9 @@ Source Control Management (SCM) repository and hopefully gain insight from it.
   import codemetrics as cm
   import cm.git
 
-  log_df = cm.get_git_log()
+  project = cm.GitProject('path/to/project')
+  loc_df = cm.get_cloc(project, cloc_program='/path/to/cloc')
+  log_df = cm.get_log(project)
   ages_df = cm.get_ages(log_df)
 
 
@@ -80,13 +82,17 @@ To retrieve the number of lines changed by revision with Subversion:
   import codemetrics as cm
   import cm.git
 
-  log_df = cm.get_svn_log().set_index(['revision', 'path'])
+  project = cm.SvnProject('path/to/project')
+  log_df = cm.get_log(project).set_index(['revision', 'path'])
   log_df.loc[:, ['added', 'removed']] = log_df.reset_index().\
                                            groupby('revision').\
                                            apply(cm.svn.get_diff_stats, chunks=False)
 
-See `module documentation`_ for more advanced functions or the `example notebook`_ (`html export of pandas`_).
+See `module documentation`_ for more advanced functions.
 
+There is also an `example notebook`_ running codemetrics on the pandas code base, and
+the `example html export`_ of that notebook output (some features are missing like 
+the display of file names when hovering on the circles).
 
 License
 -------
@@ -110,5 +116,5 @@ Credits
 .. _Adam Tornhill: https://www.adamtornhill.com/
 .. _module documentation: https://codemetrics.readthedocs.org/
 .. _example notebook: https://github.com/elmotec/codemetrics/tree/master/notebooks/
-.. _html export of pandas: https://htmlpreview.github.io/?https://github.com/elmotec/codemetrics/blob/master/notebooks/pandas.html
+.. _example html export: https://htmlpreview.github.io/?https://github.com/elmotec/codemetrics/blob/master/notebooks/pandas.html
 
