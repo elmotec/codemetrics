@@ -74,12 +74,12 @@ class SimpleDirectory(unittest.TestCase):
 class TestClocCall(unittest.TestCase):
     """Checking the calls made by get_cloc()"""
 
-    @mock.patch("pathlib.Path.glob", autospect=True, return_value=[])
+    @mock.patch("pathlib.Path.glob", autospec=True, return_value=[])
     def test_cloc_fails_if_not_in_root(self, path_glob):
         """Make sure that command line call checks it is run from the root."""
         with self.assertRaises(ValueError) as context:
             loc.get_cloc(utils.FakeProject())
-        path_glob.assert_called_with(pattern=".svn")
+        path_glob.assert_called_with(mock.ANY, pattern=".svn")
         self.assertIn("git or svn root", str(context.exception))
 
     @mock.patch("codemetrics.internals.check_run_in_root", autospec=True)
