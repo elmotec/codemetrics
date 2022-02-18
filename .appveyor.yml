@@ -3,7 +3,6 @@ image:
 
 environment:
     matrix:
-        - PYTHON: Python36
         - PYTHON: Python37-x64
         - PYTHON: Python38-x64
         - PYTHON: Python39-x64

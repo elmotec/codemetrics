@@ -72,8 +72,8 @@ class BuildHierarchyTest(DataFrameTestCase):
         """Main case where we build a hierarchy of paths"""
         actual = vega.build_hierarchy(
             self.input_df["path"]
-            .str.replace(r"\\", "/")
-            .str.replace(r"^\./", "")
+            .str.replace(r"\\", "/", regex=True)
+            .str.replace(r"^\./", "", regex=True)
             .to_frame("path"),
             root="",
         )
