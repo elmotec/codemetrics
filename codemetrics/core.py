@@ -186,7 +186,7 @@ def guess_components(paths, stop_words=None, n_clusters=8):
 
     def __cluster_name(center, threshold):
         df = pd.DataFrame(
-            data={"feature": vectorizer.get_feature_names(), "weight": center}
+            data={"feature": vectorizer.get_feature_names_out(), "weight": center}
         )
         df.sort_values(by=["weight", "feature"], ascending=False, inplace=True)
         if (df["weight"] <= threshold).all():

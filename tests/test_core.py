@@ -127,7 +127,10 @@ class AgeReportTestCase(SimpleRepositoryFixture):
         )
         self.get_now = self.get_now_patcher.start()
         self.expected = pd.DataFrame(
-            data={"path": ["requirements.txt", "stats.py"], "age": [3.531817, 1.563889]}
+            {
+                "path": pd.Series(["requirements.txt", "stats.py"], dtype="string"),
+                "age": pd.Series([3.531817, 1.563889]),
+            }
         )
 
     def tearDown(self):
@@ -182,7 +185,7 @@ class HotSpotReportTestCase(SimpleRepositoryFixture):
         """
                 )
             ),
-            dtype={"language": "string", "changes": "Int64"},
+            dtype={"language": "string", "path": "string", "changes": "Int64"},
         )
 
     def test_hot_spot_report(self):
@@ -210,21 +213,21 @@ class HotSpotReportTestCase(SimpleRepositoryFixture):
         log = self.log.loc[self.log["date"] >= after, :].assign(path="other")
         # not sure why the assign call turns path "string" dtype to "object".
         log = log.astype({"path": "string"})
-        actual = cm.get_hot_spots(log, self.loc).query("path == 'other'")
-        expected = (
-            self.expected.append(
-                {
-                    "language": pd.NA,
-                    "path": "other",
-                    "blank": 0.0,
-                    "comment": 0.0,
-                    "lines": 0.0,
-                    "changes": 1,
-                },
-                ignore_index=True,
-            )
-            .astype({"language": "string"})
+        actual = (
+            cm.get_hot_spots(log, self.loc)
             .query("path == 'other'")
+            .reset_index(drop=True)
+        )
+        expected = pd.read_csv(
+            io.StringIO(
+                textwrap.dedent(
+                    """
+        language,path,blank,comment,lines,changes
+        ,other,0.0,0.0,0.0,1
+        """
+                )
+            ),
+            dtype={"language": "string", "path": "string", "changes": "Int64"},
         )
         self.assertEqual(expected, actual)
 
@@ -247,7 +250,8 @@ class CoChangeTestCase(SimpleRepositoryFixture):
         stats.py,requirements.txt,2,1,0.5
         """
                 )
-            )
+            ),
+            dtype={"path": "string", "dependency": "string"},
         )
         self.assertEqual(expected, actual)
 
@@ -266,7 +270,8 @@ class CoChangeTestCase(SimpleRepositoryFixture):
         stats.py,requirements.txt,1,1,1.0
         """
                 )
-            )
+            ),
+            dtype={"path": "string", "dependency": "string"},
         )
         self.assertEqual(expected, actual)
 

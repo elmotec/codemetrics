@@ -20,7 +20,15 @@ def add_data_frame_equality_func(test):
     def frame_equal(lhs, rhs, msg=None):
         """Adapter for pandas.testing.assert_frame_equal."""
         try:
-            pdt.assert_frame_equal(lhs, rhs, check_categorical=False)
+            check_dtype = True
+            # pandas dtype values change with 1.4:
+            # We stay compatible with the new dtype values in the tests, while
+            # ignoring dtype checks if pandas version is < 1.4.
+            if pd.__version__ < "1.4":
+                check_dtype = False
+            pdt.assert_frame_equal(
+                lhs, rhs, check_categorical=False, check_dtype=check_dtype
+            )
         except AssertionError as err:
             if not msg:
                 msg = str(err)
