@@ -2,6 +2,8 @@
 History
 =======
 
+See CHANGELOG.md for later changes
+
 0.11.5  (2021-07-24)
 --------------------
 * Fixed handling of files with spaces (credit: @Wonshtrum).
