@@ -1,17 +1,21 @@
+# Do not build branch with open PR
+skip_branch_with_pr: true
+
 image:
-  - Visual Studio 2019
+- Visual Studio 2019
 
 environment:
-    matrix:
-        - PYTHON: Python37-x64
-        - PYTHON: Python38-x64
-        - PYTHON: Python39-x64
-        - PYTHON: Python310-x64
+  matrix:
+  - PYTHON: Python37-x64
+  - PYTHON: Python38-x64
+  - PYTHON: Python39-x64
+  - PYTHON: Python310-x64
 
 install:
-    - C:\%PYTHON%\python.exe -m pip install .
+- C:\%PYTHON%\python.exe -m pip install pip --upgrade
+- C:\%PYTHON%\python.exe -m pip install . pytest
 
 build: off
 
 test_script:
-    - C:\%PYTHON%\python.exe setup.py test
+- C:\%PYTHON%\python.exe -m pytest

@@ -217,10 +217,10 @@ class _GitLogCollector(scm.ScmLogCollector):
         if before:
             command += ["--before", f"{before:%Y-%m-%d}"]
         command.append(path)
-        if self._pdb:
-            import pdb
-
-            pdb.set_trace()
+        # For debugging
+        # if self._pdb:
+        #     import pdb
+        #     pdb.set_trace()
         results = internals.run(command, cwd=self.cwd).split("\n")
         return self.process_log_output_to_df(
             results, after=after, progress_bar=progress_bar
