@@ -60,9 +60,9 @@ source_suffix = ".rst"
 master_doc = "index"
 
 # General information about the project.
-project = u"codemetrics"
-copyright = u"2019, Elmotec"
-author = u"Elmotec"
+project = "codemetrics"
+copyright = "2019, Elmotec"
+author = "Elmotec"
 
 # The version info for the project you're documenting, acts as replacement
 # for |version| and |release|, also used in various other places throughout
@@ -135,14 +135,14 @@ latex_elements = {
 # (source start file, target name, title, author, documentclass
 # [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, "codemetrics.tex", u"codemetrics Documentation", u"Elmotec", "manual"),
+    (master_doc, "codemetrics.tex", "codemetrics Documentation", "Elmotec", "manual"),
 ]
 
 # -- Options for manual page output ------------------------------------
 
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
-man_pages = [(master_doc, "codemetrics", u"codemetrics Documentation", [author], 1)]
+man_pages = [(master_doc, "codemetrics", "codemetrics Documentation", [author], 1)]
 
 # -- Options for Texinfo output ----------------------------------------
 
@@ -153,7 +153,7 @@ texinfo_documents = [
     (
         master_doc,
         "codemetrics",
-        u"codemetrics Documentation",
+        "codemetrics Documentation",
         author,
         "codemetrics",
         "One line description of project.",
