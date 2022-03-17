@@ -1,5 +1,5 @@
 black[d]
-bump2version
+commitizen
 coverage
 flake8
 pip
