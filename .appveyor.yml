@@ -1,3 +1,7 @@
+branches:
+  only:
+  - master
+
 # Do not build branch with open PR
 skip_branch_with_pr: true
 
