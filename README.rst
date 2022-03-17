@@ -10,9 +10,9 @@
     :target: https://github.com/elmotec/codemetrics/actions?query=workflow%3A%22Python+application%22
     :alt: GitHub Workflow Python application
 
-.. image:: https://img.shields.io/appveyor/ci/elmotec/codemetrics/master?label=AppVeyor
+.. image:: https://img.shields.io/appveyor/ci/elmotec/codemetrics/main?label=AppVeyor
     :target: https://ci.appveyor.com/project/elmotec/codemetrics
-    :alt: AppVeyor master status
+    :alt: AppVeyor main status
 
 .. image:: https://img.shields.io/librariesio/release/pypi/codemetrics.svg?label=libraries.io
     :alt: Libraries.io dependency status for latest release
@@ -22,7 +22,7 @@
     :target: https://codemetrics.readthedocs.org/
     :alt: Documentation
 
-.. image:: https://codecov.io/gh/elmotec/codemetrics/branch/master/graph/badge.svg?token=ELJW941FET
+.. image:: https://codecov.io/gh/elmotec/codemetrics/branch/main/graph/badge.svg?token=ELJW941FET
     :target: https://codecov.io/gh/elmotec/codemetrics
     :alt: Coverage
 
@@ -115,5 +115,5 @@ Credits
 .. _MIT License: https://en.wikipedia.org/wiki/MIT_License
 .. _Adam Tornhill: https://www.adamtornhill.com/
 .. _module documentation: https://codemetrics.readthedocs.org/
-.. _demo notebook: https://github.com/elmotec/codemetrics/blob/master/notebooks/pandas.ipynb
+.. _demo notebook: https://github.com/elmotec/codemetrics/blob/main/notebooks/pandas.ipynb
 
