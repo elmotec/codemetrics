@@ -5,6 +5,8 @@ on:
     branches:
     - main
     - ci/autopublish
+    tags:
+    - v*
 
 jobs:
   deploy:
@@ -21,13 +23,12 @@ jobs:
         pip install build
     - name: Build package
       run: python -m build
-#    - name: Publish distribution to Test PyPI
-#      uses: pypa/gh-action-pypi-publish@master
-#      with:
-#        password: ${{ secrets.TEST_PYPI_TOKEN }}
-#        repository_url: https://test.pypi.org/legacy/
+    # See https://github.com/marketplace/actions/pypi-publish
     - name: Publish distribution to PyPI
-      if: startsWith(github.ref, 'refs/tags')
-      uses: pypa/gh-action-pypi-publish@master
+      if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
+      uses: pypa/gh-action-pypi-publish@v1.5.0
       with:
+        user: __token__
         password: ${{ secrets.PYPI_TOKEN }}
+        skip_existing: true
+        verbose: true
