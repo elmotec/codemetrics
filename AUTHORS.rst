@@ -6,11 +6,7 @@ Development Lead
 ----------------
 
 * Elmotec
-
-Contributors
-------------
-
-None yet. Why not be the first?
+* Wonshtrum
 
 
 Inspiration
