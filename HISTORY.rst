@@ -4,6 +4,10 @@ History
 
 See CHANGELOG.md for later changes
 
+0.11.6  (2022-03-22)
+--------------------
+* Added support for Python 3.10
+
 0.11.5  (2021-07-24)
 --------------------
 * Fixed handling of files with spaces (credit: @Wonshtrum).
