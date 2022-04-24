@@ -514,7 +514,8 @@ class GetComplexityTestCase(utils.DataFrameTestCase):
         """Empty input returns and empty dataframe."""
         self.log = self.log.iloc[:0]
         actual = cm.get_complexity(self.log, scm.Project())
-        self.assertEqual(list(actual.columns), list(self.expected.columns))
+        # Length may be at the end or in the middle dependeding on the version of lizard.
+        self.assertEqual(sorted(actual.columns), sorted(self.expected.columns))
         self.assertEqual(len(actual), 0)
 
     def test_use_default_download(self):
