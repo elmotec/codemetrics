@@ -195,6 +195,13 @@ class HotSpotReportTestCase(SimpleRepositoryFixture):
         actual = cm.get_hot_spots(log, self.loc)
         self.assertEqual(self.expected, actual)
 
+    def test_hot_spot_report_by_path(self):
+        """Generate a report to find hot spots with path passed explicitely."""
+        after = dt.datetime(2018, 2, 26, tzinfo=dt.timezone.utc)
+        log = self.log.loc[self.log["date"] >= after, :]
+        actual = cm.get_hot_spots(log, self.loc, by="path")
+        self.assertEqual(self.expected, actual)
+
     def test_hot_spot_with_custom_change_metric(self):
         """Generate report with a different change metric than revision.
 
@@ -241,6 +248,23 @@ class CoChangeTestCase(SimpleRepositoryFixture):
     def test_co_change_report(self):
         """Simple CoChangeReport usage."""
         actual = cm.get_co_changes(log=SimpleRepositoryFixture.get_log_df())
+        expected = pd.read_csv(
+            io.StringIO(
+                textwrap.dedent(
+                    """
+        path,dependency,changes,cochanges,coupling
+        requirements.txt,stats.py,1,1,1.0
+        stats.py,requirements.txt,2,1,0.5
+        """
+                )
+            ),
+            dtype={"path": "string", "dependency": "string"},
+        )
+        self.assertEqual(expected, actual)
+
+    def test_co_change_report_by_path(self):
+        """Simple CoChangeReport usage with path passed explicitely."""
+        actual = cm.get_co_changes(log=SimpleRepositoryFixture.get_log_df(), by="path")
         expected = pd.read_csv(
             io.StringIO(
                 textwrap.dedent(
