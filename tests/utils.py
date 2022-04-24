@@ -94,13 +94,3 @@ def csvlog_to_dataframe(csv_log: str) -> pd.DataFrame:
     # Reorder columns.
     df = df[scm.LogEntry.__slots__].pipe(scm.normalize_log)
     return df
-
-
-class FakeProject(scm.Project):
-    """Fake project with pre-determined values for the download return values."""
-
-    def download(self, data: pd.DataFrame) -> scm.DownloadResult:
-        pass
-
-    def get_log(self, **kwargs) -> pd.DataFrame:
-        pass

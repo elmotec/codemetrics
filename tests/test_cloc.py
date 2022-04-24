@@ -12,6 +12,7 @@ from unittest import mock
 import pandas as pd
 
 import codemetrics.cloc as loc
+import codemetrics.scm as scm
 
 from . import utils
 
@@ -45,7 +46,7 @@ class SimpleDirectory(unittest.TestCase):
 
     def test_cloc_reads_files(self):
         """cloc is called and reads the output csv file."""
-        actual = loc.get_cloc(utils.FakeProject())
+        actual = loc.get_cloc(scm.Project())
         self.run_.assert_called_with("cloc --csv --by-file .".split(), cwd=pl.Path("."))
         expected = pd.read_csv(
             io.StringIO(
@@ -67,7 +68,7 @@ class SimpleDirectory(unittest.TestCase):
         """Clean error message when cloc is not found in the path."""
         self.run_.side_effect = [FileNotFoundError]
         with self.assertRaises(FileNotFoundError) as context:
-            _ = loc.get_cloc(utils.FakeProject())
+            _ = loc.get_cloc(scm.Project())
         self.assertIn("cloc", str(context.exception))
 
 
@@ -78,7 +79,7 @@ class TestClocCall(unittest.TestCase):
     def test_cloc_fails_if_not_in_root(self, path_glob):
         """Make sure that command line call checks it is run from the root."""
         with self.assertRaises(ValueError) as context:
-            loc.get_cloc(utils.FakeProject())
+            loc.get_cloc(scm.Project())
         path_glob.assert_called_with(mock.ANY, pattern=".svn")
         self.assertIn("git or svn root", str(context.exception))
 
@@ -86,7 +87,7 @@ class TestClocCall(unittest.TestCase):
     @mock.patch("codemetrics.internals.run", autospec=True)
     def test_cloc_called_with_path(self, run, _):
         """Make sure the path is passed as argument to cloc when passed to the function."""
-        loc.get_cloc(utils.FakeProject(), path="some-path")
+        loc.get_cloc(scm.Project(), path="some-path")
         run.assert_called_with(
             ["cloc", "--csv", "--by-file", "some-path"], cwd=pl.Path(".")
         )

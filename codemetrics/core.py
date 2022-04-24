@@ -238,30 +238,29 @@ def get_complexity(
     .. _lizard.analyze: https://github.com/terryyin/lizard
 
     """
-    if len(group) == 0:
-        internals.log.info("empty group %s", group)
-        return pd.DataFrame({k: [] for k in _complexity_fields})
+    df = pd.DataFrame(columns=_lizard_fields + ["file_tokens", "file_nloc"])
     downloaded = project.download(group)
-    path = downloaded.path
-    content = downloaded.content
-    info = lizard.analyze_file.analyze_source_code(path, content)
-    df = pd.DataFrame(columns=_lizard_fields)
-    if info.function_list:
-        df = pd.DataFrame.from_records(
-            [vars(d) for d in info.function_list], columns=_lizard_fields
-        )
+    if downloaded is not None:
+        path = downloaded.path
+        content = downloaded.content
+        info = lizard.analyze_file.analyze_source_code(path, content)
+        if info.function_list:
+            df = pd.DataFrame.from_records(
+                [vars(d) for d in info.function_list], columns=_lizard_fields
+            ).assign(
+                file_tokens=info.token_count,
+                file_nloc=info.nloc,
+            )
     df = (
         df.rename_axis("function")
         .assign(
-            file_tokens=info.token_count,
-            file_nloc=info.nloc,
             cyclomatic_complexity=lambda x: x["cyclomatic_complexity"].astype("Int32"),
             nloc=lambda x: x["nloc"].astype("Int32"),
             token_count=lambda x: x["token_count"].astype("Int32"),
             start_line=lambda x: x["start_line"].astype("Int32"),
             end_line=lambda x: x["end_line"].astype("Int32"),
             top_nesting_level=lambda x: x["top_nesting_level"].astype("Int32"),
-            length=lambda x: x["length"].astype("Int32"),
+            length=lambda x: (x["end_line"] - x["start_line"] + 1).astype("Int32"),
             fan_in=lambda x: x["fan_in"].astype("Int32"),
             fan_out=lambda x: x["fan_out"].astype("Int32"),
             general_fan_out=lambda x: x["general_fan_out"].astype("Int32"),
