@@ -24,7 +24,7 @@ ChunkStats = collections.namedtuple(
 )
 
 
-class Project(abc.ABC):
+class Project:
     """Stores context information about the SCM tree.
 
     At first the attributes are initialized to None until the first request to the SCM tool.
@@ -45,11 +45,9 @@ class Project(abc.ABC):
         """
         self.cwd = cwd
 
-    @abc.abstractmethod
-    def download(self, data: pd.DataFrame) -> DownloadResult:
-        pass
+    def download(self, data: pd.DataFrame) -> typing.Optional[DownloadResult]:
+        return None
 
-    @abc.abstractmethod
     def get_log(
         self,
         path: str = ".",
@@ -60,7 +58,7 @@ class Project(abc.ABC):
         relative_url: str = None,
         _pdb=False,
     ) -> pd.DataFrame:
-        pass
+        return pd.DataFrame(columns=LogEntry.__slots__)
 
 
 def get_log(project: Project, *args, **kwargs) -> pd.DataFrame:

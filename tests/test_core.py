@@ -422,10 +422,10 @@ class GetComplexityTestCase(utils.DataFrameTestCase):
             io.StringIO(
                 textwrap.dedent(
                     """\
-        revision,path,function,cyclomatic_complexity,nloc,token_count,name,long_name,start_line,end_line,top_nesting_level,length,fan_in,fan_out,general_fan_out,file_tokens,file_nloc
-        r1,f.py,0,2,4,16,test,test( ),1,4,0,4,0,0,0,17,4
-        r2,f.py,0,1,2,8,test,test( ),1,2,0,2,0,0,0,18,4
-        r2,f.py,1,1,2,8,other,other( ),4,5,0,2,0,0,0,18,4
+        revision,path,function,cyclomatic_complexity,nloc,token_count,name,long_name,start_line,end_line,top_nesting_level,fan_in,fan_out,general_fan_out,file_tokens,file_nloc,length
+        r1,f.py,0,2,4,16,test,test( ),1,4,0,0,0,0,17,4,4
+        r2,f.py,0,1,2,8,test,test( ),1,2,0,0,0,0,18,4,2
+        r2,f.py,1,1,2,8,other,other( ),4,5,0,0,0,0,18,4,2
         """
                 )
             ),
@@ -434,9 +434,9 @@ class GetComplexityTestCase(utils.DataFrameTestCase):
 
     def get_complexity(self):
         """Factor retrieval of complexity"""
-        project = utils.FakeProject()
+        project = scm.Project()
         with mock.patch.object(
-            utils.FakeProject,
+            scm.Project,
             "download",
             autospec=True,
             side_effect=[
@@ -467,11 +467,11 @@ class GetComplexityTestCase(utils.DataFrameTestCase):
         columns = (
             "function".split()
             + cm.core._lizard_fields
-            + "file_tokens file_nloc".split()
+            + "file_tokens file_nloc length".split()
         )
-        project = utils.FakeProject()
+        project = scm.Project()
         with mock.patch.object(
-            utils.FakeProject,
+            scm.Project,
             "download",
             autospec=True,
             return_value=scm.DownloadResult(1, "f.py", ""),
@@ -489,15 +489,15 @@ class GetComplexityTestCase(utils.DataFrameTestCase):
     def test_analysis_empty_input_return_empty_output(self, _):
         """Empty input returns and empty dataframe."""
         self.log = self.log.iloc[:0]
-        actual = cm.get_complexity(self.log, utils.FakeProject())
+        actual = cm.get_complexity(self.log, scm.Project())
         self.assertEqual(list(actual.columns), list(self.expected.columns))
         self.assertEqual(len(actual), 0)
 
     def test_use_default_download(self):
         """When the context.downlad_funcc is defined, use it."""
-        project = utils.FakeProject()
+        project = scm.Project()
         with mock.patch.object(
-            utils.FakeProject, "download", return_value=scm.DownloadResult(1, "/", "")
+            scm.Project, "download", return_value=scm.DownloadResult(1, "/", "")
         ) as download:
             _ = cm.get_complexity(self.log, project)
             download.assert_called_with(self.log)
