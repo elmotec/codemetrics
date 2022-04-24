@@ -136,6 +136,7 @@ class TestLogEntriesToDataFrame(unittest.TestCase):
         self.assertEqual("float32", self.dtypes["removed"].name)
 
 
+# pylint: disable=no-member
 class CommonProjectTestCase:
     """Test GitProject functionalities common to all projects.
 
@@ -154,7 +155,7 @@ class CommonProjectTestCase:
     @mock.patch(
         "codemetrics.internals.run", autospec=True, return_value="dummy content"
     )
-    def test_download_return_single_result(self, _):
+    def test_download_return_single_result_or_none(self, _):
         """Makes sure the download function returns a DownloadResult."""
         project = self.Project()
         actual = project.download(
@@ -181,6 +182,28 @@ class CommonProjectTestCase:
         ) as get_log_method:
             cm.get_log(project)
             get_log_method.assert_called_with(project)
+
+
+class BaseProjectTestCase(unittest.TestCase):
+    """"Special use case tied to scm.Project
+
+    scm.Project is used as a base class for Git and SVN project and in tests.
+
+    """ ""
+
+    def setUp(self):
+        self.project = scm.Project()
+
+    def test_project_get_log_returns_expected_columns(self):
+        """scm.Project.get_log() method returns a pd.DataFrame with the right columns."""
+        actual = cm.get_log(scm.Project("."))
+        self.assertIsInstance(actual, pd.DataFrame)
+        self.assertEqual(actual.columns.tolist(), scm.LogEntry.__slots__)
+
+    def test_project_download_returns_none(self):
+        """scm.Project download() method returns None."""
+        download_result = scm.Project(".").download(pd.DataFrame())
+        self.assertIsNone(download_result)
 
 
 class GetLogTestCase:
