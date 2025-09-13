@@ -26,14 +26,10 @@ jobs:
         pytest --cov=codemetrics --cov-branch --cov-report=xml --cov-config=setup.cfg
         coverage xml
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v1
+      uses: codecov/codecov-action@v3
       with:
         fail_ci_if_error: true
-# Codacy does not seem to support coverage.xml out of the box
-#   - name: Codacy Coverage Reporter
-#     uses: codacy/codacy-coverage-reporter-action@master
-#     with:
-#       project-token: ${{secrets.CODACY_PROJECT_TOKEN}}
+        #token: ${{ secrets.CODECOV_TOKEN }}
 
 
 
