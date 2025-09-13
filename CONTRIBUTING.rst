@@ -66,7 +66,7 @@ Ready to contribute? Here's how to set up `codemetrics` for local development.
 
     $ mkvirtualenv codemetrics
     $ cd codemetrics/
-    $ python setup.py develop
+    $ python -m pip install -e .[develop]
 
 4. Create a branch for local development::
 
@@ -80,8 +80,6 @@ Ready to contribute? Here's how to set up `codemetrics` for local development.
     $ flake8 codemetrics tests
     $ python setup.py test or py.test
     $ tox
-
-   To get flake8 and tox, just pip install them into your virtualenv.
 
 6. Commit your changes and push your branch to GitHub::
 

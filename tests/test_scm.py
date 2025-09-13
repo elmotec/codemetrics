@@ -185,11 +185,14 @@ class CommonProjectTestCase:
 
 
 class BaseProjectTestCase(unittest.TestCase):
-    """"Special use case tied to scm.Project
+    (
+        """"Special use case tied to scm.Project
 
     scm.Project is used as a base class for Git and SVN project and in tests.
 
-    """ ""
+    """
+        ""
+    )
 
     def setUp(self):
         self.project = scm.Project()

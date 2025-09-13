@@ -11,6 +11,7 @@ import sklearn.cluster
 import sklearn.feature_extraction.text
 
 from . import internals, scm
+from typing import Optional
 
 __all__ = [
     "get_mass_changes",
@@ -23,7 +24,9 @@ __all__ = [
 
 
 def get_mass_changes(
-    log: pd.DataFrame, min_path: int = None, max_changes_per_path: float = None
+    log: pd.DataFrame,
+    min_path: Optional[int] = None,
+    max_changes_per_path: Optional[float] = None,
 ) -> pd.DataFrame:
     """Extract mass changesets from the SCM log data frame.
 
@@ -61,7 +64,7 @@ def get_mass_changes(
 
 def get_ages(
     data: pd.DataFrame,
-    by: typing.Sequence[str] = None,
+    by: Optional[typing.Sequence[str]] = None,
 ) -> pd.DataFrame:
     """Generate age of each file based on last change.
 

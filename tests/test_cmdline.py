@@ -123,9 +123,7 @@ class TestCommandLineOnCppFile(TestCommandLine):
         """Bad line number raise an exception."""
         result = self.invoke("is_prime.cpp 12".split())
         self.assertNotEqual(0, result.exit_code)
-        expected = (
-            "Error: Invalid value: no function found in is_prime.cpp " "at line 12"
-        )
+        expected = "Error: Invalid value: no function found in is_prime.cpp at line 12"
         self.assertIn(expected, result.output)
 
 
