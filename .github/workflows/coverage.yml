@@ -23,7 +23,7 @@ jobs:
     - name: Generate coverage report
       run: |
         coverage erase
-        pytest --cov=codemetrics --cov-branch --cov-report=xml --cov-config=setup.cfg
+        pytest --cov=codemetrics --cov-branch --cov-report=xml --cov-config=pyproject.toml
         coverage xml
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3

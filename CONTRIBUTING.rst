@@ -78,7 +78,7 @@ Ready to contribute? Here's how to set up `codemetrics` for local development.
    tests, including testing other Python versions with tox::
 
     $ flake8 codemetrics tests
-    $ python setup.py test or py.test
+    $ python -m unittest discover tests
     $ tox
 
 6. Commit your changes and push your branch to GitHub::
@@ -120,7 +120,7 @@ Then run::
     $ tox -p  # there should be no errors.
     $ vim HISTORY.rst
     $ bump2version patch  # possible: major / minor / patch.
-    $ vim setup.cfg  # bump2version does not update all references.
+    $ vim pyproject.toml  # bump2version does not update all references.
     $ git push
     $ git tag vx.y.z
     $ git push --tags
