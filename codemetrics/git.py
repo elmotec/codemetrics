@@ -14,6 +14,7 @@ import tqdm
 
 from . import internals, scm
 from .internals import log
+from typing import Optional
 
 default_client = "git"
 
@@ -60,7 +61,10 @@ class _GitLogCollector(scm.ScmLogCollector):
     ]
 
     def __init__(
-        self, git_client: str = default_client, cwd: pl.Path = None, _pdb: bool = False
+        self,
+        git_client: str = default_client,
+        cwd: Optional[pl.Path] = None,
+        _pdb: bool = False,
     ):
         """Initialize.
 
@@ -190,9 +194,9 @@ class _GitLogCollector(scm.ScmLogCollector):
     def get_log(
         self,
         path: str = ".",
-        after: dt.datetime = None,
-        before: dt.datetime = None,
-        progress_bar: tqdm.tqdm = None,
+        after: Optional[dt.datetime] = None,
+        before: Optional[dt.datetime] = None,
+        progress_bar: Optional[tqdm.tqdm] = None,
     ) -> pd.DataFrame:
         """Retrieve log from git.
 
@@ -230,7 +234,7 @@ class _GitLogCollector(scm.ScmLogCollector):
 class _GitFileDownloader(scm.ScmDownloader):
     """Download files from Subversion."""
 
-    def __init__(self, git_client: str = None, cwd: pl.Path = None):
+    def __init__(self, git_client: Optional[str] = None, cwd: Optional[pl.Path] = None):
         """Initialize downloader.
 
         Args:
@@ -251,7 +255,6 @@ class _GitFileDownloader(scm.ScmDownloader):
 
 
 class GitProject(scm.Project):
-
     """Project for git SCM."""
 
     def __init__(self, cwd: pl.Path = pl.Path("."), client: str = "git"):
@@ -285,11 +288,11 @@ class GitProject(scm.Project):
     def get_log(
         self,
         path: str = ".",
-        after: dt.datetime = None,
-        before: dt.datetime = None,
-        progress_bar: tqdm.tqdm = None,
+        after: Optional[dt.datetime] = None,
+        before: Optional[dt.datetime] = None,
+        progress_bar: Optional[tqdm.tqdm] = None,
         # FIXME: Needed for Subversion though may be a better way.
-        relative_url: str = None,
+        relative_url: Optional[str] = None,
         _pdb: bool = False,
     ) -> pd.DataFrame:
         """Entry point to retrieve git log.
@@ -318,7 +321,7 @@ class GitProject(scm.Project):
 
 
 def download(
-    data: pd.DataFrame, client: str = None, cwd: pl.Path = None
+    data: pd.DataFrame, client: Optional[str] = None, cwd: Optional[pl.Path] = None
 ) -> scm.DownloadResult:
     """Downloads files from Subversion.
 

@@ -8,6 +8,7 @@ import datetime as dt
 import tqdm
 
 import codemetrics as cm
+from typing import Optional
 
 
 class ProgressBarAdapter:
@@ -17,7 +18,10 @@ class ProgressBarAdapter:
     """
 
     def __init__(
-        self, progress_bar: tqdm.tqdm, after: dt.datetime, ascending: bool = None
+        self,
+        progress_bar: tqdm.tqdm,
+        after: dt.datetime,
+        ascending: Optional[bool] = None,
     ):
         """Creates adapter to update the progress bar based on days retrieved.
 

@@ -31,7 +31,7 @@ def get_log(dates=None):
             f"""
         <logentry revision="1018">
         <author>elmotec</author>
-        <date>{date.strftime('%Y-%m-%dT%H:%M:%S.%fZ')}</date>
+        <date>{date.strftime("%Y-%m-%dT%H:%M:%S.%fZ")}</date>
         <paths>
         <path text-mods="true" kind="file" action="M"
            prop-mods="false">/project/trunk/stats.py</path>

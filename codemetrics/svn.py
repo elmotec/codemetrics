@@ -18,6 +18,7 @@ import tqdm
 
 from . import internals, scm
 from .internals import log
+from typing import Optional
 
 default_client = "svn"
 
@@ -53,9 +54,9 @@ class _SvnLogCollector(scm.ScmLogCollector):
 
     def __init__(
         self,
-        cwd: pl.Path = None,
-        svn_client: str = None,
-        relative_url: str = None,
+        cwd: Optional[pl.Path] = None,
+        svn_client: Optional[str] = None,
+        relative_url: Optional[str] = None,
     ) -> None:
         """Initialize.
 
@@ -190,9 +191,9 @@ class _SvnLogCollector(scm.ScmLogCollector):
     def get_log(
         self,
         path: str = ".",
-        after: dt.datetime = None,
-        before: dt.datetime = None,
-        progress_bar: tqdm.tqdm = None,
+        after: Optional[dt.datetime] = None,
+        before: Optional[dt.datetime] = None,
+        progress_bar: Optional[tqdm.tqdm] = None,
     ) -> pd.DataFrame:
         """Entry point to retrieve _SvnLogCollector log.
 
@@ -236,7 +237,10 @@ class SvnDownloader(scm.ScmDownloader):
     """Download files from Subversion."""
 
     def __init__(
-        self, command: typing.List[str], svn_client: str = None, cwd: pl.Path = None
+        self,
+        command: typing.List[str],
+        svn_client: Optional[str] = None,
+        cwd: Optional[pl.Path] = None,
     ) -> None:
         """Initialize downloader.
 
@@ -247,7 +251,9 @@ class SvnDownloader(scm.ScmDownloader):
             svn_client = default_client
         super().__init__(command, client=svn_client, cwd=cwd)
 
-    def _download(self, revision: str, path: str = None) -> scm.DownloadResult:
+    def _download(
+        self, revision: str, path: Optional[str] = None
+    ) -> scm.DownloadResult:
         """Download specific file and revision from git.
 
         Args:
@@ -266,7 +272,10 @@ class SvnDownloader(scm.ScmDownloader):
 
 
 def get_diff_stats(
-    data: pd.DataFrame, svn_client: str = None, chunks=None, cwd: pl.Path = None
+    data: pd.DataFrame,
+    svn_client: Optional[str] = None,
+    chunks=None,
+    cwd: Optional[pl.Path] = None,
 ) -> typing.Union[None, pd.DataFrame]:
     """Download diff chunks statistics from Subversion.
 
@@ -318,7 +327,6 @@ def get_diff_stats(
 
 
 class SvnProject(scm.Project):
-
     """Project for Subversion SCM."""
 
     def __init__(self, cwd: pl.Path = pl.Path(), client: str = "svn"):
@@ -352,11 +360,11 @@ class SvnProject(scm.Project):
     def get_log(
         self,
         path: str = ".",
-        after: dt.datetime = None,
-        before: dt.datetime = None,
-        progress_bar: tqdm.tqdm = None,
+        after: Optional[dt.datetime] = None,
+        before: Optional[dt.datetime] = None,
+        progress_bar: Optional[tqdm.tqdm] = None,
         # FIXME: Why do we need path _and_ relative_url
-        relative_url: str = None,
+        relative_url: Optional[str] = None,
         _pdb=False,
     ) -> pd.DataFrame:
         """Entry point to retrieve svn log.

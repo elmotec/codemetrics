@@ -10,6 +10,7 @@ import subprocess
 import typing
 
 import pandas as pd
+from typing import Optional
 
 log = logging.getLogger("codemetrics")
 log.addHandler(logging.NullHandler())
@@ -27,7 +28,7 @@ def get_now():
     return dt.datetime.now(dt.timezone.utc)
 
 
-def get_year_ago(from_date: dt.datetime = None):
+def get_year_ago(from_date: Optional[dt.datetime] = None):
     """Get current time stamp minus 1 year.
 
     Decrements by one the year of the date returned by `get_now()`.
