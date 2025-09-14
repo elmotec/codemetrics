@@ -4,7 +4,6 @@
 
 """Test utility functions and wrappers."""
 
-
 import io
 import unittest
 

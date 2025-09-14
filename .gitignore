@@ -29,6 +29,7 @@ wheels/
 
 # Local files that should stay so
 local/
+.vscode/
 
 # PyInstaller
 #  Usually these files are written by a python script from a template

@@ -175,31 +175,43 @@ class HotSpotReportTestCase(SimpleRepositoryFixture):
 
     def setUp(self):
         super().setUp()
-        self.expected = pd.read_csv(
-            io.StringIO(
-                textwrap.dedent(
-                    """
+        self.expected = (
+            pd.read_csv(
+                io.StringIO(
+                    textwrap.dedent(
+                        """
         language,path,blank,comment,lines,changes
         Python,stats.py,28,84,100,1.0
         Unknown,requirements.txt,0,0,3,0
         """
-                )
-            ),
-            dtype={"language": "string", "path": "string", "changes": "Int64"},
+                    )
+                ),
+                dtype={"language": "string", "path": "string", "changes": "Int64"},
+            )
+            .sort_values(by="language")
+            .reset_index(drop=True)
         )
 
     def test_hot_spot_report(self):
         """Generate a report to find hot spots."""
         after = dt.datetime(2018, 2, 26, tzinfo=dt.timezone.utc)
         log = self.log.loc[self.log["date"] >= after, :]
-        actual = cm.get_hot_spots(log, self.loc)
+        actual = (
+            cm.get_hot_spots(log, self.loc)
+            .sort_values(by="language")
+            .reset_index(drop=True)
+        )
         self.assertEqual(self.expected, actual)
 
     def test_hot_spot_report_by_path(self):
         """Generate a report to find hot spots with path passed explicitely."""
         after = dt.datetime(2018, 2, 26, tzinfo=dt.timezone.utc)
         log = self.log.loc[self.log["date"] >= after, :]
-        actual = cm.get_hot_spots(log, self.loc, by="path")
+        actual = (
+            cm.get_hot_spots(log, self.loc, by="path")
+            .sort_values(by="language")
+            .reset_index(drop=True)
+        )
         self.assertEqual(self.expected, actual)
 
     def test_hot_spot_with_custom_change_metric(self):
@@ -210,7 +222,11 @@ class HotSpotReportTestCase(SimpleRepositoryFixture):
 
         """
         self.log["day"] = dt.datetime(2018, 2, 24, tzinfo=dt.timezone.utc)
-        actual = cm.get_hot_spots(self.log, self.loc, count_one_change_per=["day"])
+        actual = (
+            cm.get_hot_spots(self.log, self.loc, count_one_change_per=["day"])
+            .sort_values(by="language")
+            .reset_index(drop=True)
+        )
         self.expected.loc[1, "changes"] = 1  # from 2 changes.
         self.assertEqual(self.expected, actual)
 
@@ -391,7 +407,7 @@ class ComponentTestCase(SimpleRepositoryFixture):
     def test_can_guess_components(self):
         """Cluster paths in components."""
         actual = cm.guess_components(
-            self.paths, stop_words={"code_maat"}, n_clusters=10
+            self.paths, stop_words=["code_maat"], n_clusters=10
         )
         actual = actual.sort_values(by="path").reset_index(drop=True)
         expected = code_maat_dataset
@@ -401,10 +417,12 @@ class ComponentTestCase(SimpleRepositoryFixture):
         """Cluster paths to a specific number of components"""
         n_clusters = 3
         comps = cm.guess_components(
-            self.paths, stop_words={"code_maat"}, n_clusters=n_clusters
+            self.paths, stop_words=["code_maat"], n_clusters=n_clusters
         )
         actual = comps[["component"]].drop_duplicates().reset_index(drop=True)
-        expected = pd.DataFrame(data={"component": ["parsers", "src.analysis", "test"]})
+        expected = pd.DataFrame(
+            data={"component": ["analysis", "end_to_end.test", "parsers"]}
+        )
         self.assertEqual(expected, actual)
 
 
@@ -446,10 +464,10 @@ class GetComplexityTestCase(utils.DataFrameTestCase):
             io.StringIO(
                 textwrap.dedent(
                     """\
-        revision,path,function,cyclomatic_complexity,nloc,token_count,name,long_name,start_line,end_line,top_nesting_level,fan_in,fan_out,general_fan_out,file_tokens,file_nloc,length
-        r1,f.py,0,2,4,16,test,test( ),1,4,0,0,0,0,17,4,4
-        r2,f.py,0,1,2,8,test,test( ),1,2,0,0,0,0,18,4,2
-        r2,f.py,1,1,2,8,other,other( ),4,5,0,0,0,0,18,4,2
+        revision,path,function,cyclomatic_complexity,nloc,token_count,name,long_name,start_line,end_line,top_nesting_level,fan_in,fan_out,general_fan_out,max_nesting_depth,file_tokens,file_nloc,length
+        r1,f.py,0,2,4,16,test,test( ),1,4,0,0,0,0,0,17,4,4
+        r2,f.py,0,1,2,8,test,test( ),1,2,0,0,0,0,0,18,4,2
+        r2,f.py,1,1,2,8,other,other( ),4,5,0,0,0,0,0,18,4,2
         """
                 )
             ),

@@ -66,7 +66,7 @@ Ready to contribute? Here's how to set up `codemetrics` for local development.
 
     $ mkvirtualenv codemetrics
     $ cd codemetrics/
-    $ python setup.py develop
+    $ python -m pip install -e .[develop]
 
 4. Create a branch for local development::
 
@@ -78,10 +78,8 @@ Ready to contribute? Here's how to set up `codemetrics` for local development.
    tests, including testing other Python versions with tox::
 
     $ flake8 codemetrics tests
-    $ python setup.py test or py.test
+    $ python -m unittest discover tests
     $ tox
-
-   To get flake8 and tox, just pip install them into your virtualenv.
 
 6. Commit your changes and push your branch to GitHub::
 
@@ -122,7 +120,7 @@ Then run::
     $ tox -p  # there should be no errors.
     $ vim HISTORY.rst
     $ bump2version patch  # possible: major / minor / patch.
-    $ vim setup.cfg  # bump2version does not update all references.
+    $ vim pyproject.toml  # bump2version does not update all references.
     $ git push
     $ git tag vx.y.z
     $ git push --tags

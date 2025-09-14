@@ -14,6 +14,7 @@ import pandas as pd
 import tqdm
 
 from . import pbar
+from typing import Optional
 
 DownloadResult = collections.namedtuple(
     "DownloadResult", ["revision", "path", "content"]
@@ -51,11 +52,11 @@ class Project:
     def get_log(
         self,
         path: str = ".",
-        after: dt.datetime = None,
-        before: dt.datetime = None,
-        progress_bar: tqdm.tqdm = None,
+        after: Optional[dt.datetime] = None,
+        before: Optional[dt.datetime] = None,
+        progress_bar: Optional[tqdm.tqdm] = None,
         # FIXME: Needed for Subversion though may be a better way.
-        relative_url: str = None,
+        relative_url: Optional[str] = None,
         _pdb=False,
     ) -> pd.DataFrame:
         return pd.DataFrame(columns=LogEntry.__slots__)
@@ -104,10 +105,10 @@ class LogEntry:
         action: typing.Optional[str] = None,
         textmods: bool = True,
         propmods: bool = False,
-        copyfromrev: str = None,
-        copyfrompath: str = None,
-        added: int = None,
-        removed: int = None,
+        copyfromrev: Optional[str] = None,
+        copyfrompath: Optional[str] = None,
+        added: Optional[int] = None,
+        removed: Optional[int] = None,
     ):
         """Initializes LogEntry
 
@@ -204,7 +205,7 @@ class ScmLogCollector(abc.ABC):
 
     """
 
-    def __init__(self, cwd: pl.Path = None):
+    def __init__(self, cwd: Optional[pl.Path] = None):
         """Initialize interface.
 
         Args:
@@ -230,7 +231,7 @@ class ScmLogCollector(abc.ABC):
         self,
         cmd_output: typing.Sequence[str],
         after: dt.datetime,
-        progress_bar: tqdm.tqdm = None,
+        progress_bar: Optional[tqdm.tqdm] = None,
     ):
         """Factor creation of dataframe from output of command.
 
@@ -322,7 +323,9 @@ def parse_diff_chunks(download: DownloadResult) -> pd.DataFrame:
 class ScmDownloader(abc.ABC):
     """Abstract class that defines a common interface for SCM downloaders."""
 
-    def __init__(self, command: typing.List[str], client: str, cwd: pl.Path = None):
+    def __init__(
+        self, command: typing.List[str], client: str, cwd: Optional[pl.Path] = None
+    ):
         """Aggregates the client and the command in one variable.
 
         Args:
@@ -334,7 +337,7 @@ class ScmDownloader(abc.ABC):
         self.command = [client] + command
         self.cwd = cwd or None
 
-    def download(self, revision: str, path: str = None) -> DownloadResult:
+    def download(self, revision: str, path: Optional[str] = None) -> DownloadResult:
         """Download content specific to a revision and path.
 
         Runs checks and forward the call to _download (template method).
@@ -345,12 +348,12 @@ class ScmDownloader(abc.ABC):
                 are to be retrieved.
 
         """
-        assert revision is None or isinstance(
-            revision, str
-        ), f"expected string, got {type(revision)}"
-        assert path is None or isinstance(
-            path, str
-        ), f"expected a string, got {type(path)}"
+        assert revision is None or isinstance(revision, str), (
+            f"expected string, got {type(revision)}"
+        )
+        assert path is None or isinstance(path, str), (
+            f"expected a string, got {type(path)}"
+        )
         if path is None:
             path = "."
         try:
