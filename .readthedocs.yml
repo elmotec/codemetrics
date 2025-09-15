@@ -9,6 +9,7 @@ version: 2
 sphinx:
   configuration: docs/conf.py
 
+# Optionally set the version of Python and requirements required to build your docs
 # Build documentation with MkDocs
 #mkdocs:
 #  configuration: mkdocs.yml
@@ -17,9 +18,7 @@ sphinx:
 # formats:
 #  - pdf
 
-# Optionally set the version of Python and requirements required to build your docs
 python:
-  version: 3.7
   install:
   - requirements: docs/requirements.txt
   - method: pip
