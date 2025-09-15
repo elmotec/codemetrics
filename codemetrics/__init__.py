@@ -7,7 +7,7 @@
 # noinspection SpellCheckingInspection
 __author__ = """Elmotec"""
 __email__ = "elmotec@gmx.com"
-__version__ = "0.11.7"
+__version__ = "1.0.0"
 
 from .cloc import get_cloc
 from .core import (

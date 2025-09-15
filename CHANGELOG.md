@@ -1,4 +1,16 @@
-## Unreleased
+## v1.0.0 (2025-09-14)
+
+### BREAKING CHANGE
+
+- upgrade numpy, pandas and scipy to v2
+
+## v0.11.7 (2022-04-24)
+
+### Fix
+
+- fix lizard removing length (#19)
+
+## v0.11.6 (2022-03-22)
 
 ## v0.11.5 (2021-07-24)
 
