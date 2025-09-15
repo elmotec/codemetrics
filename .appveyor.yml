@@ -14,7 +14,7 @@ environment:
 
 build: false
 
-install:
+build_script:
 - C:\%PYTHON%\python.exe -m pip install --upgrade pip
 - C:\%PYTHON%\python.exe -m pip install . pytest
 
