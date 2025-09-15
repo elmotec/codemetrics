@@ -1,34 +1,39 @@
-name: Publish to PIPY if tagged
+name: Publish to PyPI via Trusted Publisher
 
 on:
   push:
-    branches:
-    - main
-    - ci/autopublish
     tags:
     - v*
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment:
+      name: pypi   # environment name must match what you configure on PyPI
+    permissions:
+      id-token: write   # required for OIDC trusted publishing
+      contents: read    # minimal other permissions (you may trim more if possible)
+
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v5
+
     - name: Set up Python
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v6
       with:
-        python-version: '3.13'
+        python-version: 3.x
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install build
+        python -m pip install build
+
     - name: Build package
       run: python -m build
-    # See https://github.com/marketplace/actions/pypi-publish
+
     - name: Publish distribution to PyPI
-      if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags')
-      uses: pypa/gh-action-pypi-publish@v1.13.0
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: pypa/gh-action-pypi-publish@release/v1.13
       with:
-        user: __token__
-        password: ${{ secrets.PYPI_TOKEN }}
         skip_existing: true
         verbose: true
+
