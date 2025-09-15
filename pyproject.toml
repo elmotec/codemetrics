@@ -51,7 +51,7 @@ cm_func_stats = "codemetrics.cmdline:cm_func_stats"
 develop = [
     "black[d]",
     "build",
-    "commitizen<4.9",
+    "commitizen",
     "coverage",
     "flake8",
     "pip",
