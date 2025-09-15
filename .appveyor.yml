@@ -1,21 +1,23 @@
 # Do not build branch with open PR
 skip_branch_with_pr: true
 
+# Use a newer Windows image with newer Python versions preinstalled
 image:
-- Visual Studio 2019
+- Visual Studio 2022
 
 environment:
   matrix:
-  - PYTHON: Python37-x64
-  - PYTHON: Python38-x64
-  - PYTHON: Python39-x64
-  - PYTHON: Python310-x64
+  - PYTHON: Python311-x64
+  - PYTHON: Python312-x64
+  - PYTHON: Python313-x64
 
 install:
-- C:\%PYTHON%\python.exe -m pip install pip --upgrade
+  # Upgrade pip and install project + pytest
+- C:\%PYTHON%\python.exe -m pip install --upgrade pip
 - C:\%PYTHON%\python.exe -m pip install . pytest
 
 build: off
 
 test_script:
 - C:\%PYTHON%\python.exe -m pytest
+
