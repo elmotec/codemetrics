@@ -6,9 +6,9 @@
     :target: https://pypi.python.org/pypi/codemetrics/
     :alt: Python compatibility
 
-.. image:: https://img.shields.io/github/workflow/status/elmotec/codemetrics/Python%20application
-    :target: https://github.com/elmotec/codemetrics/actions?query=workflow%3A%22Python+application%22
-    :alt: GitHub Workflow Python application
+.. image:: https://img.shields.io/github/actions/workflow/status/elmotec/codemetrics/python-app.yml
+   :target: https://github.com/elmotec/codemetrics/actions/workflows/python-app.yml
+   :alt: GitHub Actions Workflow Status
 
 .. image:: https://img.shields.io/appveyor/ci/elmotec/codemetrics/main?label=AppVeyor
     :target: https://ci.appveyor.com/project/elmotec/codemetrics
