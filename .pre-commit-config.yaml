@@ -6,7 +6,7 @@ repos:
     stages:
     - commit-msg
   repo: https://github.com/commitizen-tools/commitizen
-  rev: master
+  rev: v4.10.0
 - hooks:
   - id: check-added-large-files
   - id: check-merge-conflict
@@ -29,7 +29,7 @@ repos:
   - id: validate-pyproject
     files: pyproject\.toml$
 - repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: v0.13.0
+  rev: v0.14.5
   hooks:
   - id: ruff-check
     args: [--fix]
@@ -42,7 +42,7 @@ repos:
     files: codemetrics/
     id: mypy
   repo: https://github.com/pre-commit/mirrors-mypy
-  rev: v1.18.1
+  rev: v1.18.2
 - hooks:
   - always_run: false
     entry: python -m unittest
