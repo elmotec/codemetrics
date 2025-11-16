@@ -68,6 +68,9 @@ notebooks = [
     "jupyterlab",
     "matplotlib",
 ]
+all = [
+    "codemetrics[develop,notebooks]",
+]
 
 [tool.setuptools]
 packages = ["codemetrics"]
