@@ -69,7 +69,7 @@ notebooks = [
     "matplotlib",
 ]
 all = [
-    "codemetrics[develop, notebooks]",
+    "codemetrics[develop,notebooks]",
 ]
 
 [tool.setuptools]
