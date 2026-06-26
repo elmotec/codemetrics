@@ -64,6 +64,18 @@ Usage
 This is a simple tool that makes it easy to retrieve information from your
 Source Control Management (SCM) repository and hopefully gain insight from it.
 
+From the command line, run text reports directly from a checkout:
+
+::
+
+  codemetrics --repo path/to/project hot-spots --limit 20
+  codemetrics --repo path/to/project ages --format csv
+  codemetrics --repo path/to/project mass-changes --min-path 10
+  codemetrics --repo path/to/project co-changes --limit 20
+
+The command defaults to git. Use ``--scm svn`` for Subversion checkouts, and
+``--format csv`` or ``--format json`` when you want machine-readable output.
+
 ::
 
   import codemetrics as cm
@@ -117,4 +129,3 @@ Credits
 .. _module documentation: https://codemetrics.readthedocs.org/
 .. _example notebook: https://github.com/elmotec/codemetrics/blob/main/notebooks/pandas.ipynb
 .. _example html export: https://github.com/elmotec/codemetrics/blob/main/notebooks/pandas.html
-

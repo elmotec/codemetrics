@@ -67,6 +67,23 @@ Brdges visualization in Jupyter_ notebooks with Vega_ and Altair_.
 Command line scripts
 --------------------
 
+codemetrics
+^^^^^^^^^^^
+
+The ``codemetrics`` command runs the main dataframe algorithms from a shell
+without starting Jupyter. It defaults to git and prints plain text tables:
+
+::
+
+    >codemetrics --repo path/to/project hot-spots --limit 20
+    >codemetrics --repo path/to/project ages --format csv
+    >codemetrics --repo path/to/project mass-changes --min-path 10
+    >codemetrics --repo path/to/project co-changes --limit 20
+
+Common options include ``--scm git|svn``, ``--path``, ``--after``, ``--before``,
+``--client``, and ``--relative-url`` for Subversion. Report commands support
+``--format table|csv|json`` and ``--limit``.
+
 .. _cm_func_stats:
 
 cm_func_stats
@@ -107,4 +124,3 @@ And for an example::
 .. _Jupyter: https://jupyter.org/
 .. _Vega: https://vega.github.io/
 .. _Altair: https://altair-viz.github.io/
-

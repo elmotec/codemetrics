@@ -23,13 +23,14 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Software Development",
     "Topic :: Utilities",
     "Topic :: Software Development :: Version Control",
     "Intended Audience :: Developers",
     "Intended Audience :: Education",
 ]
-requires-python = ">=3.6"
+requires-python = ">=3.10"
 dependencies = [
     "numpy>=2",
     "click>=6",
@@ -45,6 +46,7 @@ dependencies = [
 Homepage = "http://github.com/elmotec/codemetrics"
 
 [project.scripts]
+codemetrics = "codemetrics.cmdline:codemetrics"
 cm_func_stats = "codemetrics.cmdline:cm_func_stats"
 
 [project.optional-dependencies]
