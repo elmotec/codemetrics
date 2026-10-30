@@ -1,4 +1,4 @@
-.PHONY: clean clean-test clean-pyc clean-build docs help upgrade
+.PHONY: clean clean-test clean-pyc clean-build docs help upgrade release
 .DEFAULT_GOAL := help
 
 define BROWSER_PYSCRIPT
@@ -75,8 +75,9 @@ docs: ## build Sphinx HTML documentation, including API docs
 servedocs: docs ## compile the docs watching for changes
 	uv run --locked --group docs watchmedo shell-command -p '*.rst' -c '$(MAKE) -C docs html' -R -D .
 
-release: dist ## package and upload a release
-	uv publish
+release: ## bump the version and update the changelog
+	uv tool run --from commitizen cz bump -ch --retry
+	git push && git push --tags
 
 dist: clean ## builds source and wheel package
 	uv build
