@@ -54,7 +54,7 @@ lint: ## check style with flake8
 	flake8 codemetrics tests
 
 test: ## run tests quickly with the default Python
-	python -m unittest discover tests
+	python -m unittest discover -s tests -t .
 
 test-all: ## run tests on every Python version with tox
 	tox

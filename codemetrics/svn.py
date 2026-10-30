@@ -303,7 +303,12 @@ def get_diff_stats(
     """
     if not svn_client:
         svn_client = default_client
+    # pandas 3 excludes grouping columns from apply inputs; the group name
+    # retains the revision in that case.
+    group_name = getattr(data, "name", None)
     data = data.reset_index()  # prevents messing with input frame.
+    if "revision" not in data.columns and group_name is not None:
+        data["revision"] = group_name[0] if isinstance(group_name, tuple) else group_name
     try:
         revision = data.iloc[0]["revision"]
     except Exception as err:
