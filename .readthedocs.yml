@@ -10,6 +10,9 @@ build:
     - $HOME/.local/bin/uv venv "$READTHEDOCS_VIRTUALENV_PATH" --python 3.13
     install:
     - UV_PROJECT_ENVIRONMENT="$READTHEDOCS_VIRTUALENV_PATH" $HOME/.local/bin/uv sync --locked --no-dev --group docs
+    build:
+      html:
+      - $READTHEDOCS_VIRTUALENV_PATH/bin/sphinx-build -T -b html -d docs/_build/doctrees -D language=en docs "$READTHEDOCS_OUTPUT/html"
 
 sphinx:
   configuration: docs/conf.py
