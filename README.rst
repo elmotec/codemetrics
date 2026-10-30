@@ -1,9 +1,9 @@
 .. image:: https://img.shields.io/pypi/v/codemetrics.svg
-    :target: https://pypi.python.org/pypi/codemetrics/
+    :target: https://pypi.org/project/codemetrics/
     :alt: PyPi version
 
 .. image:: https://img.shields.io/pypi/pyversions/codemetrics.svg
-    :target: https://pypi.python.org/pypi/codemetrics/
+    :target: https://pypi.org/project/codemetrics/
     :alt: Python compatibility
 
 .. image:: https://img.shields.io/github/actions/workflow/status/elmotec/codemetrics/python-app.yml
@@ -15,17 +15,16 @@
     :target: https://libraries.io/pypi/codemetrics
 
 .. image:: https://img.shields.io/readthedocs/codemetrics.svg
-    :target: https://codemetrics.readthedocs.org/
+    :target: https://codemetrics.readthedocs.io/en/latest/
     :alt: Documentation
 
-.. image:: https://codecov.io/gh/elmotec/codemetrics/branch/main/graph/badge.svg?token=ELJW941FET
-    :target: https://codecov.io/gh/elmotec/codemetrics
+.. image:: https://codecov.io/gh/elmotec/codemetrics/branch/main/graph/badge.svg
+    :target: https://app.codecov.io/gh/elmotec/codemetrics
     :alt: Coverage
 
 .. image:: https://img.shields.io/codacy/grade/dd4a11eb66674b3bbe518d8f829b6234.svg
-    :target: https://www.codacy.com/app/elmotec/codemetrics/dashboard
+    :target: https://app.codacy.com/gh/elmotec/codemetrics/dashboard
     :alt: Codacy
-
 
 ===========
 codemetrics
