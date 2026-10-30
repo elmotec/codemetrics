@@ -1,4 +1,4 @@
-.PHONY: clean clean-test clean-pyc clean-build docs help
+.PHONY: clean clean-test clean-pyc clean-build docs help upgrade
 .DEFAULT_GOAL := help
 
 define BROWSER_PYSCRIPT
@@ -84,3 +84,7 @@ dist: clean ## builds source and wheel package
 
 install: ## sync the project and development dependencies
 	uv sync --locked
+
+upgrade: ## upgrade locked dependencies and pre-commit hooks
+	uv lock --upgrade
+	uv run --locked pre-commit autoupdate

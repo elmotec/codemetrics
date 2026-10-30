@@ -6,9 +6,10 @@ repos:
     stages:
     - commit-msg
   repo: https://github.com/commitizen-tools/commitizen
-  rev: v4.10.0
+  rev: v4.19.3
 - hooks:
   - id: check-added-large-files
+    exclude: ^uv\.lock$
   - id: check-merge-conflict
   - id: check-toml
   - id: debug-statements
@@ -22,14 +23,14 @@ repos:
     - '2'
     id: pretty-format-yaml
   repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
-  rev: v2.15.0
+  rev: v2.16.0
 - repo: https://github.com/abravalheri/validate-pyproject
-  rev: v0.24.1
+  rev: v0.27
   hooks:
   - id: validate-pyproject
     files: pyproject\.toml$
 - repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: v0.14.5
+  rev: v0.17.3
   hooks:
   - id: ruff-check
     args: [--fix]
@@ -42,7 +43,7 @@ repos:
     files: codemetrics/
     id: mypy
   repo: https://github.com/pre-commit/mirrors-mypy
-  rev: v1.18.2
+  rev: v2.4.1
 - hooks:
   - always_run: false
     entry: uv run python -m unittest discover -s tests -t .
