@@ -20,7 +20,7 @@ jobs:
         check-latest: true
         allow-prereleases: false
     - name: Set up uv
-      uses: astral-sh/setup-uv@v9
+      uses: astral-sh/setup-uv@v10.3.3
     - name: Show Python version
       run: python --version
     - name: Install dependencies
@@ -42,7 +42,7 @@ jobs:
       with:
         python-version: ${{matrix.python-version}}
     - name: Set up uv
-      uses: astral-sh/setup-uv@v9
+      uses: astral-sh/setup-uv@v10.3.3
     - name: Install dependencies
       run: uv sync --locked
     - name: Lint with flake8
