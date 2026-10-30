@@ -139,7 +139,7 @@ class TestCheckRunInRoot(unittest.TestCase):
         Also checks the error message.
 
         """
-        tempdir = tempfile.gettempdir()
-        with self.assertRaises(ValueError) as context:
-            internals.check_run_in_root(tempdir)
-        self.assertIn(f"{tempdir} does not appear to be", str(context.exception))
+        with tempfile.TemporaryDirectory() as tempdir:
+            with self.assertRaises(ValueError) as context:
+                internals.check_run_in_root(tempdir)
+            self.assertIn(f"{tempdir} does not appear to be", str(context.exception))

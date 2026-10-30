@@ -184,14 +184,14 @@ def guess_components(paths, stop_words=None, n_clusters=8):
     vectorizer = sklearn.feature_extraction.text.TfidfVectorizer(stop_words=stop_words)
     transformed_dirs = vectorizer.fit_transform(dirs)
     algo = sklearn.cluster.MiniBatchKMeans
-    clustering = algo(compute_labels=True, n_clusters=n_clusters)
+    clustering = algo(compute_labels=True, n_clusters=n_clusters, n_init=1, random_state=0)
     clustering.fit(transformed_dirs)
 
     def __cluster_name(center, threshold):
         df = pd.DataFrame(
             data={"feature": vectorizer.get_feature_names_out(), "weight": center}
         )
-        df.sort_values(by=["weight", "feature"], ascending=False, inplace=True)
+        df = df.sort_values(by=["weight", "feature"], ascending=False)
         if (df["weight"] <= threshold).all():
             return ""
         df = df[df["weight"] > threshold]
@@ -202,8 +202,7 @@ def guess_components(paths, stop_words=None, n_clusters=8):
     ]
     components = [cluster_names[lbl] for lbl in clustering.labels_]
     rv = pd.DataFrame(data={"path": paths, "component": components})
-    rv.sort_values(by="component", inplace=True)
-    return rv
+    return rv.sort_values(by="component")
 
 
 # Exclude the parameters field for now.

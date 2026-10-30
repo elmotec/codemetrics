@@ -167,9 +167,9 @@ def normalize_log(df):
     return df.assign(
         revision=lambda x: x["revision"].astype("string"),
         path=lambda x: x["path"].astype("string"),
-        author=lambda x: x["author"].fillna("").astype("string"),
-        date=lambda x: pd.to_datetime(x["date"], utc=True),
-        message=lambda x: x["message"].fillna("").astype("string"),
+        author=lambda x: x["author"].astype("string").fillna(""),
+        date=lambda x: pd.to_datetime(x["date"], utc=True).astype("datetime64[ns, UTC]"),
+        message=lambda x: x["message"].astype("string").fillna(""),
         copyfromrev=lambda x: x["copyfromrev"].astype("string"),
         copyfrompath=lambda x: x["copyfrompath"].astype("string"),
         added=lambda x: pd.to_numeric(x["added"], downcast="float"),
