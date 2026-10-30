@@ -1,3 +1,12 @@
+## v2.0.0 (2026-10-29)
+
+### Fix
+
+- restore test suite compatibility with current dependencies (#31)
+
+
+- add support for python3.15, drop 3.10
+
 ## v1.0.0 (2025-09-14)
 
 ### BREAKING CHANGE

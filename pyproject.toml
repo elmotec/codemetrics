@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "codemetrics"
-version = "1.0.0"
+version = "2.0.0"
 description = "SCM mining utility classes"
 readme = "README.rst"
 license = "MIT"
@@ -76,7 +76,7 @@ include-package-data = true
 
 [tool.commitizen]
 name = "cz_conventional_commits"
-version = "1.0.0"
+version = "2.0.0"
 tag_format = "v$version"
 version_files = [
     "pyproject.toml:version",
