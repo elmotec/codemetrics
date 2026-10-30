@@ -45,7 +45,7 @@ repos:
   rev: v1.18.2
 - hooks:
   - always_run: false
-    entry: python -m unittest
+    entry: uv run python -m unittest discover -s tests -t .
     id: tests
     language: system
     name: tests

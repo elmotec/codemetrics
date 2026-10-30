@@ -3,7 +3,7 @@
 
 # You can set these variables from the command line.
 SPHINXOPTS    =
-SPHINXBUILD   = python -msphinx
+SPHINXBUILD   = uv run --locked --group docs python -m sphinx
 SPHINXPROJ    = codemetrics
 SOURCEDIR     = .
 BUILDDIR      = _build

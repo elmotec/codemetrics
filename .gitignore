@@ -81,3 +81,6 @@ setup.bat
 # Pycharm
 .idea/
 /.mypy_cache/
+
+# uv project environment
+.venv/

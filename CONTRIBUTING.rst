@@ -62,11 +62,20 @@ Ready to contribute? Here's how to set up `codemetrics` for local development.
 
     $ git clone git@github.com:elmotec/codemetrics.git
 
-3. Install your local copy into a virtualenv. Assuming you have virtualenvwrapper installed, this is how you set up your fork for local development::
+3. Install `uv <https://docs.astral.sh/uv/getting-started/installation/>`_ and
+   sync your local copy (uv creates ``.venv`` and installs the project in editable mode)::
 
-    $ mkvirtualenv codemetrics
     $ cd codemetrics/
-    $ python -m pip install -e .[develop]
+    $ uv sync --locked
+
+   Optional dependencies live in the ``docs`` and ``notebooks`` groups::
+
+    $ uv sync --locked --all-groups
+
+   Use ``uv add PACKAGE`` for runtime dependencies or ``uv add --dev PACKAGE``
+   for development tools. Commit both ``pyproject.toml`` and ``uv.lock``.
+   After editing dependency declarations manually, run ``uv lock``.
+   Use ``uv lock --upgrade-package PACKAGE`` to update a pinned dependency.
 
 4. Create a branch for local development::
 
@@ -75,11 +84,11 @@ Ready to contribute? Here's how to set up `codemetrics` for local development.
    Now you can make your changes locally.
 
 5. When you're done making changes, check that your changes pass flake8 and the
-   tests, including testing other Python versions with tox::
+   tests, including testing other Python versions::
 
-    $ flake8 codemetrics tests
-    $ python -m unittest discover tests
-    $ tox
+    $ uv run --locked flake8 codemetrics tests
+    $ uv run --locked python -m unittest discover -s tests -t .
+    $ make test-all
 
 6. Commit your changes and push your branch to GitHub::
 
@@ -99,7 +108,7 @@ Before you submit a pull request, check that it meets these guidelines:
    your new functionality into a function with a docstring, and add the
    feature to the list in README.rst.
 3. The pull request should work for all supported versions of Python.  Check
-   https://travis-ci.org/elmotec/codemetrics/pull_requests
+   https://github.com/elmotec/codemetrics/actions
    and make sure that the tests pass for all versions.
 
 Tips
@@ -108,7 +117,7 @@ Tips
 To run a subset of tests::
 
 
-    $ python -m unittest tests.test_codemetrics
+    $ uv run --locked python -m unittest tests.test_codemetrics
 
 Deploying
 ---------
@@ -117,15 +126,15 @@ A reminder for the maintainers on how to deploy.
 Make sure all your changes are committed (including an entry in HISTORY.rst).
 Then run::
 
-    $ tox -p  # there should be no errors.
-    $ vim HISTORY.rst
-    $ bump2version patch  # possible: major / minor / patch.
-    $ vim pyproject.toml  # bump2version does not update all references.
-    $ git push
-    $ git tag vx.y.z
-    $ git push --tags
-    $ python setup.py sdist  # will generate new .tar.gz in dist folder.
-    $ twine check dist/<dist>.tar.gz  # status should be Passed
-    $ twine upload dist/<dist>.tar.gz
+    $ make test-all
+    $ uv run --locked cz bump --dry-run
 
-Travis will then deploy to PyPI if tests pass.
+Review the version and changelog changes, then run ``uv run --locked cz bump``.
+Refresh ``uv.lock`` with ``uv lock`` after bumping the project version and commit
+it before pushing the release tag. Tags matching ``v*`` trigger the GitHub Actions
+workflow, which builds with ``uv build`` and publishes through PyPI Trusted Publishing.
+To build a distribution locally::
+
+    $ uv build
+
+For a manual release, ``uv publish`` uploads the distributions in ``dist/``.

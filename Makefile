@@ -24,10 +24,10 @@ for line in sys.stdin:
 endef
 export PRINT_HELP_PYSCRIPT
 
-BROWSER := python -c "$$BROWSER_PYSCRIPT"
+BROWSER := uv run --locked python -c "$$BROWSER_PYSCRIPT"
 
 help:
-	@python -c "$$PRINT_HELP_PYSCRIPT" < $(MAKEFILE_LIST)
+	@uv run --locked python -c "$$PRINT_HELP_PYSCRIPT" < $(MAKEFILE_LIST)
 
 clean: clean-build clean-pyc clean-test ## remove all build, test, coverage and Python artifacts
 
@@ -51,37 +51,39 @@ clean-test: ## remove test and coverage artifacts
 	rm -fr .pytest_cache
 
 lint: ## check style with flake8
-	flake8 codemetrics tests
+	uv run --locked flake8 codemetrics tests
 
 test: ## run tests quickly with the default Python
-	python -m unittest discover -s tests -t .
+	uv run --locked python -m unittest discover -s tests -t .
 
-test-all: ## run tests on every Python version with tox
-	tox
+test-all: ## run tests on every supported Python version
+	@for version in 3.11 3.12 3.13 3.14 3.15; do \
+		uv run --locked --python $$version python -m unittest discover -s tests -t . || exit $$?; \
+	done
 
 coverage: ## check code coverage quickly with the default Python
-	coverage run --source codemetrics -m pytest tests
-	coverage report -m
-	coverage html
+	uv run --locked coverage run --source codemetrics -m pytest tests
+	uv run --locked coverage report -m
+	uv run --locked coverage html
 	$(BROWSER) htmlcov/index.html
 
 docs: ## generate Sphinx HTML documentation, including API docs
 	rm -f docs/codemetrics.rst
 	rm -f docs/modules.rst
-	sphinx-apidoc -o docs/ codemetrics
+	uv run --locked --group docs sphinx-apidoc -o docs/ codemetrics
 	$(MAKE) -C docs clean
 	$(MAKE) -C docs html
 	$(BROWSER) docs/_build/html/index.html
 
 servedocs: docs ## compile the docs watching for changes
-	watchmedo shell-command -p '*.rst' -c '$(MAKE) -C docs html' -R -D .
+	uv run --locked --group docs watchmedo shell-command -p '*.rst' -c '$(MAKE) -C docs html' -R -D .
 
 release: dist ## package and upload a release
-	twine upload dist/*
+	uv publish
 
 dist: clean ## builds source and wheel package
-	python -m build
+	uv build
 	ls -l dist
 
-install: clean ## install the package to the active Python's site-packages
-	python -m pip install .
+install: ## sync the project and development dependencies
+	uv sync --locked

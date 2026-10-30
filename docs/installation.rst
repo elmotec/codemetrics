@@ -12,15 +12,12 @@ To install codemetrics, run this command in your terminal:
 
 .. code-block:: console
 
-    $ pip install codemetrics
+    $ uv venv
+    $ uv pip install codemetrics
 
 This is the preferred method to install codemetrics, as it will always install the most recent stable release.
 
-If you don't have `pip`_ installed, this `Python installation guide`_ can guide
-you through the process_log_entries.
-
-.. _pip: https://pip.pypa.io
-.. _Python installation guide: http://docs.python-guide.org/en/latest/starting/installation/
+Install `uv <https://docs.astral.sh/uv/getting-started/installation/>`_ first.
 
 
 From sources
@@ -44,7 +41,9 @@ Once you have a copy of the source, you can install it with:
 
 .. code-block:: console
 
-    $ python setup.py install
+    $ cd codemetrics
+    $ uv sync --locked
+    $ uv run --locked cm_func_stats --help
 
 
 .. _Github repo: https://github.com/elmotec/codemetrics

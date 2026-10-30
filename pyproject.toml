@@ -32,9 +32,9 @@ classifiers = [
 ]
 requires-python = ">=3.11"
 dependencies = [
-    "numpy>=2",
-    "click>=6",
-    "pandas>=2",
+    "numpy>=2.4",
+    "click>=8",
+    "pandas>=3",
     "tqdm>=4",
     "python-dateutil>=2",
     "scikit-learn",
@@ -48,19 +48,14 @@ Homepage = "http://github.com/elmotec/codemetrics"
 [project.scripts]
 cm_func_stats = "codemetrics.cmdline:cm_func_stats"
 
-[project.optional-dependencies]
-develop = [
+[dependency-groups]
+dev = [
     "black[d]",
-    "build",
     "commitizen",
     "coverage",
     "flake8",
-    "pip",
     "pre-commit",
-    "tox",
-    "twine",
     "watchdog",
-    "wheel",
     "pytest",
 ]
 notebooks = [
@@ -69,8 +64,10 @@ notebooks = [
     "jupyterlab",
     "matplotlib",
 ]
-all = [
-    "codemetrics[develop,notebooks]",
+docs = [
+    "Sphinx",
+    "sphinx-autodoc-typehints",
+    "sphinx_rtd_theme",
 ]
 
 [tool.setuptools]

@@ -1,4 +1,0 @@
-altair
-ipywidgets
-jupyterlab
-matplotlib

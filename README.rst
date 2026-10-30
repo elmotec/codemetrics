@@ -10,10 +10,6 @@
    :target: https://github.com/elmotec/codemetrics/actions/workflows/python-app.yml
    :alt: GitHub Actions Workflow Status
 
-.. image:: https://img.shields.io/appveyor/ci/elmotec/codemetrics/main?label=AppVeyor
-    :target: https://ci.appveyor.com/project/elmotec/codemetrics
-    :alt: AppVeyor main status
-
 .. image:: https://img.shields.io/librariesio/release/pypi/codemetrics.svg?label=libraries.io
     :alt: Libraries.io dependency status for latest release
     :target: https://libraries.io/pypi/codemetrics
@@ -50,11 +46,12 @@ insight on your code base.
 Installation
 ------------
 
-To install codemetrics, simply use pip:
+To install codemetrics into a uv environment:
 
 ::
 
-  pip install codemetrics
+  uv venv
+  uv pip install codemetrics
 
 
 
@@ -118,3 +115,16 @@ Credits
 .. _example notebook: https://github.com/elmotec/codemetrics/blob/main/notebooks/pandas.ipynb
 .. _example html export: https://github.com/elmotec/codemetrics/blob/main/notebooks/pandas.html
 
+
+Development
+-----------
+
+Install `uv <https://docs.astral.sh/uv/getting-started/installation/>`_, then run::
+
+  uv sync --locked
+  uv run --locked pytest
+
+Dependencies are declared in ``pyproject.toml`` and pinned in ``uv.lock``.
+Use ``uv sync --locked --group docs`` for documentation dependencies or
+``uv sync --locked --group notebooks`` for notebooks. See CONTRIBUTING.rst
+for the full workflow.
