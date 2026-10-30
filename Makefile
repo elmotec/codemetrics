@@ -67,10 +67,7 @@ coverage: ## check code coverage quickly with the default Python
 	uv run --locked coverage html
 	$(BROWSER) htmlcov/index.html
 
-docs: ## generate Sphinx HTML documentation, including API docs
-	rm -f docs/codemetrics.rst
-	rm -f docs/modules.rst
-	uv run --locked --group docs sphinx-apidoc -o docs/ codemetrics
+docs: ## build Sphinx HTML documentation, including API docs
 	$(MAKE) -C docs clean
 	$(MAKE) -C docs html
 	$(BROWSER) docs/_build/html/index.html
