@@ -77,6 +77,9 @@ servedocs: docs ## compile the docs watching for changes
 
 release: ## bump the version and update the changelog
 	uv tool run --from commitizen cz bump -ch --retry
+
+release-push: ## bump the version, update the changelog and push
+	uv tool run --from commitizen cz bump -ch --retry
 	git push && git push --tags
 
 dist: clean ## builds source and wheel package
