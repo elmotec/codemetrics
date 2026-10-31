@@ -81,6 +81,7 @@ include-package-data = true
 name = "cz_conventional_commits"
 version = "2.0.1"
 tag_format = "v$version"
+changelog_incremental = true
 version_files = [
     "pyproject.toml:version",
     "codemetrics/__init__.py:__version__",

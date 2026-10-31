@@ -11,7 +11,7 @@ Welcome to codemetrics's documentation!
    recipes
    contributing
    authors
-   history
+   Changelog <https://github.com/elmotec/codemetrics/blob/main/CHANGELOG.md>
 
 Search and Index
 ================
