@@ -356,10 +356,7 @@ class SvnProject(scm.Project):
 
         """
         downloader = SvnDownloader(["cat", "-r"], svn_client=self.client, cwd=self.cwd)
-        df = data[["revision", "path"]]
-        if isinstance(df, pd.Series):
-            df = df.to_frame().T
-        revision, path = next(df.itertuples(index=False))
+        revision, path = scm.get_first_values(data, ["revision", "path"])
         return downloader.download(revision, path)
 
     def get_log(

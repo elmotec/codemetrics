@@ -75,6 +75,55 @@ def get_log(project: Project, *args, **kwargs) -> pd.DataFrame:
     return project.get_log(*args, **kwargs)
 
 
+def get_first_values(
+    data: typing.Union[pd.DataFrame, pd.Series],
+    fields: typing.Sequence[str] = ("revision", "path"),
+) -> typing.Tuple[typing.Any, ...]:
+    """Retrieve the values of fields for the first row of data.
+
+    Each field is looked up in the columns of data, then in its index levels.
+    Fields that are in neither are recovered from the group name: since pandas
+    3, ``groupby(...).apply`` excludes the grouping columns from the groups it
+    passes to the function. The missing fields are then expected to be the
+    leading grouping keys, in the order of fields, as in
+    ``log.groupby(["revision", "path"]).apply(func)``.
+
+    Args:
+        data: data frame or series such as a group or a row of the log.
+        fields: names of the fields to retrieve.
+
+    Returns:
+        Tuple of values, one for each field.
+
+    Raises:
+        KeyError: a field cannot be found.
+
+    """
+    if isinstance(data, pd.Series):
+        # Row passed by apply(..., axis=1): its name is the row label.
+        data = data.to_frame().T
+        group_name = None
+    else:
+        group_name = getattr(data, "name", None)
+    values: typing.Dict[str, typing.Any] = {}
+    for field in fields:
+        if field in data.columns:
+            values[field] = data[field].iloc[0]
+        elif field in data.index.names:
+            values[field] = data.index.get_level_values(field)[0]
+    missing = [field for field in fields if field not in values]
+    if missing:
+        if group_name is None:
+            raise KeyError(f"cannot find {', '.join(missing)} in data")
+        keys = group_name if isinstance(group_name, tuple) else (group_name,)
+        if len(keys) < len(missing):
+            raise KeyError(
+                f"cannot find {', '.join(missing)} in data or group name {group_name!r}"
+            )
+        values.update(zip(missing, keys))
+    return tuple(values[field] for field in fields)
+
+
 class LogEntry:
     """Data structure to hold git or svn data entries."""
 

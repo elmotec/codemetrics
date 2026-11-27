@@ -6,6 +6,8 @@
 import datetime as dt
 import io
 import pathlib
+import shutil
+import subprocess
 import tempfile
 import textwrap
 import unittest
@@ -617,6 +619,53 @@ class GetComplexityTestCase(utils.DataFrameTestCase):
         """Check the dtypes of the get_complexity return value does not contain object dtype."""
         actual = self.get_complexity()
         self.assertEqual("Int32", actual["general_fan_out"].dtype.name)
+
+
+@unittest.skipUnless(shutil.which("git"), "requires git")
+class GetComplexityGitIntegrationTestCase(unittest.TestCase):
+    """Test complexity analysis on an actual git repository."""
+
+    def git(self, *args: str) -> str:
+        command = ["git", "-c", "user.name=test", "-c", "user.email=test@example.com"]
+        command += ["-c", "commit.gpgsign=false", *args]
+        return subprocess.run(
+            command, cwd=self.repo, check=True, capture_output=True, text=True
+        ).stdout.strip()
+
+    def commit(self, content: str, message: str) -> str:
+        (self.repo / "f.py").write_text(content)
+        self.git("add", "f.py")
+        self.git("commit", "-m", message)
+        return self.git("rev-parse", "--short", "HEAD")
+
+    def setUp(self):
+        tempdir = tempfile.TemporaryDirectory()
+        self.addCleanup(tempdir.cleanup)
+        self.repo = pathlib.Path(tempdir.name)
+        self.git("init", "--quiet")
+        self.revisions = [
+            self.commit(GetComplexityTestCase.file_content_1, "first"),
+            self.commit(GetComplexityTestCase.file_content_2, "second"),
+        ]
+        self.project = cm.GitProject(self.repo)
+        self.log = cm.get_log(self.project)
+
+    def test_groupby_apply(self):
+        """Documented groupby/apply usage retrieves files from git."""
+        actual = (
+            self.log.groupby(["revision", "path"])
+            .apply(cm.get_complexity, self.project)
+            .reset_index()
+        )
+        first, second = self.revisions
+        expected = [
+            (first, "f.py", "test", 2),
+            (second, "f.py", "test", 1),
+            (second, "f.py", "other", 1),
+        ]
+        rows = actual[["revision", "path", "name", "cyclomatic_complexity"]]
+        actual_rows = list(rows.itertuples(index=False, name=None))
+        self.assertEqual(sorted(expected), sorted(actual_rows))
 
 
 if __name__ == "__main__":

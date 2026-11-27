@@ -279,10 +279,7 @@ class GitProject(scm.Project):
 
         """
         downloader = _GitFileDownloader(git_client=self.client, cwd=self.cwd)
-        df = data[["revision", "path"]]
-        if isinstance(df, pd.Series):
-            df = df.to_frame().T
-        revision, path = next(df.itertuples(index=False))
+        revision, path = scm.get_first_values(data, ["revision", "path"])
         return downloader.download(revision, path)
 
     def get_log(
@@ -338,5 +335,5 @@ def download(
     if not client:
         client = default_client
     downloader = _GitFileDownloader(git_client=client, cwd=cwd)
-    revision, path = next(data[["revision", "path"]].itertuples(index=False))
+    revision, path = scm.get_first_values(data, ["revision", "path"])
     return downloader.download(revision, path)

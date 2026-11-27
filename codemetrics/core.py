@@ -233,9 +233,9 @@ def get_complexity(
     Example::
 
         import codemetrics as cm
-        log = cm.get_git_log()
-        log.groupby(['revision', 'path']).\
-            apply(get_complexity, download_func=cm.git.download)
+        project = cm.GitProject('path/to/project')
+        log = cm.get_log(project)
+        log.groupby(['revision', 'path']).apply(cm.get_complexity, project)
 
     .. _lizard.analyze: https://github.com/terryyin/lizard
 

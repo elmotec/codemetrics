@@ -322,6 +322,23 @@ class SubversionDownloadTestCase(unittest.TestCase):
         ]
         self.assertEqual(expected, actual)
 
+    @mock.patch(
+        "codemetrics.internals.run", autospec=True, side_effect=[content1, content2]
+    )
+    def test_download_via_groupby_apply(self, _run):
+        """Retrieval works on groups, which lack the grouping columns since pandas 3."""
+        actual = (
+            self.sublog.groupby(["revision", "path"])
+            .apply(cm.svn.SvnProject().download)
+            .tolist()
+        )
+        _run.assert_called_with(self.svn.command + ["2", "file.py"], cwd=pl.Path("."))
+        expected = [
+            cm.scm.DownloadResult("1", "file.py", self.content1),
+            cm.scm.DownloadResult("2", "file.py", self.content2),
+        ]
+        self.assertEqual(expected, actual)
+
 
 class SubversionGetDiffStatsTestCase(utils.DataFrameTestCase):
     """Given a subversion repository and file chunks."""
