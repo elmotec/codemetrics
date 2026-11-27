@@ -341,6 +341,28 @@ class GitDownloadTestCase(unittest.TestCase):
         self.assertEqual(expected, actual)
 
     @mock.patch(
+        "codemetrics.internals.run", autospec=True, side_effect=[content1, content2]
+    )
+    def test_download_via_groupby_apply(self, _run):
+        """Retrieval works on groups, which lack the grouping columns since pandas 3."""
+        sublog = pd.DataFrame(
+            data={"revision": ["r1", "r2"], "path": ["file.py"] * 2, "added": [1, 2]}
+        )
+        actual = (
+            sublog.groupby(["revision", "path"])
+            .apply(self.git_project.download)
+            .tolist()
+        )
+        _run.assert_called_with(
+            self.downloader.command + ["r2:file.py"], cwd=pl.Path(".")
+        )
+        expected = [
+            cm.scm.DownloadResult("r1", "file.py", self.content1),
+            cm.scm.DownloadResult("r2", "file.py", self.content2),
+        ]
+        self.assertEqual(expected, actual)
+
+    @mock.patch(
         "codemetrics.internals.run",
         autospec=True,
         side_effect=[

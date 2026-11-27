@@ -136,6 +136,68 @@ class TestLogEntriesToDataFrame(unittest.TestCase):
         self.assertEqual("float32", self.dtypes["removed"].name)
 
 
+class GetFirstValuesTestCase(unittest.TestCase):
+    """Given data identifying files at a revision."""
+
+    def setUp(self):
+        self.log = pd.DataFrame(
+            data={
+                "revision": ["r1", "r1", "r2"],
+                "path": ["a.py", "b.py", "a.py"],
+                "added": [1, 2, 3],
+            }
+        )
+
+    def apply_on_groups(self, grouped):
+        return grouped.apply(scm.get_first_values).tolist()
+
+    def test_from_columns(self):
+        """Retrieves the values from the first row."""
+        self.assertEqual(("r1", "a.py"), scm.get_first_values(self.log))
+
+    def test_from_row(self):
+        """Retrieves the values from a row passed by apply(axis=1)."""
+        actual = self.log.apply(scm.get_first_values, axis=1).tolist()
+        self.assertEqual([("r1", "a.py"), ("r1", "b.py"), ("r2", "a.py")], actual)
+
+    def test_from_index(self):
+        """Retrieves the values from index levels."""
+        log = self.log.set_index(["revision", "path"])
+        self.assertEqual(("r1", "a.py"), scm.get_first_values(log))
+
+    def test_from_groupby_apply(self):
+        """Retrieves the values in groups even without the grouping columns."""
+        actual = self.apply_on_groups(self.log.groupby(["revision", "path"]))
+        self.assertEqual([("r1", "a.py"), ("r1", "b.py"), ("r2", "a.py")], actual)
+
+    def test_from_groupby_apply_on_revision(self):
+        """Combines the group name with the remaining columns."""
+        actual = self.apply_on_groups(self.log.groupby("revision"))
+        self.assertEqual([("r1", "a.py"), ("r2", "a.py")], actual)
+
+    def test_from_groupby_apply_on_index(self):
+        """Retrieves the values in groups of a log indexed by revision and path."""
+        log = self.log.set_index(["revision", "path"])
+        actual = self.apply_on_groups(log.groupby(["revision", "path"]))
+        self.assertEqual([("r1", "a.py"), ("r1", "b.py"), ("r2", "a.py")], actual)
+
+    def test_selected_fields(self):
+        """Retrieves only the fields requested."""
+        self.assertEqual(("a.py",), scm.get_first_values(self.log, ["path"]))
+
+    def test_missing_field_raises(self):
+        """Raises KeyError when a field cannot be found."""
+        with self.assertRaises(KeyError):
+            scm.get_first_values(self.log[["path"]])
+
+    def test_short_group_name_raises(self):
+        """Raises KeyError when the group name does not hold all missing fields."""
+        group = self.log[["added"]]
+        group.name = "r1"
+        with self.assertRaisesRegex(KeyError, "group name"):
+            scm.get_first_values(group)
+
+
 # pylint: disable=no-member
 class CommonProjectTestCase:
     """Test GitProject functionalities common to all projects.
