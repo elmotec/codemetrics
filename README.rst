@@ -63,7 +63,6 @@ Source Control Management (SCM) repository and hopefully gain insight from it.
 ::
 
   import codemetrics as cm
-  import cm.git
 
   project = cm.GitProject('path/to/project')
   loc_df = cm.get_cloc(project, cloc_program='/path/to/cloc')
@@ -76,7 +75,6 @@ To retrieve the number of lines changed by revision with Subversion:
 ::
 
   import codemetrics as cm
-  import cm.git
 
   project = cm.SvnProject('path/to/project')
   log_df = cm.get_log(project).set_index(['revision', 'path'])
